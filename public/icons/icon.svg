@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Boletim Diário de Câmera">
+  <defs>
+    <clipPath id="bar">
+      <rect x="96" y="150" width="320" height="66" rx="12" />
+    </clipPath>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="#101216" />
+  <g clip-path="url(#bar)">
+    <rect x="96" y="150" width="320" height="66" fill="#e9e9ec" />
+    <g fill="#101216" transform="skewX(-20)">
+      <rect x="78" y="150" width="34" height="66" />
+      <rect x="146" y="150" width="34" height="66" />
+      <rect x="214" y="150" width="34" height="66" />
+      <rect x="282" y="150" width="34" height="66" />
+      <rect x="350" y="150" width="34" height="66" />
+      <rect x="418" y="150" width="34" height="66" />
+    </g>
+  </g>
+  <rect x="96" y="226" width="320" height="158" rx="16" fill="#f5a524" />
+  <circle cx="160" cy="305" r="14" fill="#101216" />
+  <rect x="196" y="296" width="172" height="18" rx="9" fill="#101216" opacity="0.85" />
+</svg>

@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+}
+
+html,
+body {
+  background-color: #08090b;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: #e4e4e7;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none;
+}
+
+/* Pickers de data/hora legíveis no tema escuro */
+input[type='date']::-webkit-calendar-picker-indicator,
+input[type='time']::-webkit-calendar-picker-indicator {
+  filter: invert(0.85);
+  cursor: pointer;
+}
+
+/* Remove o "x" nativo do search (usamos botão próprio) */
+input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+::selection {
+  background: #f5a524;
+  color: #08090b;
+}
+
+/* ===== Impressão / Exportar PDF (A4) ===== */
+@media print {
+  @page {
+    size: A4;
+    margin: 13mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  .app-shell {
+    background: #fff !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-sheet {
+    box-shadow: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Garante a impressão das cores (badges aprovados, fundos de cabeçalho) */
+  .print-sheet,
+  .print-sheet * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
