@@ -1,8 +1,10 @@
 'use client';
 
+import { useId } from 'react';
 import type { Take } from '@/types/boletim';
 import { IconButton } from '@/components/ui/IconButton';
 import { CheckIcon, TrashIcon } from '@/components/ui/icons';
+import { useEditorMeta } from '@/hooks/useSuggestions';
 import { cn } from '@/utils/cn';
 
 interface TakeRowProps {
@@ -12,9 +14,13 @@ interface TakeRowProps {
 }
 
 const inputBase =
-  'h-11 rounded-lg border bg-surface px-3 text-base text-zinc-100 placeholder:text-zinc-600 transition focus:border-brand/60 focus:outline-none focus:ring-2 focus:ring-brand/30';
+  'h-11 rounded-lg border border-line bg-surface px-3 text-base text-zinc-100 placeholder:text-zinc-600 transition focus:border-brand/60 focus:outline-none focus:ring-2 focus:ring-brand/30';
 
 export function TakeRow({ take, onChange, onRemove }: TakeRowProps) {
+  const { suggestions } = useEditorMeta();
+  const cartaoListId = useId();
+  const clipListId = useId();
+
   return (
     <li
       className={cn(
@@ -31,22 +37,52 @@ export function TakeRow({ take, onChange, onRemove }: TakeRowProps) {
           inputMode="numeric"
           placeholder="Nº"
           onChange={(event) => onChange({ numero: event.target.value })}
-          className={cn(inputBase, 'w-16 shrink-0 border-line text-center font-semibold')}
+          className={cn(inputBase, 'w-14 shrink-0 text-center font-semibold')}
         />
         <input
-          aria-label="Observação do take"
-          value={take.observacao}
-          placeholder="Observação (ex.: boom em quadro, foco doce)"
-          onChange={(event) => onChange({ observacao: event.target.value })}
-          className={cn(inputBase, 'min-w-0 flex-1 border-line')}
+          aria-label="Nota operacional do take"
+          value={take.notaOperacional}
+          placeholder="Nota operacional (boom, foco, série…)"
+          onChange={(event) => onChange({ notaOperacional: event.target.value })}
+          className={cn(inputBase, 'min-w-0 flex-1')}
         />
         <IconButton
           label="Remover take"
           variant="danger"
-          icon={<TrashIcon size={18} />}
+          icon={<TrashIcon size={20} />}
           onClick={onRemove}
         />
       </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <input
+          aria-label="Cartão do take"
+          value={take.cartao}
+          list={cartaoListId}
+          placeholder="Cartão (ex.: A010)"
+          onChange={(event) => onChange({ cartao: event.target.value })}
+          className={cn(inputBase, 'w-full')}
+        />
+        <datalist id={cartaoListId}>
+          {suggestions.cartao.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+        <input
+          aria-label="Clip / Sync do take"
+          value={take.clipSync}
+          list={clipListId}
+          placeholder="Clip / Sync"
+          onChange={(event) => onChange({ clipSync: event.target.value })}
+          className={cn(inputBase, 'w-full')}
+        />
+        <datalist id={clipListId}>
+          {suggestions.clipSync.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+      </div>
+
       <button
         type="button"
         role="switch"

@@ -78,6 +78,7 @@ export function BoletimCard({
             <Badge tone="muted">Diária {boletim.producao.diaDiaria}</Badge>
           ) : null}
           <Badge tone="neutral">{stats.totalCenas} cenas</Badge>
+          <Badge tone="neutral">{stats.totalPlanos} planos</Badge>
           <Badge tone="neutral">{stats.totalTakes} takes</Badge>
         </div>
         <p className="mt-2.5 text-[11px] text-zinc-600">

@@ -1,6 +1,6 @@
 {
   "name": "boletim-diario-de-camera",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "PWA offline-first para Boletim Diário de Câmera em sets audiovisuais.",
   "scripts": {
@@ -10,7 +10,8 @@
     "lint": "next lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "test:migration": "node --no-warnings --experimental-strip-types --loader ./test/alias-loader.mjs test/migration-check.mjs"
   },
   "dependencies": {
     "next": "^15.1.0",

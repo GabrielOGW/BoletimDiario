@@ -13,16 +13,18 @@ Feito para uso real em campo: funciona **100% sem internet** (modo avião, Terad
 - **CRUD completo** de boletins: criar, editar, **duplicar**, excluir
 - **Busca** simples por título, produtora, diretor, data ou cena
 - **Auto-save** (salva sozinho enquanto você digita) + indicador "Salvando… / Salvo"
-- **Módulo de Cenas** dinâmico — cada cena é um **card accordion** com:
-  - Configurações técnicas (formato, resolução, frame rate, ISO, obturador, WB, LUT, espaço de cor, diafragma)
-  - Óptica (lentes, filtros, **Matte Box** Sim/Não)
-  - Mídia (cartão/rolo) e observações
-  - **Takes dinâmicos** com **toggle "Aprovado pelo diretor"** → destaque verde, fácil de localizar, múltiplos aprovados
-- Blocos de **Mídia/Suporte**, **Cenas do Dia**, **Horários**, **Equipe de Câmera** (lista dinâmica) e **Observações Gerais**
+- **Multicam real** — **câmeras cadastradas** (A CAM, B CAM…); cada plano seleciona a câmera utilizada (chip rápido ou texto livre)
+- **Hierarquia de set** — **Cena → Bloco (letra) → Plano → Take**; o **Plano** é a unidade principal de preenchimento:
+  - Configurações técnicas (formato, resolução, frame rate, ISO, obturador, WB, LUT, espaço de cor, diafragma) + Óptica (lentes, filtros, **Matte Box**)
+  - **Tipo de plano** (Normal / Série / Insert / Pickup / Drone) com badge visual
+  - **Takes** com **Cartão**, **Clip/Sync**, **Nota operacional** e **toggle "Aprovado pelo diretor"** (destaque verde, múltiplos aprovados)
+- **Autocomplete inteligente** — sugestões de lente, filtro, formato, WB, LUT… aprendidas do seu **uso real** (não obrigatórias)
+- **Compatível com boletins v1** — **migração automática** ao abrir: `18 A 1` → Cena 18 / Bloco A / Plano 1; `cartaoRolo` → take; câmera única → câmeras cadastradas; almoço `14:00–15:00` → início/fim
+- Blocos de **Mídia/Suporte**, **Cenas do Dia**, **Horários** (almoço início/fim), **Equipe de Câmera** e **Observações Gerais**
 - **Exportar PDF / Imprimir** (layout A4 profissional, takes aprovados destacados)
 - **Backup**: **Exportar JSON** e **Importar JSON** (restaure ao limpar o navegador ou trocar de aparelho)
 - **PWA instalável** com Service Worker, manifest, ícones e funcionamento offline completo
-- **Boletim demo** semeado no primeiro acesso (com os dados de exemplo da especificação)
+- **Boletim demo** semeado no primeiro acesso (multicam, cenas com blocos/planos/takes)
 
 ---
 
@@ -107,7 +109,15 @@ npm run lint          # ESLint
 npm run format        # Prettier (--write)
 npm run format:check  # Prettier (--check)
 npm run icons         # Regenera os ícones PNG do PWA
+npm run test:migration # Roda um boletim v1 real pela migração v2 (22 checagens)
 ```
+
+### Compatibilidade & migração (v1 → v2)
+
+O app evoluiu o modelo `Cena → Take` para `Cena → Bloco → Plano → Take` com multicam.
+**Boletins antigos continuam abrindo**: a normalização (`lib/normalize.ts`) migra
+automaticamente na leitura, e `lib/migrate.ts` regrava a base no novo formato uma única
+vez no boot. A migração é **idempotente** e validada por `npm run test:migration`.
 
 > **Dica de teste offline:** o Service Worker é registrado **apenas em produção** (para não atrapalhar o hot-reload do `dev`).
 > Para validar o offline localmente: `npm run build && npm run start`, abra o app, depois ative o **modo avião** e recarregue.
@@ -126,16 +136,19 @@ npm run icons         # Regenera os ícones PNG do PWA
 ## 📲 Como instalar o PWA
 
 **Android (Chrome/Edge):**
+
 1. Abra o app no navegador.
 2. Toque no banner **"Instalar como app"** (ou menu ⋮ → **Instalar aplicativo / Adicionar à tela inicial**).
 3. O app abre em tela cheia, com ícone próprio, e funciona offline.
 
 **iPhone/iPad (Safari):**
+
 1. Abra o app no Safari.
 2. Toque em **Compartilhar** (ícone de caixa com seta).
 3. Selecione **Adicionar à Tela de Início**.
 
 **Desktop (Chrome/Edge):**
+
 1. Clique no ícone de **instalar** na barra de endereço (ou menu → **Instalar**).
 
 ---
@@ -169,6 +182,7 @@ Funciona **100% offline** — sem bibliotecas externas, com tipografia limpa e l
 O app é estático/client-side — o deploy é só hospedagem de frontend.
 
 **Opção A — CLI:**
+
 ```bash
 npm i -g vercel
 vercel          # segue o assistente (preview)
@@ -176,6 +190,7 @@ vercel --prod   # produção
 ```
 
 **Opção B — Git:**
+
 1. Faça push do repositório para o GitHub/GitLab/Bitbucket.
 2. Em [vercel.com](https://vercel.com), **Import Project** e selecione o repositório.
 3. A Vercel detecta o Next.js automaticamente — **não há variáveis de ambiente** para configurar.

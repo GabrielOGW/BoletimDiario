@@ -3,19 +3,33 @@ import type { Boletim } from '@/types/boletim';
 /** Estatísticas derivadas de um boletim (calculadas, nunca persistidas). */
 export interface BoletimStats {
   totalCenas: number;
+  totalBlocos: number;
+  totalPlanos: number;
   totalTakes: number;
   takesAprovados: number;
 }
 
 export function computeStats(boletim: Boletim): BoletimStats {
+  let totalBlocos = 0;
+  let totalPlanos = 0;
   let totalTakes = 0;
   let takesAprovados = 0;
+
   for (const cena of boletim.cenas) {
-    totalTakes += cena.takes.length;
-    takesAprovados += cena.takes.filter((take) => take.aprovado).length;
+    totalBlocos += cena.blocos.length;
+    for (const bloco of cena.blocos) {
+      totalPlanos += bloco.planos.length;
+      for (const plano of bloco.planos) {
+        totalTakes += plano.takes.length;
+        takesAprovados += plano.takes.filter((take) => take.aprovado).length;
+      }
+    }
   }
+
   return {
     totalCenas: boletim.cenas.length,
+    totalBlocos,
+    totalPlanos,
     totalTakes,
     takesAprovados,
   };

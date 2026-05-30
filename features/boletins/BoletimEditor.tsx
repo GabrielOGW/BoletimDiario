@@ -4,11 +4,17 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Boletim, Cena } from '@/types/boletim';
 import { useBoletim } from '@/hooks/useBoletim';
+import { useCollectedSuggestions, EditorMetaProvider } from '@/hooks/useSuggestions';
 import { remove as removeBoletim } from '@/lib/storage';
-import { createCena, createMembroEquipe, createMidiaSuporte } from '@/lib/factory';
+import {
+  createCameraCadastrada,
+  createCena,
+  createMembroEquipe,
+  createMidiaSuporte,
+  duplicateCena,
+} from '@/lib/factory';
 import { computeStats } from '@/utils/boletim-stats';
 import { formatDateBR } from '@/utils/date';
-import { uid } from '@/utils/id';
 
 import { AppHeader } from '@/components/layout/AppHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -20,7 +26,7 @@ import { OfflineBadge } from '@/components/pwa/OfflineBadge';
 import { EyeIcon, TrashIcon } from '@/components/ui/icons';
 
 import { ProducaoSection } from '@/features/boletins/sections/ProducaoSection';
-import { CameraSection } from '@/features/boletins/sections/CameraSection';
+import { CamerasSection } from '@/features/boletins/sections/CamerasSection';
 import { CenasSection } from '@/features/boletins/sections/CenasSection';
 import { MidiaSection } from '@/features/boletins/sections/MidiaSection';
 import { CenasDoDiaSection } from '@/features/boletins/sections/CenasDoDiaSection';
@@ -42,6 +48,7 @@ function StateScreen({ title, message }: { title: string; message: string }) {
 export function BoletimEditor({ id }: { id: string | null }) {
   const router = useRouter();
   const { boletim, status, saveState, update } = useBoletim(id);
+  const suggestions = useCollectedSuggestions();
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (status === 'loading') {
@@ -60,8 +67,6 @@ export function BoletimEditor({ id }: { id: string | null }) {
 
   const setProducao = (value: Partial<Boletim['producao']>) =>
     update((prev) => ({ ...prev, producao: { ...prev.producao, ...value } }));
-  const setCamera = (value: Partial<Boletim['camera']>) =>
-    update((prev) => ({ ...prev, camera: { ...prev.camera, ...value } }));
   const setCenasDoDia = (value: Partial<Boletim['cenasDoDia']>) =>
     update((prev) => ({ ...prev, cenasDoDia: { ...prev.cenasDoDia, ...value } }));
   const setHorarios = (value: Partial<Boletim['horarios']>) =>
@@ -69,9 +74,31 @@ export function BoletimEditor({ id }: { id: string | null }) {
   const setObservacoes = (value: string) =>
     update((prev) => ({ ...prev, observacoesGerais: value }));
 
+  // Câmeras cadastradas
+  const addCamera = () =>
+    update((prev) => ({
+      ...prev,
+      camerasCadastradas: [...prev.camerasCadastradas, createCameraCadastrada()],
+    }));
+  const changeCamera = (
+    cameraId: string,
+    value: Partial<Boletim['camerasCadastradas'][number]>,
+  ) =>
+    update((prev) => ({
+      ...prev,
+      camerasCadastradas: prev.camerasCadastradas.map((cam) =>
+        cam.id === cameraId ? { ...cam, ...value } : cam,
+      ),
+    }));
+  const removeCamera = (cameraId: string) =>
+    update((prev) => ({
+      ...prev,
+      camerasCadastradas: prev.camerasCadastradas.filter((cam) => cam.id !== cameraId),
+    }));
+
   // Cenas
   const addCena = () =>
-    update((prev) => ({ ...prev, cenas: [...prev.cenas, createCena()] }));
+    update((prev) => ({ ...prev, cenas: [...prev.cenas, createCena('')] }));
   const changeCena = (cenaId: string, next: Cena) =>
     update((prev) => ({
       ...prev,
@@ -82,21 +109,12 @@ export function BoletimEditor({ id }: { id: string | null }) {
       ...prev,
       cenas: prev.cenas.filter((cena) => cena.id !== cenaId),
     }));
-  const duplicateCena = (cenaId: string) =>
+  const duplicateCenaById = (cenaId: string) =>
     update((prev) => {
       const sourceIndex = prev.cenas.findIndex((cena) => cena.id === cenaId);
       if (sourceIndex < 0) return prev;
-      const source = prev.cenas[sourceIndex];
-      const copy: Cena = {
-        ...source,
-        id: uid('cena'),
-        numeroNome: source.numeroNome ? `${source.numeroNome} (cópia)` : '',
-        tecnica: { ...source.tecnica },
-        optica: { ...source.optica },
-        takes: source.takes.map((take) => ({ ...take, id: uid('take') })),
-      };
       const cenas = [...prev.cenas];
-      cenas.splice(sourceIndex + 1, 0, copy);
+      cenas.splice(sourceIndex + 1, 0, duplicateCena(prev.cenas[sourceIndex]));
       return { ...prev, cenas };
     });
   const moveCena = (index: number, dir: -1 | 1) =>
@@ -167,90 +185,101 @@ export function BoletimEditor({ id }: { id: string | null }) {
     .join(' · ');
 
   return (
-    <div className="flex min-h-dvh flex-col bg-ink">
-      <AppHeader
-        title={headerTitle}
-        subtitle={headerSubtitle}
-        backHref="/"
-        right={
-          <>
-            <OfflineBadge />
-            <SaveStateBadge state={saveState} />
-          </>
-        }
-      />
+    <EditorMetaProvider value={{ cameras: boletim.camerasCadastradas, suggestions }}>
+      <div className="flex min-h-dvh flex-col bg-ink">
+        <AppHeader
+          title={headerTitle}
+          subtitle={headerSubtitle}
+          backHref="/"
+          right={
+            <>
+              <OfflineBadge />
+              <SaveStateBadge state={saveState} />
+            </>
+          }
+        />
 
-      <main className="flex-1 py-4">
-        <PageContainer className="space-y-4">
-          <ProducaoSection value={boletim.producao} onChange={setProducao} />
-          <CameraSection value={boletim.camera} onChange={setCamera} />
+        <main className="flex-1 py-4">
+          <PageContainer className="space-y-4">
+            <ProducaoSection value={boletim.producao} onChange={setProducao} />
 
-          <CenasSection
-            cenas={boletim.cenas}
-            onAdd={addCena}
-            onChangeCena={changeCena}
-            onRemoveCena={removeCena}
-            onDuplicateCena={duplicateCena}
-            onMoveCena={moveCena}
-          />
+            <CamerasSection
+              items={boletim.camerasCadastradas}
+              onAdd={addCamera}
+              onChange={changeCamera}
+              onRemove={removeCamera}
+            />
 
-          <MidiaSection
-            items={boletim.midiaSuporte}
-            onAdd={addMidia}
-            onChange={changeMidia}
-            onRemove={removeMidia}
-          />
+            <CenasSection
+              cenas={boletim.cenas}
+              onAdd={addCena}
+              onChangeCena={changeCena}
+              onRemoveCena={removeCena}
+              onDuplicateCena={duplicateCenaById}
+              onMoveCena={moveCena}
+            />
 
-          <CenasDoDiaSection
-            value={boletim.cenasDoDia}
-            onChange={setCenasDoDia}
-            auto={{ totalTakes: stats.totalTakes, takesAprovados: stats.takesAprovados }}
-          />
+            <MidiaSection
+              items={boletim.midiaSuporte}
+              onAdd={addMidia}
+              onChange={changeMidia}
+              onRemove={removeMidia}
+            />
 
-          <HorariosSection value={boletim.horarios} onChange={setHorarios} />
+            <CenasDoDiaSection
+              value={boletim.cenasDoDia}
+              onChange={setCenasDoDia}
+              auto={{
+                totalTakes: stats.totalTakes,
+                takesAprovados: stats.takesAprovados,
+              }}
+            />
 
-          <EquipeSection
-            items={boletim.equipeCamera}
-            onAdd={addMembro}
-            onChange={changeMembro}
-            onRemove={removeMembro}
-          />
+            <HorariosSection value={boletim.horarios} onChange={setHorarios} />
 
-          <ObservacoesGeraisSection
-            value={boletim.observacoesGerais}
-            onChange={setObservacoes}
-          />
-        </PageContainer>
-      </main>
+            <EquipeSection
+              items={boletim.equipeCamera}
+              onAdd={addMembro}
+              onChange={changeMembro}
+              onRemove={removeMembro}
+            />
 
-      <StickyActionBar>
-        <Button
-          variant="ghost"
-          leftIcon={<TrashIcon size={18} />}
-          onClick={() => setConfirmDelete(true)}
-          className="text-red-400 hover:bg-red-500/15 hover:text-red-300"
-        >
-          Excluir
-        </Button>
-        <Button
-          variant="primary"
-          fullWidth
-          leftIcon={<EyeIcon size={18} />}
-          onClick={() => router.push(`/visualizar?id=${boletim.id}`)}
-        >
-          Visualizar / PDF
-        </Button>
-      </StickyActionBar>
+            <ObservacoesGeraisSection
+              value={boletim.observacoesGerais}
+              onChange={setObservacoes}
+            />
+          </PageContainer>
+        </main>
 
-      <ConfirmDialog
-        open={confirmDelete}
-        title="Excluir boletim?"
-        description="Esta ação remove o boletim deste dispositivo e não pode ser desfeita. Considere exportar um backup antes."
-        confirmLabel="Excluir"
-        destructive
-        onConfirm={handleDelete}
-        onCancel={() => setConfirmDelete(false)}
-      />
-    </div>
+        <StickyActionBar>
+          <Button
+            variant="ghost"
+            leftIcon={<TrashIcon size={18} />}
+            onClick={() => setConfirmDelete(true)}
+            className="text-red-400 hover:bg-red-500/15 hover:text-red-300"
+          >
+            Excluir
+          </Button>
+          <Button
+            variant="primary"
+            fullWidth
+            leftIcon={<EyeIcon size={18} />}
+            onClick={() => router.push(`/visualizar?id=${boletim.id}`)}
+          >
+            Visualizar / PDF
+          </Button>
+        </StickyActionBar>
+
+        <ConfirmDialog
+          open={confirmDelete}
+          title="Excluir boletim?"
+          description="Esta ação remove o boletim deste dispositivo e não pode ser desfeita. Considere exportar um backup antes."
+          confirmLabel="Excluir"
+          destructive
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(false)}
+        />
+      </div>
+    </EditorMetaProvider>
   );
 }

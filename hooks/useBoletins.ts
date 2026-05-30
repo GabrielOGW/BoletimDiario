@@ -15,9 +15,8 @@ function matchesQuery(boletim: Boletim, query: string): boolean {
     boletim.producao.diretorFotografia,
     boletim.producao.data,
     boletim.producao.diaDiaria,
-    boletim.camera.modelo,
-    boletim.camera.numeroId,
-    ...boletim.cenas.map((cena) => cena.numeroNome),
+    ...boletim.camerasCadastradas.map((cam) => `${cam.nomeId} ${cam.modelo}`),
+    ...boletim.cenas.map((cena) => cena.numero),
   ]
     .join(' ')
     .toLowerCase();

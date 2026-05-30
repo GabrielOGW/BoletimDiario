@@ -17,7 +17,12 @@ interface EquipeSectionProps {
 
 export function EquipeSection({ items, onAdd, onChange, onRemove }: EquipeSectionProps) {
   return (
-    <SectionCard title="Equipe de Câmera" icon={<UsersIcon size={18} />}>
+    <SectionCard
+      title="Equipe de Câmera"
+      icon={<UsersIcon size={18} />}
+      collapsible
+      summary={`${items.length} ${items.length === 1 ? 'pessoa' : 'pessoas'}`}
+    >
       {items.length === 0 ? (
         <p className="mb-3 text-sm text-zinc-500">
           Adicione os integrantes da equipe de câmera do dia.

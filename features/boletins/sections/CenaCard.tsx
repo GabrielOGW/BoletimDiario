@@ -1,17 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import type { ReactNode } from 'react';
-import type { Cena, Take } from '@/types/boletim';
+import type { Bloco, Cena } from '@/types/boletim';
+import { BlocoCard } from '@/features/boletins/sections/BlocoCard';
 import { TextField } from '@/components/ui/TextField';
-import { TextAreaField } from '@/components/ui/TextAreaField';
-import { Toggle } from '@/components/ui/Toggle';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { Badge } from '@/components/ui/Badge';
-import { TakeRow } from '@/features/boletins/sections/TakeRow';
-import { PRESETS } from '@/lib/constants';
-import { createTake } from '@/lib/factory';
+import { createBloco, duplicateBloco } from '@/lib/factory';
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -33,15 +29,12 @@ interface CenaCardProps {
   onMove: (dir: -1 | 1) => void;
 }
 
-function Group({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div>
-      <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-        {title}
-      </h4>
-      {children}
-    </div>
-  );
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+function nextLetter(blocos: Bloco[]): string {
+  const used = new Set(blocos.map((bloco) => bloco.letra.toUpperCase()));
+  for (const letter of ALPHABET) if (!used.has(letter)) return letter;
+  return '';
 }
 
 export function CenaCard({
@@ -53,31 +46,41 @@ export function CenaCard({
   onDuplicate,
   onMove,
 }: CenaCardProps) {
-  const [open, setOpen] = useState(() => cena.numeroNome.trim() === '');
+  const [open, setOpen] = useState(() => cena.numero.trim() === '');
 
-  const approvedCount = cena.takes.filter((take) => take.aprovado).length;
-  const techSummary = [cena.tecnica.resolucao, cena.tecnica.frameRate]
-    .filter(Boolean)
-    .join(' · ');
+  let planosCount = 0;
+  let approvedCount = 0;
+  for (const bloco of cena.blocos) {
+    planosCount += bloco.planos.length;
+    for (const plano of bloco.planos) {
+      approvedCount += plano.takes.filter((take) => take.aprovado).length;
+    }
+  }
 
-  const patch = (value: Partial<Cena>) => onChange({ ...cena, ...value });
-  const patchTecnica = (value: Partial<Cena['tecnica']>) =>
-    onChange({ ...cena, tecnica: { ...cena.tecnica, ...value } });
-  const patchOptica = (value: Partial<Cena['optica']>) =>
-    onChange({ ...cena, optica: { ...cena.optica, ...value } });
-
-  const addTake = () =>
+  const addBloco = () =>
+    onChange({ ...cena, blocos: [...cena.blocos, createBloco(nextLetter(cena.blocos))] });
+  const changeBloco = (blocoId: string, next: Bloco) =>
     onChange({
       ...cena,
-      takes: [...cena.takes, createTake(String(cena.takes.length + 1))],
+      blocos: cena.blocos.map((bloco) => (bloco.id === blocoId ? next : bloco)),
     });
-  const updateTake = (id: string, value: Partial<Take>) =>
-    onChange({
-      ...cena,
-      takes: cena.takes.map((take) => (take.id === id ? { ...take, ...value } : take)),
-    });
-  const removeTake = (id: string) =>
-    onChange({ ...cena, takes: cena.takes.filter((take) => take.id !== id) });
+  const removeBloco = (blocoId: string) =>
+    onChange({ ...cena, blocos: cena.blocos.filter((bloco) => bloco.id !== blocoId) });
+  const duplicateBlocoById = (blocoId: string) => {
+    const sourceIndex = cena.blocos.findIndex((bloco) => bloco.id === blocoId);
+    if (sourceIndex < 0) return;
+    const blocos = [...cena.blocos];
+    blocos.splice(sourceIndex + 1, 0, duplicateBloco(cena.blocos[sourceIndex]));
+    onChange({ ...cena, blocos });
+  };
+  const moveBloco = (blocoIndex: number, dir: -1 | 1) => {
+    const target = blocoIndex + dir;
+    if (target < 0 || target >= cena.blocos.length) return;
+    const blocos = [...cena.blocos];
+    const [item] = blocos.splice(blocoIndex, 1);
+    blocos.splice(target, 0, item);
+    onChange({ ...cena, blocos });
+  };
 
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface">
@@ -97,12 +100,15 @@ export function CenaCard({
               Cena
             </span>
             <span className="truncate text-base font-semibold text-white">
-              {cena.numeroNome.trim() || 'sem número'}
+              {cena.numero.trim() || 'sem número'}
             </span>
           </span>
           <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <Badge tone="neutral">
-              {cena.takes.length} {cena.takes.length === 1 ? 'take' : 'takes'}
+              {cena.blocos.length} {cena.blocos.length === 1 ? 'bloco' : 'blocos'}
+            </Badge>
+            <Badge tone="neutral">
+              {planosCount} {planosCount === 1 ? 'plano' : 'planos'}
             </Badge>
             {approvedCount > 0 ? (
               <Badge tone="approved">
@@ -110,14 +116,12 @@ export function CenaCard({
                 {approvedCount} aprovado{approvedCount > 1 ? 's' : ''}
               </Badge>
             ) : null}
-            {techSummary ? <Badge tone="muted">{techSummary}</Badge> : null}
-            {cena.optica.lentes ? <Badge tone="muted">{cena.optica.lentes}</Badge> : null}
           </span>
         </span>
       </button>
 
       {open ? (
-        <div className="space-y-5 border-t border-line p-4">
+        <div className="space-y-4 border-t border-line p-4">
           <div className="flex items-center gap-2">
             <IconButton
               label="Mover cena para cima"
@@ -145,146 +149,41 @@ export function CenaCard({
             <IconButton
               label="Excluir cena"
               variant="danger"
-              icon={<TrashIcon size={18} />}
+              icon={<TrashIcon size={20} />}
               onClick={onRemove}
             />
           </div>
 
           <TextField
             label="Número / Nome da cena"
-            value={cena.numeroNome}
-            onChange={(v) => patch({ numeroNome: v })}
-            placeholder="Ex.: 17.1"
+            value={cena.numero}
+            onChange={(v) => onChange({ ...cena, numero: v })}
+            placeholder="Ex.: 18"
           />
 
-          <Group title="Configurações técnicas">
-            <div className="grid grid-cols-2 gap-3">
-              <TextField
-                label="Formato de gravação"
-                value={cena.tecnica.formatoGravacao}
-                onChange={(v) => patchTecnica({ formatoGravacao: v })}
-                options={PRESETS.formatoGravacao}
-                className="col-span-2"
+          <div className="space-y-3">
+            {cena.blocos.map((bloco, blocoIndex) => (
+              <BlocoCard
+                key={bloco.id}
+                bloco={bloco}
+                index={blocoIndex}
+                total={cena.blocos.length}
+                onChange={(next) => changeBloco(bloco.id, next)}
+                onRemove={() => removeBloco(bloco.id)}
+                onDuplicate={() => duplicateBlocoById(bloco.id)}
+                onMove={(dir) => moveBloco(blocoIndex, dir)}
               />
-              <TextField
-                label="Resolução"
-                value={cena.tecnica.resolucao}
-                onChange={(v) => patchTecnica({ resolucao: v })}
-                options={PRESETS.resolucao}
-              />
-              <TextField
-                label="Frame rate"
-                value={cena.tecnica.frameRate}
-                onChange={(v) => patchTecnica({ frameRate: v })}
-                options={PRESETS.frameRate}
-                inputMode="decimal"
-              />
-              <TextField
-                label="ISO / ASA"
-                value={cena.tecnica.iso}
-                onChange={(v) => patchTecnica({ iso: v })}
-                options={PRESETS.iso}
-                inputMode="numeric"
-              />
-              <TextField
-                label="Obturador"
-                value={cena.tecnica.obturador}
-                onChange={(v) => patchTecnica({ obturador: v })}
-                options={PRESETS.obturador}
-                inputMode="decimal"
-              />
-              <TextField
-                label="Balanço de branco"
-                value={cena.tecnica.balancoBranco}
-                onChange={(v) => patchTecnica({ balancoBranco: v })}
-                options={PRESETS.balancoBranco}
-              />
-              <TextField
-                label="LUT / Perfil"
-                value={cena.tecnica.lutPerfil}
-                onChange={(v) => patchTecnica({ lutPerfil: v })}
-                options={PRESETS.lutPerfil}
-              />
-              <TextField
-                label="Espaço de cor"
-                value={cena.tecnica.espacoCor}
-                onChange={(v) => patchTecnica({ espacoCor: v })}
-                options={PRESETS.espacoCor}
-              />
-              <TextField
-                label="Diafragma"
-                value={cena.tecnica.diafragma}
-                onChange={(v) => patchTecnica({ diafragma: v })}
-                options={PRESETS.diafragma}
-              />
-            </div>
-          </Group>
+            ))}
+          </div>
 
-          <Group title="Óptica">
-            <div className="grid grid-cols-2 gap-3">
-              <TextField
-                label="Lente(s)"
-                value={cena.optica.lentes}
-                onChange={(v) => patchOptica({ lentes: v })}
-                options={PRESETS.lentes}
-              />
-              <TextField
-                label="Filtros"
-                value={cena.optica.filtros}
-                onChange={(v) => patchOptica({ filtros: v })}
-                options={PRESETS.filtros}
-              />
-              <Toggle
-                label="Matte Box"
-                checked={cena.optica.matteBox}
-                onChange={(checked) => patchOptica({ matteBox: checked })}
-                className="col-span-2"
-              />
-            </div>
-          </Group>
-
-          <Group title="Mídia">
-            <TextField
-              label="Cartão / Rolo"
-              value={cena.cartaoRolo}
-              onChange={(v) => patch({ cartaoRolo: v })}
-              placeholder="Ex.: A004"
-            />
-          </Group>
-
-          <TextAreaField
-            label="Observações"
-            value={cena.observacoes}
-            onChange={(v) => patch({ observacoes: v })}
-            placeholder="Notas da cena…"
-          />
-
-          <Group title="Takes">
-            {cena.takes.length === 0 ? (
-              <p className="mb-3 text-sm text-zinc-500">
-                Nenhum take. Adicione e marque os aprovados pelo diretor.
-              </p>
-            ) : (
-              <ul className="mb-3 flex flex-col gap-2.5">
-                {cena.takes.map((take) => (
-                  <TakeRow
-                    key={take.id}
-                    take={take}
-                    onChange={(value) => updateTake(take.id, value)}
-                    onRemove={() => removeTake(take.id)}
-                  />
-                ))}
-              </ul>
-            )}
-            <Button
-              variant="primary"
-              fullWidth
-              leftIcon={<PlusIcon size={18} />}
-              onClick={addTake}
-            >
-              Adicionar take
-            </Button>
-          </Group>
+          <Button
+            variant="primary"
+            fullWidth
+            leftIcon={<PlusIcon size={18} />}
+            onClick={addBloco}
+          >
+            Adicionar bloco
+          </Button>
         </div>
       ) : null}
     </div>

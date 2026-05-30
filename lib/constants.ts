@@ -71,4 +71,5 @@ export const PRESETS = {
     'Loader',
     'Vídeo Assist',
   ],
+  tipoPlano: ['Normal', 'Série', 'Insert', 'Pickup', 'Drone'],
 } as const;

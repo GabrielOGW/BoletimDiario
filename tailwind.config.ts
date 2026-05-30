@@ -2,6 +2,10 @@ import type { Config } from 'tailwindcss';
 
 const config: Config = {
   darkMode: 'class',
+  // Aplica :hover só em dispositivos com hover real (evita hover "grudado" no touch).
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   content: [
     './app/**/*.{ts,tsx}',
     './components/**/*.{ts,tsx}',

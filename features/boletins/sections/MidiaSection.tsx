@@ -17,7 +17,13 @@ interface MidiaSectionProps {
 
 export function MidiaSection({ items, onAdd, onChange, onRemove }: MidiaSectionProps) {
   return (
-    <SectionCard title="Mídia / Suporte" icon={<HardDriveIcon size={18} />}>
+    <SectionCard
+      title="Mídia / Suporte"
+      icon={<HardDriveIcon size={18} />}
+      collapsible
+      defaultOpen={false}
+      summary={`${items.length} ${items.length === 1 ? 'cartão' : 'cartões'}`}
+    >
       {items.length === 0 ? (
         <p className="mb-3 text-sm text-zinc-500">
           Nenhum cartão registrado. Adicione os cartões/SSDs usados no dia.
