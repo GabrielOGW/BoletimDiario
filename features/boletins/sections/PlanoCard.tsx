@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/Badge';
 import { TakeRow } from '@/features/boletins/sections/TakeRow';
 import { CameraPicker } from '@/features/boletins/sections/CameraPicker';
 import { createTake } from '@/lib/factory';
+import { incrementSuffix } from '@/utils/sequence';
 import { useEditorMeta } from '@/hooks/useSuggestions';
 import {
   ArrowDownIcon,
@@ -79,11 +80,17 @@ export function PlanoCard({
   const patchOptica = (value: Partial<Plano['optica']>) =>
     onChange({ ...plano, optica: { ...plano.optica, ...value } });
 
-  const addTake = () =>
-    onChange({
-      ...plano,
-      takes: [...plano.takes, createTake(String(plano.takes.length + 1))],
-    });
+  // Novo take "nasce preenchido": herda o cartão do take anterior e
+  // auto-incrementa o Clip/Sync (apenas sugestão — pode editar livremente).
+  const addTake = () => {
+    const previous = plano.takes[plano.takes.length - 1];
+    const novo = createTake(String(plano.takes.length + 1));
+    if (previous) {
+      novo.cartao = previous.cartao;
+      novo.clipSync = incrementSuffix(previous.clipSync);
+    }
+    onChange({ ...plano, takes: [...plano.takes, novo] });
+  };
   const updateTake = (id: string, value: Partial<Take>) =>
     onChange({
       ...plano,
