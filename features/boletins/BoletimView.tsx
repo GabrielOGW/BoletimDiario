@@ -216,6 +216,8 @@ export function BoletimView({ id }: { id: string | null }) {
                           </span>
                           {cam.modelo ? ` · ${cam.modelo}` : ''}
                           {cam.operador ? ` · Op: ${cam.operador}` : ''}
+                          {cam.foco ? ` · Foco: ${cam.foco}` : ''}
+                          {cam.claquetista ? ` · Claquete: ${cam.claquetista}` : ''}
                         </li>
                       ))}
                     </ul>
