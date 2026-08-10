@@ -11,7 +11,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "icons": "node scripts/generate-icons.mjs",
-    "test:migration": "node --no-warnings --experimental-strip-types --loader ./test/alias-loader.mjs test/migration-check.mjs"
+    "test": "npm run test:migration && npm run test:platform && npm run test:mapping",
+    "test:migration": "node --no-warnings --experimental-strip-types --loader ./test/alias-loader.mjs test/migration-check.mjs",
+    "test:platform": "node --no-warnings --experimental-strip-types --loader ./test/alias-loader.mjs test/platform-domain-check.mjs",
+    "test:mapping": "node --no-warnings --experimental-strip-types --loader ./test/alias-loader.mjs test/platform-mapping-check.mjs"
   },
   "dependencies": {
     "next": "^15.1.0",
