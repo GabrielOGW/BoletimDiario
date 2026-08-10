@@ -117,22 +117,46 @@ O app de câmera continua intacto.
 
 ---
 
-## 📋 Fase 4 — Superfície offline + sync
+## ✅ Fase 4 — Superfície offline + sync
 
 O coração técnico. Consumidor: uma tela mínima de takes, não um módulo completo.
 
-- [ ] Dexie: `lib/offline/db.ts` + repositórios da fronteira
-- [ ] Fixação (pin) de diária + `/api/sync/snapshot`
-- [ ] Outbox com idempotência, ordem, coalescência e backoff com jitter
-- [ ] `/api/sync/push` com **compare-and-set por campo** e `/api/sync/pull` com cursor
-- [ ] Ids derivados de chave natural em runtime (ADR-019)
-- [ ] Polling adaptativo + indicador de conectividade e pendências
-- [ ] Conflitos: `syncConflicts` local + resolução em UI
-- [ ] Versão de protocolo + `VERSION`/`APP_SHELL` gerados no build + aviso de atualização
-- [ ] Suíte de testes de sync ([synchronization.md §8](architecture/synchronization.md#8-testes-obrigatórios))
+- [x] Dexie: `lib/offline/db.ts` + repositório da fronteira (`repos/diaria.ts`)
+- [x] Fixação (pin) de diária + `/api/sync/snapshot`
+- [x] Outbox com idempotência, ordem, coalescência e backoff com jitter
+- [x] `/api/sync/push` com **compare-and-set por campo** e `/api/sync/pull` com cursor
+- [x] Ids derivados de chave natural em runtime (ADR-019)
+- [x] Polling adaptativo + indicador de conectividade e pendências
+- [x] Conflitos: `syncConflicts` local + resolução em um toque
+- [x] Versão de protocolo + `VERSION`/`APP_SHELL` gerados no build + aviso de atualização
+- [x] Suíte de sync ([synchronization.md §8](architecture/synchronization.md#8-testes-obrigatórios))
 
-**Pronta quando:** dois dispositivos, um deles offline, criam e editam takes e convergem sem
-perda; conflito de campo vira pendência resolvível que **não bloqueia** o resto da diária.
+**Entregue:** `Scene`, `Setup` e `Take` sincronizam campo a campo. Campos diferentes do mesmo
+take fazem merge automático; o mesmo campo vira conflito **daquele campo**, que a tela resolve
+em um toque e que não impede editar o resto. Ids derivados fazem dois dispositivos criando "o
+take 4 do setup C" convergirem para um take só. Verificado por `npm run test:sync` (25 checks
+contra o Neon real) e por exercício HTTP: `426` antes de qualquer consulta, `401` sem sessão,
+`404` para não-membro, `422` para payload inválido.
+
+A superfície consumidora é `/p/[id]/diarias/[dayId]/takes` — a **prova do sync**, não o módulo
+de câmera. Ela é substituída pelo módulo real na Fase 5.
+
+**Decisões tomadas aqui:**
+
+- Tabela `sync_operations` (migration 0003): a idempotência guarda **o resultado**, não só o
+  id. Recalcular no reenvio devolveria "sem conflito" onde houve um.
+- `skipWaiting()` saiu do `install` do Service Worker: trocar de versão sozinho recarregaria
+  a tela sob os dedos de quem está preenchendo. O usuário decide, pelo aviso.
+- O snapshot checa a sessão antes de procurar a diária — senão 404 e 401 distinguiriam
+  diária existente de inexistente para quem só tem o id.
+
+**Pendências conscientes:**
+
+- Dois testes exigem IndexedDB real (fechar o PWA e reabrir; duas abas com `liveQuery`) e
+  ficam para o Playwright da Fase 10. A lógica pura que os sustenta já está testada.
+- Fixação automática da diária de hoje e de amanhã em background: hoje a fixação acontece ao
+  abrir a diária com rede.
+- `ShootingDay` não entra no pull — chega pela fixação, porque é editado fora da fronteira.
 
 ---
 

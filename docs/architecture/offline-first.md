@@ -77,6 +77,13 @@ nele significa perder o boletim de um dia de filmagem.
 
 ### Schema local
 
+> **Status (Fase 4): implementado** em [`lib/offline/db.ts`](../../lib/offline/db.ts), com as
+> tabelas da superfície compartilhada — `shootingDays`, `scenes`, `setups`, `takes` — mais
+> `outbox`, `syncConflicts`, `meta` e `refs`. Os `*TakeData` entram com os módulos.
+>
+> `getDb()` em vez de uma constante exportada: um módulo `'use client'` ainda é importado
+> durante o render de servidor, e construir o Dexie ali quebraria o build.
+
 Banco `bdc-platform`:
 
 ```ts
@@ -218,6 +225,18 @@ O Service Worker atual é bom e **permanece escrito à mão**. Ajustes necessár
 
 **O que o Service Worker não faz:** guardar dado de produção. Dado de produção vive no
 IndexedDB, estruturado. Cache HTTP guarda **casca**, nunca conteúdo.
+
+> **Status (Fase 4): feito, com uma escolha a mais.** `VERSION` e `APP_SHELL` vêm de
+> `public/sw-manifest.js`, gerado por [`scripts/build-sw.mjs`](../../scripts/build-sw.mjs) no
+> `prebuild` e carregado por `importScripts` — o `sw.js` continua escrito à mão. `/api/**`
+> nunca entra em cache, e `registration.waiting` vira o aviso "Atualizar agora".
+>
+> A escolha a mais: **o `skipWaiting()` saiu do `install`**. Assumir sozinho recarregaria a
+> tela sob os dedos de quem está preenchendo a diária. A versão nova espera; quem decide é o
+> usuário, pelo aviso.
+>
+> `APP_SHELL` lista as rotas navegáveis, não os chunks: chunk não se enumera antes do build,
+> e o stale-while-revalidate já os guarda na primeira visita.
 
 ---
 

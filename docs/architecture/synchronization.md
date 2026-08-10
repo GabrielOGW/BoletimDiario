@@ -24,6 +24,24 @@ Dispositivo A       Dispositivo B
 O escopo do que sincroniza é a **superfície de diária** — ver
 [offline-first.md §1](offline-first.md#1-a-fronteira). Nada fora dela passa por aqui.
 
+> **Status (Fase 4): implementado para `Scene`, `Setup` e `Take`.** O contrato compartilhado
+> está em [`lib/contracts/sync.ts`](../../lib/contracts/sync.ts) — protocolo, registro de
+> entidades e a normalização de valores, o **mesmo arquivo** no cliente e no servidor. O
+> compare-and-set vive em [`lib/db/queries/sync.ts`](../../lib/db/queries/sync.ts); a fila,
+> o cursor e a cadência em [`lib/sync/engine.ts`](../../lib/sync/engine.ts).
+>
+> Os `*TakeData` entram com os módulos (Fases 5–7): acrescentar um é acrescentar uma linha
+> em `SYNC_ENTITIES`, não um caminho de código novo.
+>
+> **Três limites conscientes**, todos verificados por `npm run test:sync` (25 checks):
+>
+> 1. `atualPor` no conflito é quem escreveu por último no **registro**, não no campo —
+>    `updated_by` é uma coluna só. Autoria por campo dobraria a escrita para melhorar um
+>    rótulo que já acerta o caso comum.
+> 2. `scenes.characters` não sincroniza: lista ordenada não tem merge por campo (§5).
+> 3. `ShootingDay` **não** entra no pull. Ele é editado fora da fronteira, pela sala, e o
+>    dispositivo o recebe na fixação — que é refeita a cada abertura da diária com rede.
+
 ---
 
 ## 1. Modelo
@@ -47,6 +65,21 @@ GET  /api/sync/snapshot ?shootingDayId=…            primeira abertura (fixaç�
 POST /api/sync/push     { protocol, productionId, operations: [ … ] }
 GET  /api/sync/pull     ?productionId=…&since=<seq>&limit=500
 ```
+
+Guardas de toda rota, na ordem — implementados em
+[`app/api/sync/guard.ts`](../../app/api/sync/guard.ts):
+
+```
+protocolo divergente        → 426   (antes de tudo: cliente velho nem consulta o banco)
+sem sessão                  → 401   (fetch, não navegador: 401, nunca redirect)
+não é membro                → 404   (não 403 — não vazar existência)
+papel insuficiente          → 403   (push exige MEMBER; snapshot e pull, VIEWER)
+payload inválido            → 422
+```
+
+O snapshot checa a sessão **antes** de procurar a diária. Sem isso, "404 porque não existe" e
+"401 porque você não entrou" seriam distinguíveis por quem só tem o id — a mesma classe de
+vazamento que o 404-em-vez-de-403 fecha.
 
 Toda requisição e toda resposta carregam `protocol` (inteiro). Divergência ⇒ `426` e a UI mostra
 **"Atualize o app para continuar sincronizando"**, com ação de recarregar. Nenhuma versão antiga
@@ -302,18 +335,25 @@ regra "informa, nunca bloqueia" estão em
 
 ## 8. Testes obrigatórios
 
-Da Fase 4 em diante, nenhuma dessas pode regredir:
+Da Fase 4 em diante, nenhuma dessas pode regredir. `S` = `npm run test:sync` · `H` = exercício
+HTTP contra o build de produção · `P` = Playwright, Fase 10 (precisa de IndexedDB e de duas
+abas de verdade).
 
-- [ ] Offline → cria take → fecha o PWA → reabre → dado presente
-- [ ] Offline → 50 operações → volta a rede → todas sincronizam, na ordem
-- [ ] Mesma operação enviada duas vezes → aplicada uma vez (idempotência)
-- [ ] Dois dispositivos, campos diferentes do mesmo take → merge automático, ninguém perde
-- [ ] Dois dispositivos, **mesmo** campo → conflito de campo, resolução explícita
-- [ ] Conflito em um campo **não** impede editar os outros campos, takes ou departamentos
-- [ ] Dois dispositivos criam o take 4 do mesmo setup → um único take (id derivado)
-- [ ] Campo digitado com debounce → operações coalescidas, `de` original preservado
-- [ ] Editar registro que o outro apagou → conflito com opção de restaurar
-- [ ] Pull interrompido no meio do lote → retoma sem duplicar
-- [ ] Sessão expirada durante o push → fila preservada, nada perdido
-- [ ] Protocolo incompatível → sync recusado, **edição local segue normal**
-- [ ] Perda de permissão com fila pendente → `FAILED` com motivo, conteúdo exportável
+- [x] Offline → 50 operações → volta a rede → todas sincronizam, na ordem — **S**
+- [x] Mesma operação enviada duas vezes → aplicada uma vez (idempotência) — **S**
+- [x] Dois dispositivos, campos diferentes do mesmo take → merge automático — **S**
+- [x] Dois dispositivos, **mesmo** campo → conflito de campo, resolução explícita — **S**
+- [x] Conflito em um campo **não** impede os outros do mesmo push — **S**
+- [x] Dois dispositivos criam o take 4 do mesmo setup → um único take (id derivado) — **S**
+- [x] Campo digitado com debounce → operações coalescidas, `de` original preservado — **S**
+- [x] Editar registro que o outro apagou → conflito com opção de restaurar — **S**
+- [x] Pull interrompido no meio do lote → retoma sem duplicar — **S**
+- [x] Protocolo incompatível → `426` antes de qualquer consulta — **H**
+- [x] Sessão expirada durante o push → `401`, fila preservada com o payload — **H** + **S**
+- [x] Perda de permissão com fila pendente → `403` → `FAILED` com motivo — **H**
+- [ ] Offline → cria take → fecha o PWA → reabre → dado presente — **P**
+- [ ] Duas abas: `liveQuery` propaga sem recarregar — **P**
+
+O que **S** não cobre é o que roda no navegador: as duas primeiras pendentes exigem IndexedDB
+real. A lógica pura que sustenta as duas — coalescência e normalização — está testada; o que
+falta provar é o ciclo de vida do PWA, e isso é Playwright, não harness de Node.

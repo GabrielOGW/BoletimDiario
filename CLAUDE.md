@@ -23,9 +23,10 @@ npm run test:platform  # domain/platform set rules: inheritance, take numbering 
 npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-to-end (83)
 npm run test:db        # schema/triggers against the real Neon (20) — needs DATABASE_URL
 npm run test:sala      # room rules against the real Neon (27) — needs DATABASE_URL
+npm run test:sync      # compare-and-set, idempotency, cursor (25) — needs DATABASE_URL
 ```
 
-There is no unit/e2e test runner. All suites are plain `.mjs` files run directly through Node's experimental TS type-stripping with a custom loader (`test/alias-loader.mjs`, which resolves `@/`, extensionless relative imports and `index.ts` folders); ESLint ignores `test/**`. `test:db` and `test:sala` need a real database and are **not** part of `npm test` — the day the main suite needs a network is the day it stops being run. `test:sala` also needs `--conditions=react-server`, because the query layer imports `server-only`, which fails by design outside the server. Because of type-stripping, code reachable from a test may not use `enum`, `namespace`, or parameter properties, and type-only imports must use `import type`. To test offline behavior: `npm run build && npm run start`, load the app once online, then go airplane mode and reload.
+There is no unit/e2e test runner. All suites are plain `.mjs` files run directly through Node's experimental TS type-stripping with a custom loader (`test/alias-loader.mjs`, which resolves `@/`, extensionless relative imports and `index.ts` folders); ESLint ignores `test/**`. `test:db`, `test:sala` and `test:sync` need a real database and are **not** part of `npm test` — the day the main suite needs a network is the day it stops being run. `test:sala` and `test:sync` also need `--conditions=react-server`, because the query layer imports `server-only`, which fails by design outside the server. Because of type-stripping, code reachable from a test may not use `enum`, `namespace`, or parameter properties, and type-only imports must use `import type`. To test offline behavior: `npm run build && npm run start`, load the app once online, then go airplane mode and reload.
 
 ## Architecture
 
@@ -72,7 +73,7 @@ Hand-written service worker, **registered only in production** ([components/pwa/
 
 - **Path alias:** `@/*` → repo root (e.g. `@/lib/storage`, `@/types/boletim`).
 - **TypeScript strict, no `any`** (ESLint error). Strong domain typing throughout.
-- **Zero runtime dependencies** beyond `next`/`react`/`react-dom` — icons are inline SVG ([components/ui/icons.tsx](components/ui/icons.tsx)), ids via `crypto.randomUUID` ([utils/id.ts](utils/id.ts)), no PDF/state/UI libraries.
+- **Zero runtime dependencies for the camera app** beyond `next`/`react`/`react-dom` — icons are inline SVG ([components/ui/icons.tsx](components/ui/icons.tsx)), ids via `crypto.randomUUID` ([utils/id.ts](utils/id.ts)), no PDF/state/UI libraries. The platform adds exactly four, each a registered exception: `drizzle-orm` + `@neondatabase/serverless` (ADR-005), `better-auth` (ADR-004), `zod` (contracts) and `dexie` (ADR-003). State stays library-free: `useSyncExternalStore` and `useLiveQuery`.
 - **Dark-mode, mobile-first** (built for use on phones in the field); touch targets ≥ 44px, `aria-*` on interactive controls.
 
 ### Adding a field to the domain model
@@ -130,6 +131,26 @@ Drizzle, Server Actions for mutation, no Dexie, no outbox, no cursor. Routes: `/
 - Non-member → **404, never 403** (`NotAMemberError`): 403 would confirm the production exists.
 - Forms are uncontrolled: `TextField`/`TextAreaField` accept `name`/`defaultValue` and the
   `<form>` owns the value. Keep it that way here; the boletim editor stays controlled.
+
+### The shooting-day surface — inside the boundary (Phase 4, done)
+
+`lib/offline/` (Dexie) + `lib/sync/` (engine) + `app/api/sync/` (protocol). The consumer is
+`/p/[id]/diarias/[dayId]/takes` — the **proof of sync**, replaced by the camera module in
+Phase 5. Syncs `Scene`, `Setup`, `Take`; the `*TakeData` arrive with their modules, and adding
+one is **one line in `SYNC_ENTITIES`**, not a new code path.
+
+- [lib/contracts/sync.ts](lib/contracts/sync.ts) is the shared contract — protocol number,
+  entity/field registry, value normalization. Client and server import the _same_ file; two
+  copies would drift silently and the symptom would be "this field just doesn't sync".
+- Writes go through `lib/offline/repos/diaria.ts`, which puts the local write **and** the
+  outbox enqueue in one Dexie transaction. Split them and there is a window where data is
+  saved but never syncs.
+- Conflict detection is compare-and-set per field with `{de, para}` — never version-based.
+  A conflict is one field: it converges to the server, the user's value becomes a pending
+  `syncConflict`, and nothing blocks.
+- No `fetch` inside the boundary; no Dexie outside it. Both are review-checkable.
+- Anything that changes the boundary, the delta format or the protocol number is escalated,
+  not decided inside a skill.
 
 ### `domain/platform/` — the shared domain model (Phase 1, done)
 

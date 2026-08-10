@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { AppHeader } from '@/components/layout/AppHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { SectionCard } from '@/components/layout/SectionCard';
-import { CalendarIcon } from '@/components/ui/icons';
+import { CalendarIcon, ClapperboardIcon } from '@/components/ui/icons';
 import { roleAtLeast } from '@/domain/platform/enums';
 import { requireMember } from '@/lib/auth/guards';
 import { uuidSchema } from '@/lib/contracts';
@@ -40,6 +41,21 @@ export default async function DiariaPage({
       />
 
       <PageContainer className="flex flex-col gap-4 py-4 pb-8">
+        <Link
+          href={`/p/${productionId}/diarias/${dayId}/takes`}
+          className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-brand/30 bg-brand-soft px-4 py-3 transition hover:brightness-110"
+        >
+          <ClapperboardIcon size={20} className="text-brand" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold text-zinc-100">
+              Abrir a diária
+            </span>
+            <span className="block text-xs text-zinc-400">
+              Cena, setup e take — funciona sem rede depois de aberta uma vez
+            </span>
+          </span>
+        </Link>
+
         {canManage ? (
           <DiariaForm productionId={productionId} diaria={diaria} />
         ) : (
