@@ -60,7 +60,7 @@ Onde um documento antigo conflitar com o plano v2, **o plano v2 vence**.
 | **Fase 1.5** — Preparação (rodada 2)               | ✅ concluída                     |
 | **Fase 2** — Fundação servidor (Neon/Drizzle/Auth) | ✅ concluída (falta só o deploy) |
 | Fase 3 — Sala                                      | ⏳ próxima                       |
-| Fases 3–10                                         | 📋 planejadas                    |
+| Fases 4–10                                         | 📋 planejadas                    |
 
 O que já existe em **código** está em [`domain/platform/`](../domain/platform) — o modelo de
 domínio compartilhado, as regras de set (herança, incremento, reset de take) e o mapeador do
