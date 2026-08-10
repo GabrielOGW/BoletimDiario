@@ -22,26 +22,26 @@ Onde um documento antigo conflitar com o plano v2, **o plano v2 vence**.
 
 ### Decisões e planejamento
 
-| Documento                                                | Conteúdo                                                                |
-| -------------------------------------------------------- | ------------------------------------------------------------------------ |
-| [plano-arquitetural-v2.md](plano-arquitetural-v2.md)     | **Decisões finais da rodada 2** — arquitetura, banco, sync, conflitos, offline, skills, roadmap, riscos |
-| [risks-response.md](risks-response.md)                   | Retorno do proprietário sobre os riscos (entrada da rodada 2)            |
-| [decisions.md](decisions.md)                             | Registro de decisões (ADR-001 … ADR-027), imutável por reescrita         |
-| [risks.md](risks.md)                                     | Matriz de risco vigente, com status                                      |
-| [roadmap.md](roadmap.md)                                 | Fases, ordem de implementação e critérios de conclusão                   |
+| Documento                                            | Conteúdo                                                                                                |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| [plano-arquitetural-v2.md](plano-arquitetural-v2.md) | **Decisões finais da rodada 2** — arquitetura, banco, sync, conflitos, offline, skills, roadmap, riscos |
+| [risks-response.md](risks-response.md)               | Retorno do proprietário sobre os riscos (entrada da rodada 2)                                           |
+| [decisions.md](decisions.md)                         | Registro de decisões (ADR-001 … ADR-027), imutável por reescrita                                        |
+| [risks.md](risks.md)                                 | Matriz de risco vigente, com status                                                                     |
+| [roadmap.md](roadmap.md)                             | Fases, ordem de implementação e critérios de conclusão                                                  |
 
 ### Arquitetura
 
-| Documento                                                          | Conteúdo                                                        |
-| ------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| Documento                                                          | Conteúdo                                                          |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------- |
 | [architecture/current-state.md](architecture/current-state.md)     | **Análise do estado atual**: stack, modelo de dados, o que reusar |
-| [architecture/overview.md](architecture/overview.md)               | Arquitetura proposta, camadas, estrutura de pastas, princípios   |
-| [architecture/database.md](architecture/database.md)               | Modelo relacional (Neon/Postgres) + DDL de referência            |
-| [architecture/authentication.md](architecture/authentication.md)   | Avaliação e escolha da solução de autenticação                   |
-| [architecture/permissions.md](architecture/permissions.md)         | Papel na sala × Departamento; matriz de autorização              |
-| [architecture/offline-first.md](architecture/offline-first.md)     | Fronteira offline, banco local (Dexie), fixação de diária, PWA   |
-| [architecture/synchronization.md](architecture/synchronization.md) | Outbox, pull por cursor, conflitos por campo, polling            |
-| [migrations/local-to-cloud.md](migrations/local-to-cloud.md)       | Importação opcional dos boletins locais                          |
+| [architecture/overview.md](architecture/overview.md)               | Arquitetura proposta, camadas, estrutura de pastas, princípios    |
+| [architecture/database.md](architecture/database.md)               | Modelo relacional (Neon/Postgres) + DDL de referência             |
+| [architecture/authentication.md](architecture/authentication.md)   | Avaliação e escolha da solução de autenticação                    |
+| [architecture/permissions.md](architecture/permissions.md)         | Papel na sala × Departamento; matriz de autorização               |
+| [architecture/offline-first.md](architecture/offline-first.md)     | Fronteira offline, banco local (Dexie), fixação de diária, PWA    |
+| [architecture/synchronization.md](architecture/synchronization.md) | Outbox, pull por cursor, conflitos por campo, polling             |
+| [migrations/local-to-cloud.md](migrations/local-to-cloud.md)       | Importação opcional dos boletins locais                           |
 
 ### Módulos
 
@@ -54,12 +54,12 @@ Onde um documento antigo conflitar com o plano v2, **o plano v2 vence**.
 
 ## Estado da implementação
 
-| Fase                                    | Status         |
-| --------------------------------------- | -------------- |
-| **Fase 1** — Arquitetura                | ✅ concluída   |
-| **Fase 1.5** — Preparação (rodada 2)    | ✅ concluída   |
-| Fase 2 — Fundação servidor (Neon/Drizzle/Auth) | ⏳ próxima |
-| Fases 3–10                              | 📋 planejadas  |
+| Fase                                           | Status        |
+| ---------------------------------------------- | ------------- |
+| **Fase 1** — Arquitetura                       | ✅ concluída  |
+| **Fase 1.5** — Preparação (rodada 2)           | ✅ concluída  |
+| Fase 2 — Fundação servidor (Neon/Drizzle/Auth) | ⏳ próxima    |
+| Fases 3–10                                     | 📋 planejadas |
 
 O que já existe em **código** está em [`domain/platform/`](../domain/platform) — o modelo de
 domínio compartilhado, as regras de set (herança, incremento, reset de take) e o mapeador do

@@ -2,10 +2,13 @@
 
 Modelo relacional da plataforma, DDL de referência e a camada de acesso.
 
-> **Status:** especificação da Fase 1. As migrations reais são geradas por
-> `drizzle-kit` na Fase 2 a partir de `lib/db/schema/`. Este documento é o **contrato**
-> que aquele schema precisa satisfazer — se os dois divergirem, este documento é atualizado
-> junto com a migration, nunca depois.
+> **Status: implementado.** O schema vive em [`lib/db/schema/`](../../lib/db/schema) e as
+> migrations em [`drizzle/`](../../drizzle) — **elas são a fonte executável**. Este documento
+> é explicativo e subordinado a elas: se os dois divergirem, é este que está errado, e a
+> correção sai no mesmo commit da migration.
+>
+> Verificado contra o banco real por `npm run test:db` (20 checks: tipo de coluna, triggers,
+> chaves naturais, escopo de continuidade, fuso e monotonicidade do cursor).
 
 ---
 
@@ -57,18 +60,18 @@ feedback imediato offline.
 Valem para **todas** as tabelas de domínio (não para as de autenticação, que seguem o schema
 da Better Auth):
 
-| Convenção       | Regra                                                                                                                              |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Convenção       | Regra                                                                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Chave primária  | `uuid` gerado **no cliente** — indispensável para criar offline. **Derivado da chave natural** onde ela existe (ADR-019); `crypto.randomUUID` no resto |
-| Nomenclatura    | `snake_case` no banco, `camelCase` no TypeScript                                                                                   |
-| Escopo          | Toda tabela de conteúdo carrega `production_id`, mesmo quando redundante — é o eixo de toda autorização e de todo pull incremental |
-| Auditoria (§21) | `created_at`, `updated_at`, `created_by`, `updated_by` obrigatórios                                                                |
-| Exclusão        | **Soft delete**: `deleted_at`, `deleted_by`. Delete físico não sincroniza                                                          |
-| Concorrência    | `version integer not null default 1`, incrementado a cada UPDATE                                                                   |
-| Ordenação       | `sort_order integer` onde a ordem é definida pelo usuário (setups, tracks, membros)                                                |
-| Texto livre     | `text` (nunca `varchar(n)`) — o app é deliberadamente de campo livre                                                               |
-| Enums           | Enum nativo do Postgres, espelhando `domain/platform/enums.ts`                                                                     |
-| Timestamps      | `timestamptz`. Datas de diária são `date` (a diária é um dia civil, não um instante) e **nunca** são convertidas para UTC          |
+| Nomenclatura    | `snake_case` no banco, `camelCase` no TypeScript                                                                                                       |
+| Escopo          | Toda tabela de conteúdo carrega `production_id`, mesmo quando redundante — é o eixo de toda autorização e de todo pull incremental                     |
+| Auditoria (§21) | `created_at`, `updated_at`, `created_by`, `updated_by` obrigatórios                                                                                    |
+| Exclusão        | **Soft delete**: `deleted_at`, `deleted_by`. Delete físico não sincroniza                                                                              |
+| Concorrência    | `version integer not null default 1`, incrementado a cada UPDATE                                                                                       |
+| Ordenação       | `sort_order integer` onde a ordem é definida pelo usuário (setups, tracks, membros)                                                                    |
+| Texto livre     | `text` (nunca `varchar(n)`) — o app é deliberadamente de campo livre                                                                                   |
+| Enums           | Enum nativo do Postgres, espelhando `domain/platform/enums.ts`                                                                                         |
+| Timestamps      | `timestamptz`. Datas de diária são `date` (a diária é um dia civil, não um instante) e **nunca** são convertidas para UTC                              |
 
 ### Enums
 
@@ -436,6 +439,31 @@ create index on sync_log (production_id, seq);
 
 Escrito por trigger em todas as tabelas de domínio. É a espinha dorsal do pull incremental —
 detalhes em [synchronization.md](synchronization.md).
+
+### Os dois triggers
+
+Implementados em [`drizzle/0001_triggers.sql`](../../drizzle/0001_triggers.sql), única parte do
+schema escrita à mão (o Drizzle não modela função nem trigger):
+
+| Trigger             | Quando                   | Faz                                                |
+| ------------------- | ------------------------ | -------------------------------------------------- |
+| `<tabela>_touch`    | `before update`          | `updated_at = now()` e `version = old.version + 1` |
+| `<tabela>_sync_log` | `after insert or update` | grava a linha do cursor                            |
+
+Três decisões dentro deles:
+
+- **O incremento de `version` é do banco.** Deixá-lo a cargo da aplicação é confiar que todo
+  caminho de escrita se lembrou — e um único esquecimento produz duas versões iguais com
+  conteúdos diferentes.
+- **`entity_type` guarda o nome da tabela** (`camera_take_data`), não o nome da entidade no
+  cliente (`cameraTakeData`). A tradução é do cliente; o banco não conhece a convenção de nomes
+  do TypeScript.
+- **Soft delete vira `DELETE` no log**, detectado pela transição `deleted_at` null → não-null.
+  Registrá-lo como `UPDATE` faria os outros dispositivos nunca saberem que o registro sumiu.
+
+Aplicados em laço sobre uma lista de 18 tabelas. Ficam de fora, de propósito: `users` (não
+pertence a produção), `production_member_departments` (tabela de ligação, sincroniza com o
+membro) e o próprio `sync_log`.
 
 > **Rodada 2:** o `sync_log` **não** guarda a lista de chaves alteradas por operação. A versão
 > anterior precisava disso para detectar sobreposição de campos; com o delta `{ de, para }` do

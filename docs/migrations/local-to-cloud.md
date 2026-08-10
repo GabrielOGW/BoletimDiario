@@ -15,14 +15,14 @@ O Boletim de Câmera **não está em uso com dados reais** que precisem sobreviv
 complexidade permanente de arquitetura para proteger dado que não existe é o oposto do que o
 projeto precisa agora.
 
-| Antes                                              | Agora                                              |
-| -------------------------------------------------- | -------------------------------------------------- |
-| Etapa obrigatória do roadmap                       | Ação opcional, disponível quando o usuário quiser  |
-| Snapshot `bdc:backup:pre-platform` + carimbo       | Desnecessário — `bdc:boletins:v1` não é tocado     |
-| Tela de confirmação não pulável, com prévia        | Um botão em Configurações                          |
-| Verificação automática de contagens, `NEEDS_REVIEW` | Relatório simples do que entrou                    |
-| Produção provisória (`isProvisional`) até subir    | Importa direto para a produção escolhida           |
-| Reversibilidade em seis cenários                   | Repetir a importação; ids derivados não duplicam   |
+| Antes                                               | Agora                                             |
+| --------------------------------------------------- | ------------------------------------------------- |
+| Etapa obrigatória do roadmap                        | Ação opcional, disponível quando o usuário quiser |
+| Snapshot `bdc:backup:pre-platform` + carimbo        | Desnecessário — `bdc:boletins:v1` não é tocado    |
+| Tela de confirmação não pulável, com prévia         | Um botão em Configurações                         |
+| Verificação automática de contagens, `NEEDS_REVIEW` | Relatório simples do que entrou                   |
+| Produção provisória (`isProvisional`) até subir     | Importa direto para a produção escolhida          |
+| Reversibilidade em seis cenários                    | Repetir a importação; ids derivados não duplicam  |
 
 **O que permanece obrigatório:** boas práticas de migração de **schema** — upgrade versionado
 do Dexie e migrations do Drizzle. O que saiu foi a cerimônia de migração de **dados**.
@@ -96,17 +96,17 @@ Implementado e testado em
 [`domain/platform/from-boletim.ts`](../../domain/platform/from-boletim.ts). Tabela completa em
 [../features/camera.md §2](../features/camera.md#2-mapeamento-para-o-modelo-compartilhado).
 
-| Item                       | Tratamento                                                                          |
-| -------------------------- | ------------------------------------------------------------------------------------ |
-| `Cena` + `Bloco`           | Uma `Scene` por bloco (`number` + `block`)                                           |
-| `Plano`                    | Vira `Setup`; a técnica/óptica é copiada para o `CameraTakeData` de cada take        |
-| Plano **sem takes**        | Vira `Setup` sem takes — a configuração técnica é preservada                         |
-| `Take.numero` não numérico | `number` recebe a posição na lista; o texto original vai para `notes`                |
-| `Take.aprovado`            | `approved = true` **e** `status = CIRCLE`                                            |
-| `equipeCamera[]`           | Vira `ProductionMember` **provisório** (sem `userId`) até alguém entrar na sala      |
-| `midiaSuporte[]`           | Vira `Equipment` + `EquipmentAssignment` da diária                                   |
-| `cenasDoDia`               | Não migrado — recalculado; `continuidade` vai para `ShootingDay.notes`               |
-| `createdAt`/`updatedAt`    | Preservados; `createdBy` fica nulo (não havia identidade)                            |
+| Item                       | Tratamento                                                                      |
+| -------------------------- | ------------------------------------------------------------------------------- |
+| `Cena` + `Bloco`           | Uma `Scene` por bloco (`number` + `block`)                                      |
+| `Plano`                    | Vira `Setup`; a técnica/óptica é copiada para o `CameraTakeData` de cada take   |
+| Plano **sem takes**        | Vira `Setup` sem takes — a configuração técnica é preservada                    |
+| `Take.numero` não numérico | `number` recebe a posição na lista; o texto original vai para `notes`           |
+| `Take.aprovado`            | `approved = true` **e** `status = CIRCLE`                                       |
+| `equipeCamera[]`           | Vira `ProductionMember` **provisório** (sem `userId`) até alguém entrar na sala |
+| `midiaSuporte[]`           | Vira `Equipment` + `EquipmentAssignment` da diária                              |
+| `cenasDoDia`               | Não migrado — recalculado; `continuidade` vai para `ShootingDay.notes`          |
+| `createdAt`/`updatedAt`    | Preservados; `createdBy` fica nulo (não havia identidade)                       |
 
 ---
 

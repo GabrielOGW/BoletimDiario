@@ -159,12 +159,12 @@ contrato que faz o app não ter botão salvar — comportamento validado em set.
 
 ## 5. Modos de operação
 
-| Modo                    | Condição                       | Comportamento                                            |
-| ----------------------- | ------------------------------ | -------------------------------------------------------- |
+| Modo                    | Condição                       | Comportamento                                              |
+| ----------------------- | ------------------------------ | ---------------------------------------------------------- |
 | **LEGADO**              | `/legado`, sem conta           | O app de hoje, intacto: LocalStorage, offline, PDF, backup |
-| **OFFLINE AUTENTICADO** | conta + diária fixada          | Tudo editável; outbox acumula; indicador de pendências   |
-| **ONLINE**              | conta + rede                   | Push/pull ativos; polling adaptativo                     |
-| **SÓ LEITURA**          | `VIEWER`, ou permissão perdida | Edição desabilitada; leitura local mantida               |
+| **OFFLINE AUTENTICADO** | conta + diária fixada          | Tudo editável; outbox acumula; indicador de pendências     |
+| **ONLINE**              | conta + rede                   | Push/pull ativos; polling adaptativo                       |
+| **SÓ LEITURA**          | `VIEWER`, ou permissão perdida | Edição desabilitada; leitura local mantida                 |
 
 A plataforma **exige conta** ([ADR-025](../decisions.md#adr-025--conta-obrigatória-na-plataforma-legado-sem-conta));
 o login precisa de rede uma vez, e a sessão persiste — nunca é reverificada para editar.
@@ -186,15 +186,15 @@ SYNC              fila + conflitos   → IDLE · SYNCING · PENDING(n) · CONFLI
 "online" sem internet. A verdade é **o resultado da última requisição**, e o próprio pull
 periódico serve de sonda — não há endpoint de heartbeat.
 
-| Indicador                | Significado                                    |
-| ------------------------ | ---------------------------------------------- |
-| ● Sincronizado           | fila vazia, servidor alcançável                |
-| ⟳ Sincronizando          | push ou pull em andamento                      |
-| ● Pendências (n)         | online, n operações na fila                    |
-| ○ Offline · n pendências | sem servidor; edição normal                    |
-| ▲ Conflitos (n)          | n campos aguardando decisão                    |
-| ✕ Erro de sincronização  | falhas persistentes → tela de diagnóstico      |
-| ⬆ Atualize o app         | protocolo incompatível — bloqueia só o sync    |
+| Indicador                | Significado                                 |
+| ------------------------ | ------------------------------------------- |
+| ● Sincronizado           | fila vazia, servidor alcançável             |
+| ⟳ Sincronizando          | push ou pull em andamento                   |
+| ● Pendências (n)         | online, n operações na fila                 |
+| ○ Offline · n pendências | sem servidor; edição normal                 |
+| ▲ Conflitos (n)          | n campos aguardando decisão                 |
+| ✕ Erro de sincronização  | falhas persistentes → tela de diagnóstico   |
+| ⬆ Atualize o app         | protocolo incompatível — bloqueia só o sync |
 
 **Regra de UX: o indicador informa, nunca bloqueia.** Não existe spinner que impeça digitar,
 nem "aguarde sincronizar" antes de criar o próximo take. Nem o último estado da tabela bloqueia
@@ -207,14 +207,14 @@ o preenchimento: a edição continua e a fila acumula.
 O Service Worker atual é bom e **permanece escrito à mão**. Ajustes necessários
 ([ADR-026](../decisions.md#adr-026--três-versões-encadeadas)):
 
-| Ajuste                                                         | Motivo                                                     |
-| -------------------------------------------------------------- | ---------------------------------------------------------- |
+| Ajuste                                                         | Motivo                                                           |
+| -------------------------------------------------------------- | ---------------------------------------------------------------- |
 | `VERSION` gerado no build (`prebuild`)                         | Hoje é `'v1'` manual em `public/sw.js`; esquecer serve app velho |
-| `APP_SHELL` gerado no build em vez de enumerado à mão          | Rotas dinâmicas (`/p/[id]/…`) e chunks não se listam à mão |
-| **Nunca** cachear `/api/**`                                    | Resposta de sync em cache é dado corrompido silencioso     |
-| `registration.waiting` → aviso "Atualizar agora"               | Usuário não pode ficar preso em versão antiga              |
-| Rota de fallback para `/p/**` offline                          | Navegação direta para uma produção sem rede precisa abrir  |
-| Manter navegação network-first + assets stale-while-revalidate | Estratégia atual está correta                              |
+| `APP_SHELL` gerado no build em vez de enumerado à mão          | Rotas dinâmicas (`/p/[id]/…`) e chunks não se listam à mão       |
+| **Nunca** cachear `/api/**`                                    | Resposta de sync em cache é dado corrompido silencioso           |
+| `registration.waiting` → aviso "Atualizar agora"               | Usuário não pode ficar preso em versão antiga                    |
+| Rota de fallback para `/p/**` offline                          | Navegação direta para uma produção sem rede precisa abrir        |
+| Manter navegação network-first + assets stale-while-revalidate | Estratégia atual está correta                                    |
 
 **O que o Service Worker não faz:** guardar dado de produção. Dado de produção vive no
 IndexedDB, estruturado. Cache HTTP guarda **casca**, nunca conteúdo.

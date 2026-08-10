@@ -364,12 +364,12 @@ Se o fallback para polling já era obrigatório e indistinguível na experiênci
 é o produto. A colaboração aqui é "a continuísta ver o take que a câmera acabou de registrar" —
 tolerância de dezenas de segundos.
 
-| Estado da tela                         | Intervalo   |
-| -------------------------------------- | ----------- |
-| Diária aberta, mudança há < 2 min      | 10 s        |
-| Diária aberta, ociosa                  | 30 s        |
-| Outra tela da produção                 | 60 s        |
-| Aba oculta / app em background         | **não faz** |
+| Estado da tela                    | Intervalo   |
+| --------------------------------- | ----------- |
+| Diária aberta, mudança há < 2 min | 10 s        |
+| Diária aberta, ociosa             | 30 s        |
+| Outra tela da produção            | 60 s        |
+| Aba oculta / app em background    | **não faz** |
 
 Mais pull imediato ao voltar a ficar visível, ao evento `online` e após push bem-sucedido. Um
 pull sem novidade é `where seq > $cursor limit 1` — índice puro. Parar com a aba oculta é o que

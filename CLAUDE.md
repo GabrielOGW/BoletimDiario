@@ -139,13 +139,13 @@ Five skills in `.claude/skills/`, each carrying its own contract (scope, files i
 not touch, preconditions, required tests, docs it must update, completion criteria). Load the
 one that matches the work instead of re-deriving the rules (ADR-027):
 
-| Skill        | Use it for                                                             |
-| ------------ | ---------------------------------------------------------------------- |
-| `banco`      | Drizzle schema, migrations, enums, triggers, `lib/db/`                 |
+| Skill        | Use it for                                                              |
+| ------------ | ----------------------------------------------------------------------- |
+| `banco`      | Drizzle schema, migrations, enums, triggers, `lib/db/`                  |
 | `sync`       | `lib/sync/`, `lib/offline/`, `app/api/sync/`, `public/sw.js`, conflicts |
-| `modulo`     | `features/{camera,sound,continuity}/`, shooting-day screens            |
-| `plataforma` | auth, productions, room, members, permissions — outside the boundary   |
-| `testes`     | the `.mjs` harness, and the Vitest/Playwright suites from Phase 4 on   |
+| `modulo`     | `features/{camera,sound,continuity}/`, shooting-day screens             |
+| `plataforma` | auth, productions, room, members, permissions — outside the boundary    |
+| `testes`     | the `.mjs` harness, and the Vitest/Playwright suites from Phase 4 on    |
 
 **This agent stays the architectural authority.** No skill changes `domain/platform/`,
 `docs/decisions.md`, the offline boundary, the sync protocol, or a contract between modules on
