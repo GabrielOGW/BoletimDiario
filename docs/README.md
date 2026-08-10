@@ -26,7 +26,7 @@ Onde um documento antigo conflitar com o plano v2, **o plano v2 vence**.
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | [plano-arquitetural-v2.md](plano-arquitetural-v2.md) | **Decisões finais da rodada 2** — arquitetura, banco, sync, conflitos, offline, skills, roadmap, riscos |
 | [risks-response.md](risks-response.md)               | Retorno do proprietário sobre os riscos (entrada da rodada 2)                                           |
-| [decisions.md](decisions.md)                         | Registro de decisões (ADR-001 … ADR-027), imutável por reescrita                                        |
+| [decisions.md](decisions.md)                         | Registro de decisões (ADR-001 … ADR-028), imutável por reescrita                                        |
 | [risks.md](risks.md)                                 | Matriz de risco vigente, com status                                                                     |
 | [roadmap.md](roadmap.md)                             | Fases, ordem de implementação e critérios de conclusão                                                  |
 
