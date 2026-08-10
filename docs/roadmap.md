@@ -77,18 +77,43 @@ O app de câmera continua intacto.
 
 ---
 
-## 📋 Fase 3 — Sala (sem offline)
+## ✅ Fase 3 — Sala (sem offline)
 
 Server-oriented puro. Nenhuma linha de Dexie.
 
-- [ ] `/producoes` — listar, criar, entrar por código
-- [ ] Sala da produção: membros, papéis, departamentos
-- [ ] Diárias: criar, listar, abrir (CRUD de `ShootingDay`)
-- [ ] Dashboard da sala, somente leitura
-- [ ] Design system: inventário dos componentes existentes e reuso (ADR-024)
+- [x] `/producoes` — listar, criar, entrar por código
+- [x] Sala da produção: membros, papéis, departamentos, transferência de posse, saída
+- [x] Diárias: criar, listar, abrir, editar, excluir (CRUD de `ShootingDay`)
+- [x] Dashboard da sala, somente leitura
+- [x] Código de convite: visível a todo membro, rotação e fechamento por `ADMIN`+
+- [x] Design system: reuso integral; nenhum componente novo além de `SelectField`
 
-**Pronta quando:** a sala funciona de ponta a ponta contra o servidor, com permissões, e nenhuma
-tela precisou de sincronização para existir.
+**Entregue:** dois usuários, um criando e outro entrando por código, chegam ao papel e ao
+departamento corretos; as regras relacionais de papel vivem no servidor e são recusadas lá,
+não escondidas na UI. Verificado por `npm run test:sala` (27 checks) e por exercício HTTP
+contra o build de produção — sem sessão, toda rota privada responde `307 → /login`; com
+sessão de quem não é membro, `/p/<id>` responde **404**, não 403.
+
+**Notas de implementação:**
+
+- Sem `middleware.ts`: o layout de `app/(app)/` resolve a sessão no servidor, e Server
+  Component não tem flash de tela privada para evitar. Uma camada a menos
+  ([authentication.md §4](architecture/authentication.md#4-proteção-de-rotas)).
+- `TextField` e `TextAreaField` ganharam modo **não controlado** (`name`/`defaultValue`) em vez
+  de componentes paralelos: nos formulários de Server Action o dono do valor é o `<form>`
+  (ADR-024). O modo controlado do boletim não mudou.
+- Único componente novo: `SelectField`, `<select>` nativo com a moldura do `TextField`.
+- `test/alias-loader.mjs` passou a resolver import relativo sem extensão e pasta com
+  `index.ts` — era o que faltava para um teste importar a camada de query.
+
+**Pendências conscientes:**
+
+- Equipamentos, busca global e visão consolidada continuam nas Fases 8–9.
+- Convite direto por e-mail e rate limit no resgate do código: Fase 10
+  ([permissions.md §4](architecture/permissions.md#4-entrada-na-sala)).
+- Deploy na Vercel segue pendente desde a Fase 2.
+
+O app de câmera continua intacto.
 
 ---
 

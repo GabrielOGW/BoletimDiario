@@ -6,6 +6,18 @@ formulários digitais" e "uma fonte compartilhada de verdade da diária" (§48).
 Lembrando a decisão de modelagem: **sala não é uma tabela**. É a projeção colaborativa de uma
 `Production` — ver [../architecture/overview.md §4](../architecture/overview.md#4-conceito-de-sala).
 
+> **Status (Fase 3): implementada, sem os blocos de departamento.** Existem hoje
+> `/producoes` (listar, criar, entrar por código), `/p/[productionId]` (painel),
+> `/p/[productionId]/membros` e `/p/[productionId]/diarias` (listar, criar, abrir, editar,
+> excluir). Código em `app/(app)/` e `features/production/`.
+>
+> Tudo aqui é **Next.js comum**: Server Components lendo Drizzle, Server Actions para mutação,
+> zero Dexie e zero outbox. São operações de preparação, feitas sentado e com sinal — a
+> fronteira offline (ADR-016) começa só dentro da diária.
+>
+> O que ainda não existe: os blocos de Câmera/Som/Continuidade do §3 (dependem dos módulos,
+> Fases 5–7), equipamentos (§4), busca (§5) e visão consolidada (§6).
+
 ---
 
 ## 1. Navegação
@@ -44,6 +56,16 @@ João    — Som           Carlos — Direção
 
 Regras do código de convite em
 [../architecture/permissions.md §4](../architecture/permissions.md#4-entrada-na-sala).
+
+O código fica visível para **todo membro**, não só para o administrador: quem chegou atrasado
+no set precisa entrar sem depender de o `ADMIN` estar por perto. Rotacionar e fechar a sala
+continuam sendo `ADMIN`+, e essa decisão é do servidor — a interface só deixa de oferecer o
+botão que não funcionaria.
+
+**Diárias** (`ShootingDay`) são criadas por `ADMIN`+ e lidas por qualquer membro; quem não
+pode editar vê o mesmo conteúdo sem formulário. Duas unidades no mesmo dia são duas diárias —
+a unidade entra na chave. O id é derivado de `(produção, data, unidade)`, o que faz criar a
+mesma diária duas vezes convergir para o mesmo registro em vez de duplicar (ADR-019).
 
 ## 3. Dashboard (§24)
 

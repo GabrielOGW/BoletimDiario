@@ -18,6 +18,7 @@ import type { Department, MemberRole } from '@/domain/platform/enums';
 import { roleAtLeast } from '@/domain/platform/enums';
 import { db } from '@/lib/db/client';
 import { productionMemberDepartments, productionMembers } from '@/lib/db/schema';
+import { uuidSchema } from '@/lib/contracts';
 
 import { requireUser, type SessionUser } from './session';
 
@@ -54,6 +55,10 @@ export async function requireMember(
   options: { minRole?: MemberRole } = {},
 ): Promise<Membership> {
   const user = await requireUser();
+
+  // Id fora do formato é "não é membro", e não erro do banco: `/p/qualquer-coisa` na
+  // barra de endereço não pode virar 500 — nem revelar nada por causa da mensagem.
+  if (!uuidSchema.safeParse(productionId).success) throw new NotAMemberError();
 
   const [row] = await db
     .select({

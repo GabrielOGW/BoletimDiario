@@ -94,6 +94,24 @@ requireMember(productionId, { minRole }); // sessão + pertencimento + papel
 requireDepartment(productionId, department); // + permissão de escrita no dept.
 ```
 
+### Onde mora cada regra (Fase 3)
+
+O guarda responde **"este papel é alto o suficiente?"**. Isso não cobre as regras
+_relacionais_ desta página — as que dependem do papel de **quem sofre a ação**:
+
+| Regra                                       | Onde vive                         |
+| ------------------------------------------- | --------------------------------- |
+| Papel mínimo para a operação                | `requireMember(..., { minRole })` |
+| `ADMIN` não altera nem remove o `OWNER` (¹) | `lib/db/queries/members.ts`       |
+| `ADMIN` não remove outro `ADMIN`            | `lib/db/queries/members.ts`       |
+| Promover a `OWNER` só por transferência     | `lib/db/queries/members.ts`       |
+| `OWNER` não sai sem transferir (²)          | `lib/db/queries/members.ts`       |
+
+Elas ficam **junto da escrita**, e não na tela, por um motivo prático: a mesma regra vale para
+a Server Action de hoje e para a rota de sync de amanhã. Devolvem
+`{ status: 'FORBIDDEN', reason }` em vez de lançar, porque não são erro de programação — são
+resposta legítima que a interface precisa mostrar. Cobertas por `npm run test:sala`.
+
 Ordem obrigatória em toda rota/action de escrita:
 
 ```

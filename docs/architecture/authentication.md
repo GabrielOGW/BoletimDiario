@@ -164,6 +164,23 @@ const ctx = await requireMember(productionId, { minRole: 'MEMBER' });
 insuficiente. Toda função de `lib/db/queries/` exige esse contexto como argumento — não há
 sobrecarga sem ele. Detalhes da matriz em [permissions.md](permissions.md).
 
+> **Status (Fase 3): implementado sem `middleware.ts`.** O layout de
+> [`app/(app)/`](<../../app/(app)/layout.tsx>) chama `requireUser()` — uma vez, para todo o
+> grupo de rotas —, e o layout da sala chama `requireMember()`. Middleware entraria só para
+> evitar o flash de tela privada, e não há flash: as telas são Server Components, então o
+> redirecionamento acontece **antes** de qualquer HTML sair. Uma camada a menos para manter.
+>
+> As páginas filhas repetem `requireMember` porque precisam do papel para decidir o que
+> mostrar. A repetição é barata e proposital: uma `page.tsx` nova nasce protegida mesmo que
+> alguém mova o layout de lugar.
+>
+> `requireMember` também recusa `productionId` fora do formato UUID como "não é membro" — sem
+> isso, `/p/qualquer-coisa` viraria erro do Postgres em vez de 404.
+>
+> Verificado por exercício HTTP contra o build de produção: `/producoes`, `/p/<uuid>`,
+> `/p/<uuid>/membros` e `/p/<uuid>/diarias/nova` respondem `307 → /login` sem sessão; com
+> sessão de quem não é membro, `/p/<uuid>` responde **404**, não 403.
+
 ---
 
 ## 5. Variáveis de ambiente

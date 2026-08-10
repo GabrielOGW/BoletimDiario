@@ -21,9 +21,11 @@ npm test               # all three check suites below (161 assertions)
 npm run test:migration # a real v1 boletim through v2 normalization (22 assertions)
 npm run test:platform  # domain/platform set rules: inheritance, take numbering (56)
 npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-to-end (83)
+npm run test:db        # schema/triggers against the real Neon (20) — needs DATABASE_URL
+npm run test:sala      # room rules against the real Neon (27) — needs DATABASE_URL
 ```
 
-There is no unit/e2e test runner. All three suites are plain `.mjs` files run directly through Node's experimental TS type-stripping with a custom `@/`-alias loader (`test/alias-loader.mjs`); ESLint ignores `test/**`. Because of type-stripping, code reachable from a test may not use `enum`, `namespace`, or parameter properties, and type-only imports must use `import type`. To test offline behavior: `npm run build && npm run start`, load the app once online, then go airplane mode and reload.
+There is no unit/e2e test runner. All suites are plain `.mjs` files run directly through Node's experimental TS type-stripping with a custom loader (`test/alias-loader.mjs`, which resolves `@/`, extensionless relative imports and `index.ts` folders); ESLint ignores `test/**`. `test:db` and `test:sala` need a real database and are **not** part of `npm test` — the day the main suite needs a network is the day it stops being run. `test:sala` also needs `--conditions=react-server`, because the query layer imports `server-only`, which fails by design outside the server. Because of type-stripping, code reachable from a test may not use `enum`, `namespace`, or parameter properties, and type-only imports must use `import type`. To test offline behavior: `npm run build && npm run start`, load the app once online, then go airplane mode and reload.
 
 ## Architecture
 
@@ -112,11 +114,28 @@ Two rules, both checkable in review:
    `lib/offline/repos/*`; `lib/sync` is what talks to the server.
 2. **No Dexie outside the boundary.** Those screens may require the network.
 
+### The room — outside the boundary (Phase 3, done)
+
+`app/(app)/` + `features/production/` are **ordinary Next.js**: Server Components reading
+Drizzle, Server Actions for mutation, no Dexie, no outbox, no cursor. Routes: `/producoes`
+(list, create, join by code) and `/p/[productionId]` (dashboard · `membros` · `diarias`).
+
+- Session is required once, in [app/(app)/layout.tsx](<app/(app)/layout.tsx>); membership in
+  the room layout. There is **no `middleware.ts`** — Server Components have no private-screen
+  flash to prevent.
+- `requireMember`/`requireDepartment` answer "is this role high enough?". The **relational**
+  rules — ADMIN can't touch the OWNER, promoting to OWNER only via transfer, the OWNER can't
+  leave without transferring — live in `lib/db/queries/members.ts` next to the write, and
+  return `{ status: 'FORBIDDEN', reason }` instead of throwing.
+- Non-member → **404, never 403** (`NotAMemberError`): 403 would confirm the production exists.
+- Forms are uncontrolled: `TextField`/`TextAreaField` accept `name`/`defaultValue` and the
+  `<form>` owns the value. Keep it that way here; the boletim editor stays controlled.
+
 ### `domain/platform/` — the shared domain model (Phase 1, done)
 
 Pure TypeScript, **no I/O, no React, no Dexie, no Drizzle** — it is the only code that runs in
-the browser, in route handlers and in migration scripts at once (ADR-013). Nothing in the
-current app imports it yet.
+the browser, in route handlers and in migration scripts at once (ADR-013). The room reads its
+enums and `deriveId`; the camera app still doesn't import it.
 
 - [enums.ts](domain/platform/enums.ts) — `Department`, `MemberRole`, `TakeStatus`, … as
   `as const` arrays + union types (never TS `enum`, which type-stripping rejects).
