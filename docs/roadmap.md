@@ -47,22 +47,33 @@ uma única mudança de código.
 
 ---
 
-## 📋 Fase 2 — Fundação servidor
+## ✅ Fase 2 — Fundação servidor
 
 Neon, Drizzle, migrations, auth, produções, membros, permissões.
 
-- [ ] Projeto Neon + `DATABASE_URL` (com branch de preview)
-- [ ] Drizzle: `lib/db/schema/` implementando o DDL de [database.md](architecture/database.md)
-- [ ] Primeira migration + trigger de `sync_log` e de `version`
-- [ ] Better Auth: cadastro, login, logout, recuperação de senha
-- [ ] `lib/auth/guards.ts` — `requireMember`, `requireDepartment`
-- [ ] `lib/contracts/` — schemas Zod compartilhados (inclui validação de UUID)
-- [ ] `lib/db/queries/` — produções, membros, código de convite (com `import 'server-only'`)
-- [ ] Rotas `(public)`: login, cadastro, recuperar senha
-- [ ] Deploy na Vercel com as variáveis de ambiente
+- [x] Projeto Neon + `DATABASE_URL`
+- [x] Drizzle: `lib/db/schema/` implementando o DDL de [database.md](architecture/database.md)
+- [x] Migrations + triggers de `sync_log` e de `version`, verificados contra o banco real
+- [x] Better Auth: cadastro, login, logout, recuperação de senha
+- [x] `lib/auth/guards.ts` — `requireMember`, `requireDepartment`
+- [x] `lib/contracts/` — schemas Zod compartilhados (inclui validação de UUID)
+- [x] `lib/db/queries/` — produções, membros, código de convite (com `import 'server-only'`)
+- [x] Rotas `(public)`: login, cadastro, recuperar senha, redefinir senha
+- [ ] **Deploy na Vercel** — pendente: exige a CLI da Vercel e as variáveis no projeto
 
-**Pronta quando:** dois usuários criam conta, um cria produção, o outro entra por código, e as
-permissões são aplicadas **no servidor**. O app de câmera continua intacto.
+**Entregue:** cadastro devolve id UUID, sessão de 90 dias, o ciclo completo de reset de senha
+funciona, e o id da Better Auth serve de `created_by` no domínio com o trigger de `sync_log`
+disparando. Verificado por `npm run test:db` (20 checks) e por exercício HTTP contra o build de
+produção.
+
+**Pendências conscientes:**
+
+- Envio de e-mail ([ADR-028](decisions.md#adr-028--recuperação-de-senha-sem-provedor-de-e-mail)):
+  o link de redefinição é gerado e registrado no log, não enviado.
+- "OWNER redefine a senha de um membro" precisa da tela de membros — entra na Fase 3.
+- Deploy: a CLI da Vercel não está instalada neste ambiente.
+
+O app de câmera continua intacto.
 
 ---
 
