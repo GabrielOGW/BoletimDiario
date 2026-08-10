@@ -75,6 +75,13 @@ query mais executada da plataforma viraria chamada de rede.
 
 **Reavaliar se:** o produto passar a ser majoritariamente OAuth.
 
+> **Revisto em `2026-08-10`** — confirmada na implementação, com dois ajustes obrigatórios
+> registrados em [authentication.md §2](architecture/authentication.md#2-decisão):
+> `advanced.database.generateId: 'uuid'` (sem isso as FKs de auditoria do domínio quebram) e
+> sessão de **90 dias** em vez de 30 (sessão expirada em locação sem sinal não tem como ser
+> renovada). O envio de e-mail fica pendente — ver
+> [ADR-028](#adr-028--recuperação-de-senha-sem-provedor-de-e-mail).
+
 ---
 
 ### ADR-005 · Drizzle em vez de Prisma
@@ -487,3 +494,38 @@ onde a versão do protocolo mora.
 módulos por conta própria — isso é escalado para o agente principal. Subagente permanece útil
 para trabalho **paralelo e somente-leitura** (varrer o repositório atrás de ocorrências), nunca
 para escrever código de produção.
+
+---
+
+### ADR-028 · Recuperação de senha sem provedor de e-mail
+
+`2026-08-10` · **Aceita**
+
+A plataforma precisa de e-mail em **um** lugar: recuperação de senha. Cadastro, login, entrada
+por código e o preenchimento da diária não dependem disso — e a sessão de 90 dias, que nunca é
+reverificada para editar, faz o esquecimento ser raro: ninguém digita senha em locação.
+
+Provisionar um provedor agora exigiria um **domínio verificado**, que não existe (o projeto usa
+o subdomínio da Vercel). Sem ele, o remetente não é verificável e a entrega vai para spam — o
+que é pior do que não ter, porque aparenta funcionar.
+
+**Decisão:** o fluxo de reset é implementado por inteiro; o envio fica atrás da interface
+`Mailer` ([lib/auth/mailer.ts](../lib/auth/mailer.ts)), com uma implementação que registra a
+mensagem no log do servidor. Ligar um provedor depois é escrever um segundo `Mailer` e trocar
+uma linha — nada do fluxo muda.
+
+**Alternativas descartadas:** provisionar Resend agora (entrega ruim sem domínio); não ter
+recuperação nenhuma (ponto sem saída num aparelho novo); trocar senha por login com Google
+(exclui quem não tem conta Google e amarra o login a um terceiro).
+
+**Consequências:**
+
+- Verificação de e-mail fica **desligada**: exigi-la sem envio trancaria todo mundo do lado de
+  fora.
+- A UI não mente: a confirmação diz que o link foi **gerado**, não enviado, e orienta a falar
+  com quem administra a produção.
+- Enquanto isso, quem esquece a senha depende de um administrador. A ação de "OWNER redefine a
+  senha de um membro" entra junto com a tela de membros, na Fase 3.
+
+**Reavaliar quando:** houver domínio próprio — aí o provedor entra e a verificação de e-mail
+volta a ser avaliada.

@@ -1,25 +1,118 @@
 /**
- * Identidade.
+ * Identidade — schema da Better Auth.
  *
- * `users` existe aqui porque **toda** coluna de auditoria do domínio referencia
- * `users(id)` — sem ela não há FK possível. As demais tabelas de autenticação
- * (sessão, conta, verificação) entram com a Better Auth, na etapa da skill
- * `plataforma`, geradas pela CLI dela.
+ * Gerado por `npx @better-auth/cli generate` e mantido assim: estas tabelas seguem o
+ * contrato da biblioteca, não as convenções do domínio (sem `production_id`, sem soft
+ * delete, sem `version`, sem trigger de `sync_log`). Regenerar é a forma correta de
+ * atualizá-las.
  *
- * A PK é `uuid`, e não texto: é o que mantém `created_by`/`updated_by` uniformes com
- * o resto do schema. A Better Auth precisa ser configurada para gerar UUID e para
- * mapear o modelo `user` nesta tabela — se ela for adicionada com o padrão dela, as
- * duas definições divergem e as FKs quebram.
+ * Duas coisas aqui **não** são padrão, e as duas são deliberadas:
+ *
+ * 1. **PK `uuid`**, via `advanced.database.generateId: 'uuid'` na configuração. Sem
+ *    isso a Better Auth usa id em texto e toda coluna `created_by`/`updated_by` do
+ *    domínio — que é `uuid references users(id)` — perde a FK.
+ * 2. **`timestamptz`** em vez do `timestamp` sem fuso que a CLI gera. Expiração de
+ *    sessão gravada sem fuso é uma sessão que expira na hora errada dependendo de onde
+ *    o servidor roda; o tipo em JavaScript continua sendo `Date`, então a troca é
+ *    transparente para a biblioteca.
  */
 
-import { boolean, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { relations, sql } from 'drizzle-orm';
+import { boolean, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
-  id: uuid('id').primaryKey(),
+  id: uuid('id')
+    .default(sql`pg_catalog.gen_random_uuid()`)
+    .primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
-  emailVerified: boolean('email_verified').notNull().default(false),
+  emailVerified: boolean('email_verified').default(false).notNull(),
   image: text('image'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
 });
+
+export const sessions = pgTable(
+  'sessions',
+  {
+    id: uuid('id')
+      .default(sql`pg_catalog.gen_random_uuid()`)
+      .primaryKey(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    token: text('token').notNull().unique(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+  },
+  (t) => [index('sessions_user_idx').on(t.userId)],
+);
+
+export const accounts = pgTable(
+  'accounts',
+  {
+    id: uuid('id')
+      .default(sql`pg_catalog.gen_random_uuid()`)
+      .primaryKey(),
+    accountId: text('account_id').notNull(),
+    providerId: text('provider_id').notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    accessToken: text('access_token'),
+    refreshToken: text('refresh_token'),
+    idToken: text('id_token'),
+    accessTokenExpiresAt: timestamp('access_token_expires_at', { withTimezone: true }),
+    refreshTokenExpiresAt: timestamp('refresh_token_expires_at', { withTimezone: true }),
+    scope: text('scope'),
+    /** Hash da senha. A Better Auth é quem gera, compara e faz rate limit. */
+    password: text('password'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [index('accounts_user_idx').on(t.userId)],
+);
+
+/** Tokens de uso único: redefinição de senha e verificação de e-mail. */
+export const verifications = pgTable(
+  'verifications',
+  {
+    id: uuid('id')
+      .default(sql`pg_catalog.gen_random_uuid()`)
+      .primaryKey(),
+    identifier: text('identifier').notNull(),
+    value: text('value').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [index('verifications_identifier_idx').on(t.identifier)],
+);
+
+export const usersRelations = relations(users, ({ many }) => ({
+  sessions: many(sessions),
+  accounts: many(accounts),
+}));
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, { fields: [sessions.userId], references: [users.id] }),
+}));
+
+export const accountsRelations = relations(accounts, ({ one }) => ({
+  user: one(users, { fields: [accounts.userId], references: [users.id] }),
+}));

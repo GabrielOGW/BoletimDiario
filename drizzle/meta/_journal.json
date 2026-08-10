@@ -15,6 +15,13 @@
       "when": 1786378470779,
       "tag": "0001_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786379312917,
+      "tag": "0002_free_iron_lad",
+      "breakpoints": true
     }
   ]
 }
