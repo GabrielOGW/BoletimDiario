@@ -26,7 +26,7 @@ Onde um documento antigo conflitar com o plano v2, **o plano v2 vence**.
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | [plano-arquitetural-v2.md](plano-arquitetural-v2.md) | **Decisões finais da rodada 2** — arquitetura, banco, sync, conflitos, offline, skills, roadmap, riscos |
 | [risks-response.md](risks-response.md)               | Retorno do proprietário sobre os riscos (entrada da rodada 2)                                           |
-| [decisions.md](decisions.md)                         | Registro de decisões (ADR-001 … ADR-027), imutável por reescrita                                        |
+| [decisions.md](decisions.md)                         | Registro de decisões (ADR-001 … ADR-028), imutável por reescrita                                        |
 | [risks.md](risks.md)                                 | Matriz de risco vigente, com status                                                                     |
 | [roadmap.md](roadmap.md)                             | Fases, ordem de implementação e critérios de conclusão                                                  |
 
@@ -54,12 +54,13 @@ Onde um documento antigo conflitar com o plano v2, **o plano v2 vence**.
 
 ## Estado da implementação
 
-| Fase                                           | Status        |
-| ---------------------------------------------- | ------------- |
-| **Fase 1** — Arquitetura                       | ✅ concluída  |
-| **Fase 1.5** — Preparação (rodada 2)           | ✅ concluída  |
-| Fase 2 — Fundação servidor (Neon/Drizzle/Auth) | ⏳ próxima    |
-| Fases 3–10                                     | 📋 planejadas |
+| Fase                                               | Status                           |
+| -------------------------------------------------- | -------------------------------- |
+| **Fase 1** — Arquitetura                           | ✅ concluída                     |
+| **Fase 1.5** — Preparação (rodada 2)               | ✅ concluída                     |
+| **Fase 2** — Fundação servidor (Neon/Drizzle/Auth) | ✅ concluída (falta só o deploy) |
+| Fase 3 — Sala                                      | ⏳ próxima                       |
+| Fases 4–10                                         | 📋 planejadas                    |
 
 O que já existe em **código** está em [`domain/platform/`](../domain/platform) — o modelo de
 domínio compartilhado, as regras de set (herança, incremento, reset de take) e o mapeador do
