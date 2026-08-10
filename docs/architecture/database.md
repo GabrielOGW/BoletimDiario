@@ -59,7 +59,7 @@ da Better Auth):
 
 | Convenção       | Regra                                                                                                                              |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Chave primária  | `uuid` gerado **no cliente** (`crypto.randomUUID`) — indispensável para criar offline                                              |
+| Chave primária  | `uuid` gerado **no cliente** — indispensável para criar offline. **Derivado da chave natural** onde ela existe (ADR-019); `crypto.randomUUID` no resto |
 | Nomenclatura    | `snake_case` no banco, `camelCase` no TypeScript                                                                                   |
 | Escopo          | Toda tabela de conteúdo carrega `production_id`, mesmo quando redundante — é o eixo de toda autorização e de todo pull incremental |
 | Auditoria (§21) | `created_at`, `updated_at`, `created_by`, `updated_by` obrigatórios                                                                |
@@ -68,7 +68,7 @@ da Better Auth):
 | Ordenação       | `sort_order integer` onde a ordem é definida pelo usuário (setups, tracks, membros)                                                |
 | Texto livre     | `text` (nunca `varchar(n)`) — o app é deliberadamente de campo livre                                                               |
 | Enums           | Enum nativo do Postgres, espelhando `domain/platform/enums.ts`                                                                     |
-| Timestamps      | `timestamptz`. Datas de diária são `date` (a diária é um dia civil, não um instante)                                               |
+| Timestamps      | `timestamptz`. Datas de diária são `date` (a diária é um dia civil, não um instante) e **nunca** são convertidas para UTC          |
 
 ### Enums
 
@@ -120,7 +120,7 @@ arquitetura precise mudar para incluí-los depois. O que não existe ainda é **
                       │                    │
                       └──► equipment_assignments ◄── equipment
                                            │
-                                        photos          sync_log
+                                                        sync_log
 ```
 
 ---
@@ -411,28 +411,12 @@ create table equipment_assignments (
 );
 ```
 
-### 4.5 Fotografias
+### 4.5 Fotografias — não existem na v1
 
-```sql
-create table photos (
-  id            uuid primary key,
-  production_id uuid not null references productions(id) on delete cascade,
-  scene_id      uuid references scenes(id) on delete cascade,
-  setup_id      uuid references setups(id) on delete cascade,
-  take_id       uuid references takes(id) on delete cascade,
-  subject_type  text,     -- 'CHARACTER' | 'WARDROBE' | 'PROP' | 'SET' | 'FRAME'
-  subject_id    uuid,     -- id do prop/figurino quando aplicável
-  caption       text,
-  storage_key   text,     -- chave no blob storage; NULL enquanto só existe local
-  remote_url    text,
-  width         integer, height integer, byte_size integer, mime_type text,
-  taken_at      timestamptz,
-  <audit>
-);
-```
-
-O binário **não vai para o Postgres**. Fluxo completo em
-[offline-first.md](offline-first.md#fotografias).
+A tabela `photos` foi **removida** desta especificação
+([ADR-022](../decisions.md#adr-022--sem-fotografias-na-v1)). Não há tabela, não há coluna, não
+há blob storage e não há upload. Quando/se voltar, o formato natural é `subject_type` +
+`subject_id` sobre cena/setup/take — mas nada disso é implementado agora.
 
 ### 4.6 Log de sincronização
 
@@ -450,8 +434,13 @@ create table sync_log (
 create index on sync_log (production_id, seq);
 ```
 
-Escrito por trigger em todas as tabelas de domínio. É a espinha dorsal do pull incremental e
-do realtime — detalhes em [synchronization.md](synchronization.md).
+Escrito por trigger em todas as tabelas de domínio. É a espinha dorsal do pull incremental —
+detalhes em [synchronization.md](synchronization.md).
+
+> **Rodada 2:** o `sync_log` **não** guarda a lista de chaves alteradas por operação. A versão
+> anterior precisava disso para detectar sobreposição de campos; com o delta `{ de, para }` do
+> [ADR-018](../decisions.md#adr-018--conflito-por-compare-and-set-de-campo), o servidor compara
+> com o valor atual e o log volta a ser **só cursor**.
 
 > **Por que `bigserial` e não `updated_at`:** relógio de cliente não é confiável, e mesmo o do
 > servidor pode empatar em milissegundos. Um cursor monotônico do próprio banco elimina a
@@ -467,7 +456,6 @@ create index on takes   (production_id, setup_id, number);
 create index on camera_take_data     (production_id, take_id);
 create index on sound_take_data      (production_id, take_id);
 create index on continuity_take_data (production_id, take_id);
-create index on photos  (production_id, take_id);
 -- busca global (§35)
 create index on scenes using gin (to_tsvector('portuguese',
         coalesce(number,'')||' '||coalesce(block,'')||' '||coalesce(description,'')));

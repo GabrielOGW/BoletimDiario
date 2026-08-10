@@ -248,7 +248,7 @@ de quem já usa o app e o caminho de recuperação se a sincronização falhar e
 | --- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | 1   | **`Boletim` como raiz agregada**            | O documento inteiro é lido, mutado e reescrito por tecla. Não dá para sincronizar em granularidade útil, nem para dois departamentos escreverem ao mesmo tempo | Quebrar em entidades independentes com id próprio (Scene, Setup, Take, …), cada uma sincronizável isoladamente |
 | 2   | **Produção denormalizada dentro da diária** | `produtora/diretor/DoP` repetidos em cada boletim; não existe "minhas produções"                                                                               | Entidade `Production` de primeira classe; `ShootingDay` referencia a produção                                  |
-| 3   | **LocalStorage como banco**                 | Síncrono, sem índice, sem transação, limite ~5 MB, string única. Não suporta fotos nem fila de sync                                                            | IndexedDB (Dexie) — ver [offline-first.md](offline-first.md)                                                   |
+| 3   | **LocalStorage como banco**                 | Síncrono, sem índice, sem transação, limite ~5 MB, string única. Sem transação não há como gravar o dado e enfileirar o sync atomicamente                      | IndexedDB (Dexie) — ver [offline-first.md](offline-first.md)                                                   |
 | 4   | **Sem identidade**                          | Nenhum registro sabe quem criou ou alterou                                                                                                                     | `createdBy` / `updatedBy` / `version` / `deletedAt` em toda entidade                                           |
 | 5   | **`aprovado: boolean`**                     | Não expressa NG, série, false start, wild, parcial — e mistura "aprovado pelo diretor" com status técnico                                                      | Enum `TakeStatus` compartilhado + status próprio por departamento                                              |
 | 6   | **Números como string**                     | `Take.numero: string` impede ordenar, incrementar e comparar corretamente                                                                                      | `takeNumber: number` no modelo novo; `string` só onde o valor é genuinamente livre                             |
@@ -284,7 +284,7 @@ Três mudanças são estruturais e inevitáveis:
 
 1. **Quebrar o agregado `Boletim`** em entidades sincronizáveis com id próprio — sem isso não
    existe colaboração nem sync incremental.
-2. **Trocar LocalStorage por IndexedDB** — sem isso não existem fotos, fila de sync nem volume.
+2. **Trocar LocalStorage por IndexedDB** — sem transação não existe fila de sync confiável.
 3. **Introduzir identidade e versão** em cada registro — sem isso não existe autoria nem
    detecção de conflito.
 

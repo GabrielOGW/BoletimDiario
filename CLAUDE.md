@@ -87,16 +87,30 @@ Touch these in order, or migration/persistence will silently drop it:
 ## In-flight: evolution into a collaborative platform
 
 The project is being evolved from this single-user local PWA into **Boletim Audiovisual** — a
-multi-user, offline-first platform where **Camera, Sound and Continuity share one
-`Scene → Setup → Take`**, with Neon Postgres, auth, rooms and sync. Everything described
-above still runs untouched; the evolution is strictly additive and phased.
+multi-user platform where **Camera, Sound and Continuity share one `Scene → Setup → Take`**,
+with Neon Postgres, auth, rooms and sync. Everything described above still runs untouched; the
+evolution is strictly additive and phased.
 
 **Read [docs/](docs/) before making architectural changes.** Start with
-[docs/architecture/current-state.md](docs/architecture/current-state.md) (analysis of this
-codebase), then [docs/architecture/overview.md](docs/architecture/overview.md) (target
-architecture) and [docs/roadmap.md](docs/roadmap.md) (phase order).
+[docs/plano-arquitetural-v2.md](docs/plano-arquitetural-v2.md) — **the decisions that are
+current** — then [docs/architecture/current-state.md](docs/architecture/current-state.md)
+(analysis of this codebase) and [docs/roadmap.md](docs/roadmap.md) (phase order).
 [docs/decisions.md](docs/decisions.md) records every decision already made — don't re-litigate
-one without adding a "Revisto em" block to it.
+one without adding a "Revisto em" block to it. **Where an older document conflicts with the v2
+plan, the v2 plan wins.**
+
+### The offline boundary — the single most load-bearing rule
+
+Offline-first is **not** applied to the whole app. The local database is the source of truth
+only for the **shooting-day surface**: pinned `ShootingDay`, `Scene`, `Setup`, `Take` and the
+three `*TakeData`. Everything else — auth, productions, members, invites, equipment catalog,
+reports — is ordinary Next.js reading Drizzle on the server (ADR-016).
+
+Two rules, both checkable in review:
+
+1. **No `fetch` inside the boundary.** Department modules and shooting-day screens know only
+   `lib/offline/repos/*`; `lib/sync` is what talks to the server.
+2. **No Dexie outside the boundary.** Those screens may require the network.
 
 ### `domain/platform/` — the shared domain model (Phase 1, done)
 
@@ -117,4 +131,31 @@ current app imports it yet.
   boletins into productions. Runs on the output of `normalizeBoletim()`.
 
 Two invariants hold across the whole roadmap: **the camera module never regresses**, and
-**nothing may make the network required in order to edit**.
+**nothing may make the network required in order to fill in a shooting day**.
+
+### Skills — scoped work, one at a time
+
+Five skills in `.claude/skills/`, each carrying its own contract (scope, files it may and may
+not touch, preconditions, required tests, docs it must update, completion criteria). Load the
+one that matches the work instead of re-deriving the rules (ADR-027):
+
+| Skill        | Use it for                                                             |
+| ------------ | ---------------------------------------------------------------------- |
+| `banco`      | Drizzle schema, migrations, enums, triggers, `lib/db/`                 |
+| `sync`       | `lib/sync/`, `lib/offline/`, `app/api/sync/`, `public/sw.js`, conflicts |
+| `modulo`     | `features/{camera,sound,continuity}/`, shooting-day screens            |
+| `plataforma` | auth, productions, room, members, permissions — outside the boundary   |
+| `testes`     | the `.mjs` harness, and the Vitest/Playwright suites from Phase 4 on   |
+
+**This agent stays the architectural authority.** No skill changes `domain/platform/`,
+`docs/decisions.md`, the offline boundary, the sync protocol, or a contract between modules on
+its own — that is escalated. Respect the declared preconditions: `banco` before `sync`, `sync`
+before `modulo`. Don't run two skills over the same files at once.
+
+Documentation is not a skill — it's a rule: **doc and code in the same commit**.
+
+### Design system
+
+The Boletim de Câmera **is** the platform's design system (ADR-024). Sound, Continuity, login,
+room and dashboard reuse its components, interaction patterns and visual language — without
+exception. Look for the existing component in `components/` before writing a new one.
