@@ -14,8 +14,14 @@ interface TextFieldProps {
   /** Sugestões para <datalist> sem travar a digitação. */
   options?: readonly string[];
   hint?: string;
+  /** Mensagem de erro. Substitui o `hint` e marca o campo como inválido. */
+  error?: string;
   inputMode?: 'text' | 'numeric' | 'decimal' | 'tel';
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  /** Necessário para gerenciadores de senha reconhecerem o campo. */
+  autoComplete?: string;
+  required?: boolean;
+  disabled?: boolean;
   /** Mostra o botão "x" para apagar rápido (padrão: true em campos de texto). */
   clearable?: boolean;
   className?: string;
@@ -31,14 +37,20 @@ export function TextField({
   type = 'text',
   options,
   hint,
+  error,
   inputMode,
   autoCapitalize,
+  autoComplete,
+  required,
+  disabled,
   clearable = true,
   className,
 }: TextFieldProps) {
   const id = useId();
   const listId = options ? `${id}-list` : undefined;
-  const showClear = clearable && !NATIVE_PICKER_TYPES.has(type) && value.length > 0;
+  const messageId = error || hint ? `${id}-message` : undefined;
+  const showClear =
+    clearable && !disabled && !NATIVE_PICKER_TYPES.has(type) && value.length > 0;
 
   return (
     <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
@@ -57,11 +69,18 @@ export function TextField({
           placeholder={placeholder}
           inputMode={inputMode}
           autoCapitalize={autoCapitalize}
+          autoComplete={autoComplete}
+          required={required}
+          disabled={disabled}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={messageId}
           onChange={(event) => onChange(event.target.value)}
           className={cn(
             'h-12 w-full rounded-xl border border-line bg-surface px-3.5 text-base text-zinc-100',
             'transition placeholder:text-zinc-600',
             'focus:border-brand/60 focus:outline-none focus:ring-2 focus:ring-brand/30',
+            'disabled:cursor-not-allowed disabled:opacity-60',
+            error && 'border-red-500/70 focus:border-red-500 focus:ring-red-500/30',
             showClear && 'pr-12',
           )}
         />
@@ -84,7 +103,15 @@ export function TextField({
           ))}
         </datalist>
       ) : null}
-      {hint ? <p className="text-xs text-zinc-500">{hint}</p> : null}
+      {error ? (
+        <p id={messageId} className="text-xs text-red-400">
+          {error}
+        </p>
+      ) : hint ? (
+        <p id={messageId} className="text-xs text-zinc-500">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -6,8 +6,15 @@
  * despercebido sem ele — quebrar o build é o comportamento desejado.
  *
  * Driver HTTP: ideal para route handlers curtos na Vercel, que é onde este cliente roda.
- * Transação de várias instruções exige o driver WebSocket; quando isso for necessário
- * (push de sync em lote), entra aqui como um segundo cliente, não como substituição.
+ *
+ * **Ele não tem transação interativa** — `db.transaction()` lança "No transactions support
+ * in neon-http driver". Para escritas que precisam ser atômicas mas não precisam do
+ * resultado de uma consulta para decidir a próxima, use `db.batch([...])`: vai numa
+ * requisição só e executa dentro de uma transação no servidor.
+ *
+ * Transação interativa de verdade exige o driver WebSocket (`drizzle-orm/neon-serverless`).
+ * Quando o push de sincronização precisar dela, entra aqui como um **segundo** cliente —
+ * não como substituição, porque o HTTP continua sendo o certo para o resto.
  */
 
 import 'server-only';

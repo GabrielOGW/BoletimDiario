@@ -50,20 +50,58 @@ ferramenta cujo público é equipe de produção rotativa.
 
 Configuração:
 
+> **Status: implementado.** Configuração em [`lib/auth/config.ts`](../../lib/auth/config.ts),
+> schema em [`lib/db/schema/auth.ts`](../../lib/db/schema/auth.ts), telas em `app/(public)/`.
+
 | Item                  | Valor                                                                   |
 | --------------------- | ----------------------------------------------------------------------- |
 | Método                | `emailAndPassword` (OAuth Google/Apple fica como extensão futura)       |
 | Hash de senha         | padrão da biblioteca (scrypt) — **nunca** implementação própria         |
-| Sessão                | persistida em tabela + **cookie cache** assinado                        |
-| Expiração             | 30 dias, renovada a cada 24 h de uso                                    |
+| Sessão                | persistida em tabela + cookie assinado                                  |
+| Expiração             | **90 dias**, renovada a cada 7 dias de uso — ver abaixo                 |
 | Cookie                | `httpOnly`, `secure`, `sameSite=lax`                                    |
-| Verificação de e-mail | ativa, **não bloqueante** — a conta funciona antes de verificar         |
-| Recuperação de senha  | fluxo nativo com token de uso único e expiração curta                   |
-| Envio de e-mail       | provedor transacional via variável de ambiente (Resend/SES)             |
+| Id de usuário         | **`uuid`** (`advanced.database.generateId: 'uuid'`) — ver abaixo        |
+| Verificação de e-mail | **desligada** enquanto não houver provedor de envio (ADR-028)           |
+| Recuperação de senha  | fluxo nativo completo, token de uso único válido por 1 h                |
+| Envio de e-mail       | **sem provedor**; interface em `lib/auth/mailer.ts` (ADR-028)           |
 | Tabelas               | `users`, `sessions`, `accounts`, `verifications` (schema da biblioteca) |
 
+### Os dois desvios do padrão, e por quê
+
+**Id `uuid`.** Sem isso a Better Auth gera id em texto, e **toda** coluna
+`created_by`/`updated_by` do domínio — que é `uuid references users(id)` — perde a FK. Com
+`generateId: 'uuid'` e `usePlural: true`, o schema gerado pela CLI da biblioteca coincide
+exatamente com o que o domínio precisa. Verificado: uma conta criada pelo endpoint de cadastro
+nasce com id UUID e serve de `created_by` numa produção real.
+
+**Sessão de 90 dias**, renovada a cada 7. Não é relaxamento de segurança: a sessão persistir é
+o que sustenta a promessa de offline (ADR-025). Em locação sem sinal, uma sessão expirada não
+tem como ser renovada — e o profissional fica sem conseguir preencher a diária. Revogar
+dispositivo perdido continua possível porque a sessão vive **no banco**, não num JWT.
+
 As tabelas de auth ficam em `lib/db/schema/auth.ts`, no mesmo banco, permitindo
-`production_members.user_id → users.id` com FK real.
+`production_members.user_id → users.id` com FK real. Elas seguem o contrato da biblioteca, não
+as convenções do domínio: sem `production_id`, sem soft delete, sem `version`, sem trigger de
+`sync_log`.
+
+---
+
+## 2b. Recuperação de senha sem provedor de e-mail
+
+O fluxo está **completo e testado** de ponta a ponta: pedir link → gerar token → redefinir →
+entrar com a nova senha → a senha antiga deixa de funcionar. O que não existe é o **envio**.
+
+`lib/auth/mailer.ts` define a interface e traz uma implementação que registra a mensagem no log
+do servidor em vez de enviar. É deliberado que isso seja visível e feio: recuperação que depende
+de alguém ler log de servidor não pode parecer um estado normal do produto.
+
+Por que não provisionar um provedor agora (ADR-028): sem domínio próprio, o remetente não é
+verificável e a entrega vai para spam — o que é **pior** que não ter, porque aparenta funcionar.
+Quando houver domínio, ligar o Resend é escrever um segundo `Mailer` e trocar uma linha; nada
+do fluxo muda.
+
+Duas telas assumem essa limitação sem mentir para o usuário: a confirmação diz que o link foi
+**gerado** (não "enviado") e orienta a falar com quem administra a produção.
 
 ---
 
