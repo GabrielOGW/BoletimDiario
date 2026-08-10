@@ -30,10 +30,10 @@ O escopo do que sincroniza é a **superfície de diária** — ver
 
 Três mecanismos, independentes e degradáveis:
 
-| Mecanismo    | Direção          | Falha isolada causa                                |
-| ------------ | ---------------- | -------------------------------------------------- |
-| **Push**     | local → servidor | Mudanças ficam na fila; nada se perde              |
-| **Pull**     | servidor → local | Dispositivo fica com dado velho; edita normalmente |
+| Mecanismo    | Direção          | Falha isolada causa                                   |
+| ------------ | ---------------- | ----------------------------------------------------- |
+| **Push**     | local → servidor | Mudanças ficam na fila; nada se perde                 |
+| **Pull**     | servidor → local | Dispositivo fica com dado velho; edita normalmente    |
 | **Snapshot** | servidor → local | Diária não fixada não abre offline (estado explícito) |
 
 Nenhum é requisito para preencher a diária já fixada.
@@ -155,11 +155,11 @@ conflicts → adota `atual` no local + cria syncConflict PENDING com o valor do 
 Soft delete é **um campo** (`deletedAt`) e passa pelo mesmo compare-and-set. Isso resolve o
 conflito edição×exclusão sem mecanismo novo:
 
-| Caso                                          | Resultado                                                                    |
-| --------------------------------------------- | ---------------------------------------------------------------------------- |
-| A apaga, ninguém tocou                        | aplica                                                                       |
-| A apaga; B editou campos depois da base de A  | os campos de B permanecem; `deletedAt` aplica — o conteúdo não se perde       |
-| A edita; B já apagou                          | `atual.deletedAt != null` ⇒ **conflito**: `[Manter apagado]` `[Restaurar]`   |
+| Caso                                         | Resultado                                                                  |
+| -------------------------------------------- | -------------------------------------------------------------------------- |
+| A apaga, ninguém tocou                       | aplica                                                                     |
+| A apaga; B editou campos depois da base de A | os campos de B permanecem; `deletedAt` aplica — o conteúdo não se perde    |
+| A edita; B já apagou                         | `atual.deletedAt != null` ⇒ **conflito**: `[Manter apagado]` `[Restaurar]` |
 
 Sem coleta de lixo agressiva na v1: registros apagados ficam no Postgres e no Dexie. Purga
 física é rotina administrativa posterior ([ADR-015](../decisions.md#adr-015--soft-delete-em-todas-as-tabelas-de-domínio)).
@@ -173,13 +173,13 @@ física é rotina administrativa posterior ([ADR-015](../decisions.md#adr-015--s
 Antes de qualquer estratégia de resolução: **a modelagem faz a maioria dos conflitos não
 existir.**
 
-| Situação                                                      | Conflito?                                          |
-| ------------------------------------------------------------- | -------------------------------------------------- |
-| Câmera e Som editam o mesmo take                              | ❌ tabelas diferentes                              |
-| Duas pessoas criam o take 4 do mesmo setup                    | ❌ mesma chave natural ⇒ **mesmo id** ⇒ um take    |
-| Continuidade e Câmera criam a cena 24B                        | ❌ idem                                            |
-| Dois membros de Câmera editam campos diferentes do mesmo take | ❌ merge por campo                                 |
-| Dois membros de Câmera editam **o mesmo campo**               | ✅ conflito real                                   |
+| Situação                                                      | Conflito?                                       |
+| ------------------------------------------------------------- | ----------------------------------------------- |
+| Câmera e Som editam o mesmo take                              | ❌ tabelas diferentes                           |
+| Duas pessoas criam o take 4 do mesmo setup                    | ❌ mesma chave natural ⇒ **mesmo id** ⇒ um take |
+| Continuidade e Câmera criam a cena 24B                        | ❌ idem                                         |
+| Dois membros de Câmera editam campos diferentes do mesmo take | ❌ merge por campo                              |
+| Dois membros de Câmera editam **o mesmo campo**               | ✅ conflito real                                |
 
 O que sobra é raro e intra-departamental.
 
@@ -187,10 +187,10 @@ O que sobra é raro e intra-departamental.
 
 O delta traz os dois valores. O servidor decide campo a campo:
 
-| Situação                        | Ação                                     |
-| ------------------------------- | ---------------------------------------- |
-| `atual == de`                   | aplica (`para`)                          |
-| `atual == para`                 | ninguém mexeu de verdade — ignora        |
+| Situação                        | Ação                                    |
+| ------------------------------- | --------------------------------------- |
+| `atual == de`                   | aplica (`para`)                         |
+| `atual == para`                 | ninguém mexeu de verdade — ignora       |
 | `atual != de` e `atual != para` | **conflito só desse campo**; não aplica |
 
 Sem histórico, sem leitura de log, sem `version` no caminho crítico. `version` continua
@@ -272,12 +272,12 @@ GET /api/sync/pull?productionId=…&since=<seq>&limit=500
 
 ### Cadência adaptativa
 
-| Estado da tela                          | Intervalo   |
-| --------------------------------------- | ----------- |
-| Diária aberta, mudança há < 2 min       | **10 s**    |
-| Diária aberta, ociosa                   | **30 s**    |
-| Outra tela da produção                  | 60 s        |
-| Aba oculta / app em background          | **não faz** |
+| Estado da tela                              | Intervalo     |
+| ------------------------------------------- | ------------- |
+| Diária aberta, mudança há < 2 min           | **10 s**      |
+| Diária aberta, ociosa                       | **30 s**      |
+| Outra tela da produção                      | 60 s          |
+| Aba oculta / app em background              | **não faz**   |
 | Voltou a ficar visível · `online` · push OK | pull imediato |
 
 Um pull sem novidade é `where seq > $cursor limit 1` — índice puro, resposta vazia, custo

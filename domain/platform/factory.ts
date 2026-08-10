@@ -23,7 +23,6 @@ import type {
   EntityId,
   Equipment,
   EquipmentAssignment,
-  Photo,
   Production,
   ProductionMember,
   ProductionSnapshot,
@@ -638,37 +637,7 @@ export function createEquipmentAssignment(
   };
 }
 
-export function createPhoto(
-  input: {
-    id?: EntityId;
-    productionId: EntityId;
-    sceneId?: EntityId | null;
-    setupId?: EntityId | null;
-    takeId?: EntityId | null;
-    mimeType?: string;
-  },
-  ctx: CreateContext = {},
-): Photo {
-  return {
-    id: input.id ?? uid('photo'),
-    productionId: input.productionId,
-    sceneId: input.sceneId ?? null,
-    setupId: input.setupId ?? null,
-    takeId: input.takeId ?? null,
-    subjectType: null,
-    subjectId: null,
-    caption: '',
-    // Nasce só com o blob local; a chave remota só aparece após o upload.
-    storageKey: null,
-    remoteUrl: null,
-    width: null,
-    height: null,
-    byteSize: null,
-    mimeType: input.mimeType ?? 'image/webp',
-    takenAt: null,
-    ...audit(ctx),
-  };
-}
+// Não há `createPhoto`: fotografias foram removidas do modelo por ADR-022.
 
 // ============================================================
 // Agregado
@@ -694,6 +663,5 @@ export function createEmptySnapshot(production: Production): ProductionSnapshot 
     continuitySetDressing: [],
     equipment: [],
     equipmentAssignments: [],
-    photos: [],
   };
 }

@@ -139,7 +139,8 @@ export function BoletimView({ id }: { id: string | null }) {
   for (const cena of boletim.cenas)
     for (const bloco of cena.blocos)
       for (const plano of bloco.planos)
-        for (const take of plano.takes) if (take.cartao.trim()) cartoes.add(take.cartao.trim());
+        for (const take of plano.takes)
+          if (take.cartao.trim()) cartoes.add(take.cartao.trim());
   for (const midia of boletim.midiaSuporte)
     if (midia.numeroCartao.trim()) cartoes.add(midia.numeroCartao.trim());
   const cartoesUsados = [...cartoes].sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -270,8 +271,8 @@ export function BoletimView({ id }: { id: string | null }) {
                             {cena.numero.trim() || 'S/N'}
                           </span>
                           <span className="ml-auto text-[10px] uppercase tracking-wide text-zinc-400">
-                            {cena.blocos.length} blocos · {cenaPlanos} planos · {cenaAprov}{' '}
-                            aprov.
+                            {cena.blocos.length} blocos · {cenaPlanos} planos ·{' '}
+                            {cenaAprov} aprov.
                           </span>
                         </div>
 
@@ -335,12 +336,24 @@ export function BoletimView({ id }: { id: string | null }) {
                                               </colgroup>
                                               <thead>
                                                 <tr className="border-y border-zinc-300 bg-zinc-100 text-left text-[9px] uppercase tracking-wide text-zinc-600">
-                                                  <th className="px-1.5 py-1 font-bold">#</th>
-                                                  <th className="px-1.5 py-1 font-bold">Cam</th>
-                                                  <th className="px-1.5 py-1 font-bold">Cartão</th>
-                                                  <th className="px-1.5 py-1 font-bold">Clip/Sync</th>
-                                                  <th className="px-1.5 py-1 font-bold">Nota</th>
-                                                  <th className="px-1.5 py-1 font-bold">Status</th>
+                                                  <th className="px-1.5 py-1 font-bold">
+                                                    #
+                                                  </th>
+                                                  <th className="px-1.5 py-1 font-bold">
+                                                    Cam
+                                                  </th>
+                                                  <th className="px-1.5 py-1 font-bold">
+                                                    Cartão
+                                                  </th>
+                                                  <th className="px-1.5 py-1 font-bold">
+                                                    Clip/Sync
+                                                  </th>
+                                                  <th className="px-1.5 py-1 font-bold">
+                                                    Nota
+                                                  </th>
+                                                  <th className="px-1.5 py-1 font-bold">
+                                                    Status
+                                                  </th>
                                                 </tr>
                                               </thead>
                                               <tbody>
@@ -373,7 +386,7 @@ export function BoletimView({ id }: { id: string | null }) {
                                                     </td>
                                                     <td
                                                       className={cn(
-                                                        'px-1.5 py-1 break-words',
+                                                        'break-words px-1.5 py-1',
                                                         take.aprovado &&
                                                           'font-semibold text-zinc-900',
                                                       )}
@@ -386,7 +399,9 @@ export function BoletimView({ id }: { id: string | null }) {
                                                           ✓ Aprovado
                                                         </span>
                                                       ) : (
-                                                        <span className="text-zinc-300">—</span>
+                                                        <span className="text-zinc-300">
+                                                          —
+                                                        </span>
                                                       )}
                                                     </td>
                                                   </tr>
@@ -438,7 +453,9 @@ export function BoletimView({ id }: { id: string | null }) {
                       {boletim.midiaSuporte.map((midia) => (
                         <tr key={midia.id} className="border-b border-zinc-100">
                           <td className="py-1 pr-2">{midia.tipoMidia || '—'}</td>
-                          <td className="py-1 pr-2 font-mono">{midia.numeroCartao || '—'}</td>
+                          <td className="py-1 pr-2 font-mono">
+                            {midia.numeroCartao || '—'}
+                          </td>
                           <td className="py-1 pr-2">{midia.quantidade || '—'}</td>
                           <td className="py-1">{midia.responsavel || '—'}</td>
                         </tr>
@@ -474,7 +491,9 @@ export function BoletimView({ id }: { id: string | null }) {
                       key={membro.id}
                       className="flex justify-between gap-3 border-b border-zinc-100 py-0.5 text-[11px]"
                     >
-                      <span className="font-medium text-zinc-900">{membro.nome || '—'}</span>
+                      <span className="font-medium text-zinc-900">
+                        {membro.nome || '—'}
+                      </span>
                       <span className="text-zinc-500">{membro.funcao || '—'}</span>
                     </li>
                   ))}

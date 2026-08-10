@@ -20,10 +20,10 @@ O Boletim de Câmera atual não está em uso com dados reais que precisem ser pr
 
 Portanto:
 
-* não precisamos criar uma migração complexa de dados reais de produção;
-* não precisamos manter compatibilidade com boletins antigos em produção;
-* podemos fazer uma mudança estrutural mais limpa;
-* ainda assim, devemos preservar boas práticas de migração de schema para o futuro.
+- não precisamos criar uma migração complexa de dados reais de produção;
+- não precisamos manter compatibilidade com boletins antigos em produção;
+- podemos fazer uma mudança estrutural mais limpa;
+- ainda assim, devemos preservar boas práticas de migração de schema para o futuro.
 
 IMPORTANTE:
 
@@ -79,13 +79,13 @@ Reavalie essa arquitetura.
 
 Quero uma solução equilibrada entre:
 
-* simplicidade;
-* manutenção;
-* confiabilidade;
-* experiência offline;
-* sincronização;
-* custo;
-* complexidade do código.
+- simplicidade;
+- manutenção;
+- confiabilidade;
+- experiência offline;
+- sincronização;
+- custo;
+- complexidade do código.
 
 Evitar arquitetura excessivamente sofisticada apenas para cumprir uma definição purista de offline-first.
 
@@ -99,21 +99,21 @@ Defina claramente:
 
 O sistema pode:
 
-* buscar dados do servidor;
-* atualizar dados;
-* sincronizar;
-* receber alterações;
-* trabalhar normalmente.
+- buscar dados do servidor;
+- atualizar dados;
+- sincronizar;
+- receber alterações;
+- trabalhar normalmente.
 
 ### Quando offline
 
 O sistema deve:
 
-* continuar permitindo criação de dados;
-* continuar permitindo edição;
-* armazenar alterações localmente;
-* manter uma fila de sincronização;
-* sincronizar posteriormente.
+- continuar permitindo criação de dados;
+- continuar permitindo edição;
+- armazenar alterações localmente;
+- manter uma fila de sincronização;
+- sincronizar posteriormente.
 
 O usuário deve visualizar claramente:
 
@@ -143,15 +143,15 @@ A regra é:
 
 Isso vale para:
 
-* Boletim de Som;
-* Continuidade;
-* login;
-* salas;
-* dashboard;
-* sincronização;
-* membros;
-* configurações;
-* equipamentos.
+- Boletim de Som;
+- Continuidade;
+- login;
+- salas;
+- dashboard;
+- sincronização;
+- membros;
+- configurações;
+- equipamentos.
 
 Não quero:
 
@@ -415,12 +415,12 @@ DECISÃO DEFINITIVA:
 
 Remover fotos de:
 
-* requisitos;
-* modelagem;
-* armazenamento;
-* sincronização;
-* UX;
-* gerenciamento de storage.
+- requisitos;
+- modelagem;
+- armazenamento;
+- sincronização;
+- UX;
+- gerenciamento de storage.
 
 Não criar infraestrutura de upload de imagens neste momento.
 
@@ -428,10 +428,10 @@ A arquitetura pode ser extensível futuramente, mas não implementar nada agora.
 
 O objetivo é manter o aplicativo:
 
-* leve;
-* rápido;
-* simples;
-* econômico.
+- leve;
+- rápido;
+- simples;
+- econômico.
 
 ---
 
@@ -513,14 +513,14 @@ Se você concluir que a abordagem é válida:
 
 Cada skill/agente deve possuir:
 
-* responsabilidade;
-* escopo;
-* arquivos que pode alterar;
-* arquivos que não deve alterar;
-* pré-condições;
-* testes obrigatórios;
-* documentação que deve atualizar;
-* critérios de conclusão.
+- responsabilidade;
+- escopo;
+- arquivos que pode alterar;
+- arquivos que não deve alterar;
+- pré-condições;
+- testes obrigatórios;
+- documentação que deve atualizar;
+- critérios de conclusão.
 
 Exemplo:
 
@@ -561,14 +561,14 @@ Mesmo utilizando skills/subagentes, deve existir uma autoridade arquitetural.
 
 O agente principal deve ser responsável por:
 
-* arquitetura;
-* decisões entre módulos;
-* integração;
-* revisão das alterações;
-* consistência do banco;
-* segurança;
-* contratos entre módulos;
-* aprovação final.
+- arquitetura;
+- decisões entre módulos;
+- integração;
+- revisão das alterações;
+- consistência do banco;
+- segurança;
+- contratos entre módulos;
+- aprovação final.
 
 Um agente especializado NÃO deve modificar arquitetura global por conta própria.
 
@@ -604,13 +604,13 @@ Não adicionar complexidade apenas porque tecnicamente é possível.
 
 Especialmente:
 
-* sem fotos;
-* sem formulários excessivos;
-* sem modais desnecessários;
-* sem salvar manualmente;
-* sem espera por sincronização;
-* sem telas pesadas;
-* sem animações desnecessárias.
+- sem fotos;
+- sem formulários excessivos;
+- sem modais desnecessários;
+- sem salvar manualmente;
+- sem espera por sincronização;
+- sem telas pesadas;
+- sem animações desnecessárias.
 
 Priorizar:
 
@@ -631,12 +631,12 @@ O design atual do Boletim de Câmera continua sendo a referência.
 
 Pesquisar e validar a arquitetura mais simples e econômica para:
 
-* Vercel;
-* Neon;
-* Next.js;
-* PostgreSQL;
-* sincronização;
-* realtime/polling.
+- Vercel;
+- Neon;
+- Next.js;
+- PostgreSQL;
+- sincronização;
+- realtime/polling.
 
 Não implementar SSE permanente se isso aumentar desnecessariamente a complexidade ou custo.
 
@@ -708,11 +708,11 @@ Revisar a estratégia de IDs.
 
 Requisitos:
 
-* funcionar offline;
-* funcionar online;
-* não depender exclusivamente de servidor;
-* baixa probabilidade de colisão;
-* compatível com PostgreSQL.
+- funcionar offline;
+- funcionar online;
+- não depender exclusivamente de servidor;
+- baixa probabilidade de colisão;
+- compatível com PostgreSQL.
 
 Preferência:
 
@@ -742,12 +742,12 @@ O usuário não pode ficar preso indefinidamente em uma versão antiga.
 
 Implementar:
 
-* versionamento automático;
-* estratégia de atualização;
-* aviso de nova versão;
-* ação "Atualizar agora";
-* não cachear APIs de maneira perigosa;
-* garantir que uma versão antiga não continue executando uma lógica de sync incompatível.
+- versionamento automático;
+- estratégia de atualização;
+- aviso de nova versão;
+- ação "Atualizar agora";
+- não cachear APIs de maneira perigosa;
+- garantir que uma versão antiga não continue executando uma lógica de sync incompatível.
 
 Avaliar cuidadosamente a ordem:
 
@@ -899,15 +899,15 @@ Postgres
 
 Compare:
 
-* complexidade;
-* UX;
-* confiabilidade;
-* offline;
-* conflitos;
-* manutenção;
-* custo;
-* implementação no Next.js;
-* impacto no PWA.
+- complexidade;
+- UX;
+- confiabilidade;
+- offline;
+- conflitos;
+- manutenção;
+- custo;
+- implementação no Next.js;
+- impacto no PWA.
 
 Escolha uma.
 

@@ -8,24 +8,35 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "icons": "node scripts/generate-icons.mjs",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
     "test": "npm run test:migration && npm run test:platform && npm run test:mapping",
     "test:migration": "node --no-warnings --experimental-strip-types --loader ./test/alias-loader.mjs test/migration-check.mjs",
     "test:platform": "node --no-warnings --experimental-strip-types --loader ./test/alias-loader.mjs test/platform-domain-check.mjs",
-    "test:mapping": "node --no-warnings --experimental-strip-types --loader ./test/alias-loader.mjs test/platform-mapping-check.mjs"
+    "test:mapping": "node --no-warnings --experimental-strip-types --loader ./test/alias-loader.mjs test/platform-mapping-check.mjs",
+    "test:db": "node --no-warnings test/db-schema-check.mjs"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "drizzle-orm": "^0.45.2",
     "next": "^15.1.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "server-only": "^0.0.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^20.17.10",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "autoprefixer": "^10.4.20",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^8.57.1",
     "eslint-config-next": "^15.1.0",
     "eslint-config-prettier": "^9.1.0",

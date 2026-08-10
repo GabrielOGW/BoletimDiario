@@ -10,32 +10,32 @@ Status possíveis: `MITIGATED` · `ACCEPTED` · `DEFERRED` · `NEEDS_DECISION`.
 
 ## Matriz
 
-| #    | Risco                                             | Impacto      | Prob.      | Status      |
-| ---- | ------------------------------------------------- | ------------ | ---------- | ----------- |
-| R1b  | Perda de dado local no aparelho                   | catastrófico | baixa      | MITIGATED   |
-| R2   | Rede virar requisito para preencher               | catastrófico | média      | MITIGATED   |
-| R2b  | Fronteira offline mal desenhada                   | alto         | média      | MITIGATED   |
-| R3   | Regressão no Boletim de Câmera                    | alto         | média      | MITIGATED   |
-| R4   | Conflito mal resolvido / perda silenciosa         | alto         | baixa      | MITIGATED   |
-| R6   | Complexidade acima da capacidade de manutenção    | alto         | média-baixa| MITIGATED   |
-| R7   | UX de set degradada                               | alto         | baixa      | MITIGATED   |
-| R11  | Service Worker servindo versão velha              | alto         | média      | MITIGATED   |
-| R8   | Custo e limites de Vercel/Neon                    | médio        | baixa      | MITIGATED   |
-| R9   | Timezone e data da diária                         | médio        | média      | MITIGATED   |
-| R10  | `crypto.randomUUID` indisponível                  | médio        | baixa      | MITIGATED   |
-| R12  | Divergência entre documentação e código           | médio        | média      | MITIGATED   |
-| R13  | Renumerar take quebra o id determinístico         | baixo        | baixa      | ACCEPTED    |
-| R14  | Conta obrigatória afasta o uso avulso             | baixo        | média      | ACCEPTED    |
-| R15  | Polling insuficiente para a colaboração           | baixo        | baixa      | DEFERRED    |
-| R16  | Listas ordenadas sem merge por campo              | baixo        | baixa      | ACCEPTED    |
-| R17  | Metadado de cena duplicado entre blocos           | baixo        | alta       | ACCEPTED    |
+| #   | Risco                                          | Impacto      | Prob.       | Status    |
+| --- | ---------------------------------------------- | ------------ | ----------- | --------- |
+| R1b | Perda de dado local no aparelho                | catastrófico | baixa       | MITIGATED |
+| R2  | Rede virar requisito para preencher            | catastrófico | média       | MITIGATED |
+| R2b | Fronteira offline mal desenhada                | alto         | média       | MITIGATED |
+| R3  | Regressão no Boletim de Câmera                 | alto         | média       | MITIGATED |
+| R4  | Conflito mal resolvido / perda silenciosa      | alto         | baixa       | MITIGATED |
+| R6  | Complexidade acima da capacidade de manutenção | alto         | média-baixa | MITIGATED |
+| R7  | UX de set degradada                            | alto         | baixa       | MITIGATED |
+| R11 | Service Worker servindo versão velha           | alto         | média       | MITIGATED |
+| R8  | Custo e limites de Vercel/Neon                 | médio        | baixa       | MITIGATED |
+| R9  | Timezone e data da diária                      | médio        | média       | MITIGATED |
+| R10 | `crypto.randomUUID` indisponível               | médio        | baixa       | MITIGATED |
+| R12 | Divergência entre documentação e código        | médio        | média       | MITIGATED |
+| R13 | Renumerar take quebra o id determinístico      | baixo        | baixa       | ACCEPTED  |
+| R14 | Conta obrigatória afasta o uso avulso          | baixo        | média       | ACCEPTED  |
+| R15 | Polling insuficiente para a colaboração        | baixo        | baixa       | DEFERRED  |
+| R16 | Listas ordenadas sem merge por campo           | baixo        | baixa       | ACCEPTED  |
+| R17 | Metadado de cena duplicado entre blocos        | baixo        | alta        | ACCEPTED  |
 
 ### Removidos
 
-| #   | Risco                                       | Por que deixou de existir                                        |
-| --- | ------------------------------------------- | ---------------------------------------------------------------- |
+| #   | Risco                                       | Por que deixou de existir                                                  |
+| --- | ------------------------------------------- | -------------------------------------------------------------------------- |
 | R1  | Perda de dado na migração do LocalStorage   | Não há dado real a preservar; migração virou importação opcional (ADR-023) |
-| R5  | Cota de armazenamento estourada pelas fotos | Não há fotos na v1 (ADR-022)                                     |
+| R5  | Cota de armazenamento estourada pelas fotos | Não há fotos na v1 (ADR-022)                                               |
 
 ---
 
@@ -241,13 +241,13 @@ história.
 
 ## 🟢 Aceitos e adiados
 
-| #   | Risco                                     | Decisão   | Por que é aceitável                                                          |
-| --- | ----------------------------------------- | --------- | ----------------------------------------------------------------------------- |
-| R13 | Renumerar take quebra o id determinístico | ACCEPTED  | O número é automático; renumerar é raro e cai no caminho de conflito explícito |
-| R14 | Conta obrigatória afasta o uso avulso     | ACCEPTED  | `/legado` permanece sem conta, offline, com PDF                               |
-| R15 | Polling insuficiente para a colaboração   | DEFERRED  | SSE documentado como upgrade sobre o **mesmo** cursor — troca só o gatilho    |
-| R16 | Listas ordenadas sem merge por campo      | ACCEPTED  | Último-a-escrever na lista, com aviso na UI; CRDT não se paga aqui            |
-| R17 | Metadado de cena duplicado entre blocos   | ACCEPTED  | Metadado descritivo, não unidade de gravação; a UI edita no nível do `number` |
-| —   | Dependência do Dexie                      | ACCEPTED  | Exceção registrada; alternativa é pior ([ADR-003](decisions.md))              |
-| —   | Departamentos futuros sem UI              | ACCEPTED  | Enum pronto; a arquitetura não impede a inclusão                              |
-| —   | PDF por impressão nativa                  | ACCEPTED  | Funciona offline e já está validado em produção ([ADR-014](decisions.md))     |
+| #   | Risco                                     | Decisão  | Por que é aceitável                                                            |
+| --- | ----------------------------------------- | -------- | ------------------------------------------------------------------------------ |
+| R13 | Renumerar take quebra o id determinístico | ACCEPTED | O número é automático; renumerar é raro e cai no caminho de conflito explícito |
+| R14 | Conta obrigatória afasta o uso avulso     | ACCEPTED | `/legado` permanece sem conta, offline, com PDF                                |
+| R15 | Polling insuficiente para a colaboração   | DEFERRED | SSE documentado como upgrade sobre o **mesmo** cursor — troca só o gatilho     |
+| R16 | Listas ordenadas sem merge por campo      | ACCEPTED | Último-a-escrever na lista, com aviso na UI; CRDT não se paga aqui             |
+| R17 | Metadado de cena duplicado entre blocos   | ACCEPTED | Metadado descritivo, não unidade de gravação; a UI edita no nível do `number`  |
+| —   | Dependência do Dexie                      | ACCEPTED | Exceção registrada; alternativa é pior ([ADR-003](decisions.md))               |
+| —   | Departamentos futuros sem UI              | ACCEPTED | Enum pronto; a arquitetura não impede a inclusão                               |
+| —   | PDF por impressão nativa                  | ACCEPTED | Funciona offline e já está validado em produção ([ADR-014](decisions.md))      |

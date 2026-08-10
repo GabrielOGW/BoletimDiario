@@ -60,7 +60,7 @@ Duas regras verificáveis:
   **continua editando**, acumulando fila. Sync bloqueia; preenchimento nunca.
 - `navigator.onLine` é **gatilho, nunca verdade**. O estado real vem do resultado da última
   requisição.
-- Service Worker: `VERSION` e `APP_SHELL` gerados no build; **`/api/**` nunca em cache**.
+- Service Worker: `VERSION` e `APP_SHELL` gerados no build; **`/api/**` nunca em cache\*\*.
 - **Não existe tabela de blobs.** Não há fotos (ADR-022).
 
 ## Testes obrigatórios

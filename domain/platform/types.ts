@@ -22,7 +22,6 @@ import type {
   EquipmentCategory,
   IntExt,
   MemberRole,
-  PhotoSubject,
   SyncOperationKind,
   SyncStatus,
   TakeStatus,
@@ -431,24 +430,12 @@ export interface EquipmentAssignment extends Audited {
 }
 
 // ============================================================
-// Fotografias
+// Fotografias — não existem nesta versão
 // ============================================================
-
-export interface Photo extends Audited, ContinuityScope {
-  id: EntityId;
-  productionId: EntityId;
-  subjectType: PhotoSubject | null;
-  subjectId: EntityId | null;
-  caption: string;
-  /** Chave no blob storage. `null` enquanto a foto só existe neste dispositivo. */
-  storageKey: string | null;
-  remoteUrl: string | null;
-  width: number | null;
-  height: number | null;
-  byteSize: number | null;
-  mimeType: string;
-  takenAt: Timestamp | null;
-}
+//
+// Removidas do modelo por ADR-022: sem tabela, sem blob, sem upload, sem cota.
+// O formato natural, se voltarem, é `subjectType` + `subjectId` sobre o escopo
+// de continuidade — mas nada disso é modelado agora.
 
 // ============================================================
 // Sincronização
@@ -501,5 +488,4 @@ export interface ProductionSnapshot {
   continuitySetDressing: ContinuitySetDressing[];
   equipment: Equipment[];
   equipmentAssignments: EquipmentAssignment[];
-  photos: Photo[];
 }

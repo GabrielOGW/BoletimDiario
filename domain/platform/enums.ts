@@ -124,16 +124,7 @@ export const SYNC_STATUSES = [
 ] as const;
 export type SyncStatus = (typeof SYNC_STATUSES)[number];
 
-/** Sujeito ao qual uma fotografia de continuidade pode se referir. */
-export const PHOTO_SUBJECTS = [
-  'FRAME',
-  'CHARACTER',
-  'WARDROBE',
-  'PROP',
-  'SET',
-  'MAKEUP',
-] as const;
-export type PhotoSubject = (typeof PHOTO_SUBJECTS)[number];
+// Fotografias foram removidas do modelo por ADR-022 — não há `PHOTO_SUBJECTS`.
 
 // ---- Guardas de tipo (uso na normalização de payload) ----
 
