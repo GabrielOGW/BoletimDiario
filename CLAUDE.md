@@ -17,14 +17,18 @@ npm run lint           # ESLint (no-explicit-any and no-unused-vars are errors)
 npm run format         # Prettier --write
 npm run format:check
 npm run icons          # regenerate PWA PNG icons from public/icons/icon.svg
-npm run test:migration # run a real v1 boletim through v2 normalization (22 assertions)
+npm test               # all three check suites below (161 assertions)
+npm run test:migration # a real v1 boletim through v2 normalization (22 assertions)
+npm run test:platform  # domain/platform set rules: inheritance, take numbering (56)
+npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-to-end (83)
 ```
 
-There is no unit/e2e test runner — `test:migration` is the only test. It runs the `.mjs` file directly through Node's experimental TS type-stripping with a custom `@/`-alias loader (`test/alias-loader.mjs`); ESLint ignores `test/**`. To test offline behavior: `npm run build && npm run start`, load the app once online, then go airplane mode and reload.
+There is no unit/e2e test runner. All three suites are plain `.mjs` files run directly through Node's experimental TS type-stripping with a custom `@/`-alias loader (`test/alias-loader.mjs`); ESLint ignores `test/**`. Because of type-stripping, code reachable from a test may not use `enum`, `namespace`, or parameter properties, and type-only imports must use `import type`. To test offline behavior: `npm run build && npm run start`, load the app once online, then go airplane mode and reload.
 
 ## Architecture
 
 ### Single source of truth: the domain model
+
 [types/boletim.ts](types/boletim.ts) defines the entire domain. Everything is JSON-serializable (only strings/booleans/arrays) so it persists to LocalStorage and exports to backup with zero transformation. The hierarchy mirrors real set workflow:
 
 ```
@@ -35,24 +39,31 @@ Boletim → Producao + camerasCadastradas[] (multicam)
 The **Plano** is the primary unit of data entry (technical config, optics, camera reference). The **Take** holds card/clip-sync/operational-note and the key `aprovado` (director-approved) flag.
 
 ### Persistence + reactivity ([lib/storage.ts](lib/storage.ts))
+
 The only I/O layer. All functions are SSR-safe (guard on `window`). LocalStorage key is `bdc:boletins:v1` (`STORAGE_KEY` in [lib/constants.ts](lib/constants.ts) — note this key is versioned **separately** from the schema, which is v2). Writes dispatch a `bdc:store-change` CustomEvent; `subscribe()` listens to both that (same tab) and the native `storage` event (other tabs), so all open screens stay in sync.
 
 ### Read-time normalization & migration ([lib/normalize.ts](lib/normalize.ts))
-**Every read passes through `normalizeBoletim()`** — `loadAll()` maps it over the parsed array. This is a defensive, no-`any` coercion that turns *any* JSON (partial, v1, or already-v2) into a complete valid `Boletim`. It is **idempotent** and performs the v1→v2 migration: `numeroNome "18 A 1"` → Cena 18 / Bloco A / Plano 1; single `camera` → `camerasCadastradas[]` (and links migrated planos to it); `cartaoRolo` → `Take.cartao`; `observacao` → `notaOperacional`; lunch `"14:00–15:00"` → `almocoInicio/almocoFim`. Because reads always normalize, nothing would break without the migration step — [lib/migrate.ts](lib/migrate.ts) just does a one-time proactive rewrite (gated by the `bdc:migrated:v2` flag) so the stored base is upgraded once instead of re-coerced on every read.
+
+**Every read passes through `normalizeBoletim()`** — `loadAll()` maps it over the parsed array. This is a defensive, no-`any` coercion that turns _any_ JSON (partial, v1, or already-v2) into a complete valid `Boletim`. It is **idempotent** and performs the v1→v2 migration: `numeroNome "18 A 1"` → Cena 18 / Bloco A / Plano 1; single `camera` → `camerasCadastradas[]` (and links migrated planos to it); `cartaoRolo` → `Take.cartao`; `observacao` → `notaOperacional`; lunch `"14:00–15:00"` → `almocoInicio/almocoFim`. Because reads always normalize, nothing would break without the migration step — [lib/migrate.ts](lib/migrate.ts) just does a one-time proactive rewrite (gated by the `bdc:migrated:v2` flag) so the stored base is upgraded once instead of re-coerced on every read.
 
 ### Editing & auto-save ([hooks/useBoletim.ts](hooks/useBoletim.ts))
+
 Loads one boletim by id and auto-saves with a 500ms debounce, plus an immediate flush on unmount (no lost keystrokes). UI never calls a "save" button — `update(prev => next)` is the only mutation path. [features/boletins/BoletimEditor.tsx](features/boletins/BoletimEditor.tsx) is the orchestrator: it owns all the add/change/remove/duplicate/move handlers and renders the section components.
 
 ### Suggestions / autocomplete ([lib/suggestions.ts](lib/suggestions.ts) + [hooks/useSuggestions.ts](hooks/useSuggestions.ts))
+
 All inputs are free text; `<datalist>` presets just accelerate entry. Suggestions = values actually used across prior boletins (collected by walking the whole tree) merged ahead of fixed `PRESETS`. Delivered to deep components via `EditorMetaContext` (also carries the registered cameras) to avoid prop-drilling — read it with `useEditorMeta()`.
 
 ### Entity creation/duplication ([lib/factory.ts](lib/factory.ts))
+
 All new entities and all clones come from here. **Duplication regenerates every nested id** (`duplicateCena`/`duplicateBloco`/`duplicatePlano`/`duplicateBoletim`) to avoid id collisions — except camera ids, which are kept so plano→camera links survive.
 
 ### Routes ([app/](app/))
+
 `/` list · `/novo` (creates a blank boletim then `router.replace`s to the editor) · `/editar?id=` · `/visualizar?id=` (A4 print/PDF sheet) · `/offline` (SW fallback). The editor/view pages are client components reading `?id=` via `useSearchParams`, wrapped in `<Suspense>`. PDF export is the browser's native print dialog against print CSS in `app/globals.css` — no PDF library.
 
 ### PWA ([public/sw.js](public/sw.js))
+
 Hand-written service worker, **registered only in production** ([components/pwa/ServiceWorkerRegister.tsx](components/pwa/ServiceWorkerRegister.tsx)) so it doesn't fight dev hot-reload. Navigations are network-first (falling back to cached `/` or `/offline`); other assets are stale-while-revalidate. [components/AppBootstrap.tsx](components/AppBootstrap.tsx) runs `runMigrations()` then `ensureSeed()` (demo boletim on first visit) on mount. `next.config.mjs` sends `no-cache` headers for `/sw.js`.
 
 ## Conventions
@@ -63,9 +74,47 @@ Hand-written service worker, **registered only in production** ([components/pwa/
 - **Dark-mode, mobile-first** (built for use on phones in the field); touch targets ≥ 44px, `aria-*` on interactive controls.
 
 ### Adding a field to the domain model
+
 Touch these in order, or migration/persistence will silently drop it:
+
 1. [types/boletim.ts](types/boletim.ts) — the interface (+ bump comments if schema-affecting).
 2. [lib/factory.ts](lib/factory.ts) — empty value in the `create*`, and copy it in the matching `duplicate*`.
 3. [lib/normalize.ts](lib/normalize.ts) — coerce it in the matching `normalize*` (and add a v1→v2 fallback if the old schema stored it differently).
 4. [lib/suggestions.ts](lib/suggestions.ts) — only if the field should feed autocomplete (add to `Suggestions`, `FIELDS`, `PRESET_BY_FIELD`, and `collectSuggestions`).
 5. Extend [test/migration-check.mjs](test/migration-check.mjs) if it affects migration, then `npm run test:migration`.
+6. If the field should survive into the platform model, map it in [domain/platform/from-boletim.ts](domain/platform/from-boletim.ts) and extend [test/platform-mapping-check.mjs](test/platform-mapping-check.mjs).
+
+## In-flight: evolution into a collaborative platform
+
+The project is being evolved from this single-user local PWA into **Boletim Audiovisual** — a
+multi-user, offline-first platform where **Camera, Sound and Continuity share one
+`Scene → Setup → Take`**, with Neon Postgres, auth, rooms and sync. Everything described
+above still runs untouched; the evolution is strictly additive and phased.
+
+**Read [docs/](docs/) before making architectural changes.** Start with
+[docs/architecture/current-state.md](docs/architecture/current-state.md) (analysis of this
+codebase), then [docs/architecture/overview.md](docs/architecture/overview.md) (target
+architecture) and [docs/roadmap.md](docs/roadmap.md) (phase order).
+[docs/decisions.md](docs/decisions.md) records every decision already made — don't re-litigate
+one without adding a "Revisto em" block to it.
+
+### `domain/platform/` — the shared domain model (Phase 1, done)
+
+Pure TypeScript, **no I/O, no React, no Dexie, no Drizzle** — it is the only code that runs in
+the browser, in route handlers and in migration scripts at once (ADR-013). Nothing in the
+current app imports it yet.
+
+- [enums.ts](domain/platform/enums.ts) — `Department`, `MemberRole`, `TakeStatus`, … as
+  `as const` arrays + union types (never TS `enum`, which type-stripping rejects).
+- [types.ts](domain/platform/types.ts) — the entity model; every entity carries the `Audited`
+  fields (`createdBy`/`updatedBy`/`deletedAt`/`version`) that sync and auditing need.
+- [factory.ts](domain/platform/factory.ts) — creation **plus the set rules**: take
+  inheritance, file-name auto-increment, take reset on setup change. These are domain rules,
+  not UI handlers, because all three modules need identical behavior.
+- [derive-id.ts](domain/platform/derive-id.ts) — deterministic ids, which is what makes the
+  data migration re-runnable without duplicating anything.
+- [from-boletim.ts](domain/platform/from-boletim.ts) — `Boletim` v2 → platform model, grouping
+  boletins into productions. Runs on the output of `normalizeBoletim()`.
+
+Two invariants hold across the whole roadmap: **the camera module never regresses**, and
+**nothing may make the network required in order to edit**.

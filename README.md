@@ -214,6 +214,30 @@ além das Cenas 1, 16 e 17.1 e takes aprovados). Você pode editá-lo ou excluí
 - Acessibilidade básica: `aria-label`/`aria-expanded`/`role="switch"`, foco visível, alvos de toque ≥ 44px.
 - Mobile-first, dark mode legível em externa/set escuro, áreas de toque grandes.
 - Build estático e enxuto (First Load JS ~100 kB).
+- Verificações: `npm test` (161 asserts — normalização v1→v2, regras de set e migração para o
+  modelo da plataforma).
+
+---
+
+## 🛣️ Para onde o projeto está indo — **Boletim Audiovisual**
+
+O Boletim de Câmera continua sendo o núcleo, mas o projeto está evoluindo para uma
+**plataforma colaborativa de documentação de diária audiovisual**: Câmera, Som e Continuidade
+compartilhando **a mesma** unidade `Cena → Setup → Take`, com contas de usuário, salas de
+produção, banco Neon Postgres e sincronização entre dispositivos — **sem perder o
+offline-first**.
+
+Tudo o que está documentado acima continua funcionando exatamente como hoje. A evolução é
+incremental, em fases, e nenhuma delas remove funcionalidade existente.
+
+📚 **A análise completa e o plano estão em [`docs/`](docs/):**
+
+- [Estado atual do projeto](docs/architecture/current-state.md) — o que dá para reaproveitar e o que precisa mudar
+- [Arquitetura proposta](docs/architecture/overview.md) · [Banco](docs/architecture/database.md) · [Autenticação](docs/architecture/authentication.md) · [Permissões](docs/architecture/permissions.md)
+- [Offline-first](docs/architecture/offline-first.md) · [Sincronização](docs/architecture/synchronization.md)
+- [Migração dos dados atuais](docs/migrations/local-to-cloud.md) — **nenhum boletim existente é apagado**
+- [Módulos: Câmera](docs/features/camera.md) · [Som](docs/features/sound.md) · [Continuidade](docs/features/continuity.md) · [Sala](docs/features/production-room.md)
+- [Roadmap](docs/roadmap.md) · [Riscos](docs/risks.md) · [Decisões](docs/decisions.md)
 
 ---
 
