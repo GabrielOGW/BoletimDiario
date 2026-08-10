@@ -2,9 +2,10 @@
 
 Como o _Boletim Diário de Câmera_ (PWA local, single-user) se torna o **Boletim Audiovisual**
 — uma plataforma colaborativa de documentação de diária audiovisual — sem regredir em
-funcionalidade e sem perder o offline-first.
+funcionalidade e sem que a rede vire requisito para preencher.
 
-Pré-requisito de leitura: [current-state.md](current-state.md).
+Pré-requisito de leitura: [current-state.md](current-state.md). Decisões da rodada 2 (fronteira
+offline, conflitos, polling, sem fotos): [plano-arquitetural-v2.md](../plano-arquitetural-v2.md).
 
 ---
 
@@ -64,25 +65,33 @@ Três consequências que valem mais que a regra em si:
                           Neon PostgreSQL
 ```
 
-**Regra dura:** a UI nunca fala com o servidor diretamente e **nunca** contém SQL.
-A UI só conhece o banco local. Quem conversa com o servidor é a Sync Layer.
+**Regra dura, delimitada pela fronteira offline**
+([ADR-016](../decisions.md#adr-016--fronteira-offline-explícita)): a UI **nunca** contém SQL, e
+**dentro da superfície de diária** ela também nunca fala com o servidor.
 
 ```
-Componente React
-      ↓ (lê/escreve)
-lib/offline  (Dexie)  ←── única fonte de verdade da UI
-      ↓ (enfileira)
-lib/sync     (outbox + pull incremental)
+DENTRO DA FRONTEIRA                          FORA DA FRONTEIRA
+(diária: cena, setup, take, *TakeData)       (auth, produções, membros, relatórios)
+
+Componente React                             Server Component / Server Action
+      ↓ (lê/escreve)                                ↓
+lib/offline  (Dexie)  ← fonte de verdade      lib/auth  →  lib/db (Drizzle)
+      ↓ (enfileira, mesma transação)                ↓
+lib/sync     (outbox + pull por cursor)        Neon Postgres
       ↓ (HTTP)
 /api/sync    (autoriza, valida, resolve conflito)
       ↓
-lib/db       (Drizzle)
-      ↓
-Neon Postgres
+lib/db (Drizzle)  →  Neon Postgres
 ```
 
-Isso é o que garante o requisito §16: **o banco remoto não é requisito para funcionar**.
-Se a Sync Layer nunca conseguir subir nada, o app continua sendo exatamente o que é hoje.
+Duas regras verificáveis em revisão de PR:
+
+1. **Dentro da fronteira não existe `fetch`** — os módulos de departamento conhecem apenas
+   `lib/offline/repos/*`.
+2. **Fora da fronteira não existe Dexie** — aquelas telas são Next.js comum e podem exigir rede.
+
+Isso é o que garante o requisito que importa: **rede nunca é necessária para preencher**. Se a
+Sync Layer nunca conseguir subir nada, a diária continua sendo preenchida do começo ao fim.
 
 ---
 
@@ -110,7 +119,7 @@ app/
 │   └── legado/                # boletins locais não migrados (compatibilidade)
 ├── api/
 │   ├── auth/[...all]/         # handler da lib de auth
-│   └── sync/                  # push · pull · stream (SSE)
+│   └── sync/                  # snapshot · push · pull
 ├── editar · visualizar · novo # ROTAS ATUAIS — preservadas
 └── offline/
 
@@ -122,21 +131,25 @@ domain/                        # ⬅ modelo compartilhado, PURO (sem I/O, sem Re
     └── from-boletim.ts        # Boletim v2 → modelo da plataforma
 
 features/
-├── camera/                    # ← features/boletins atual, migrado na Fase 5
-├── sound/
-├── continuity/
-├── production/                # sala, membros, dashboard, equipamentos
+├── camera/                    # ← features/boletins atual, migrado na Fase 5   ┐
+├── sound/                                                                      ├ dentro
+├── continuity/                                                                 ┘ da fronteira
+├── production/                # sala, membros, dashboard, equipamentos  ← fora
+├── sync/                      # indicador, pendências, conflitos
 └── backup/
 
 lib/
-├── db/                        # Drizzle: schema, client Neon, queries por entidade
+├── db/                        # Drizzle: schema, client Neon, queries (server-only)
 ├── auth/                      # config, guardas de servidor, helpers de sessão
 ├── contracts/                 # schemas Zod compartilhados (cliente + servidor)
-├── offline/                   # Dexie: schema local, repositórios, fotos
-├── sync/                      # outbox, pull, merge, resolução de conflito
+├── offline/                   # Dexie: schema local, repositórios, fixação de diária
+├── sync/                      # outbox, snapshot, pull, merge, conflitos, protocolo
 ├── reports/                   # geração de PDF/CSV por módulo + consolidado
-└── (storage · normalize · factory · backup · seed)   ← ATUAIS, preservados
+└── (storage · normalize · factory · backup · seed)   ← ATUAIS, intocados (legado)
 ```
+
+Não existe `lib/offline/photos` nem tabela de blobs: não há fotos na v1
+([ADR-022](../decisions.md#adr-022--sem-fotografias-na-v1)).
 
 Por que `domain/` fora de `lib/`: é o único código que roda **nos três lugares** (browser,
 route handler, script de migração) e que **não pode** importar nem Dexie, nem Drizzle, nem
@@ -226,11 +239,11 @@ Cada decisão tem documento próprio; o resumo e a justificativa curta:
 | Banco remoto | **Neon Postgres** (serverless driver)   | —                                          | [database.md](database.md)                        |
 | ORM          | **Drizzle**                             | Prisma (peso no edge), SQL cru (sem tipos) | [database.md](database.md)                        |
 | Autenticação | **Better Auth** (e-mail+senha, Drizzle) | Auth.js v5, Clerk                          | [authentication.md](authentication.md)            |
-| Banco local  | **Dexie** (IndexedDB)                   | LocalStorage, IDB cru, `idb`               | [offline-first.md](offline-first.md)              |
+| Banco local  | **Dexie**, só na superfície de diária   | LocalStorage, IDB cru, `idb`               | [offline-first.md](offline-first.md)              |
 | Validação    | **Zod** em `lib/contracts/`             | validação manual                           | [database.md](database.md#validação)              |
-| Sync         | Outbox + pull por cursor + versão       | CRDT, LWW puro                             | [synchronization.md](synchronization.md)          |
-| Realtime     | SSE sobre o mesmo cursor de sync        | Pusher/Ably, LISTEN/NOTIFY                 | [synchronization.md](synchronization.md#realtime) |
-| Fotos        | Blob no IndexedDB → Vercel Blob         | base64 no Postgres                         | [offline-first.md](offline-first.md#fotografias)  |
+| Sync         | Outbox + pull por cursor + **compare-and-set por campo** | CRDT, LWW puro, versão+histórico de chaves | [synchronization.md](synchronization.md)  |
+| Realtime     | **Polling adaptativo**                  | SSE (adiado), Pusher/Ably, LISTEN/NOTIFY   | [synchronization.md](synchronization.md#6-polling) |
+| Fotos        | **Fora da v1**                          | IndexedDB + Vercel Blob, base64 no Postgres | [ADR-022](../decisions.md#adr-022--sem-fotografias-na-v1) |
 | PDF          | **Mantém** impressão nativa + CSS A4    | react-pdf, puppeteer                       | [features/camera.md](../features/camera.md)       |
 
 Sobre a regra de **zero dependências de runtime**: ela é mantida como princípio, mas passa a
@@ -246,16 +259,21 @@ ORM. Cada exceção está em [decisions.md](../decisions.md) com a razão.
 O app está em produção. Nada abaixo pode ser quebrado em nenhum momento do roadmap:
 
 1. **As rotas atuais continuam existindo.** `/`, `/novo`, `/editar?id=`, `/visualizar?id=`
-   seguem funcionando sobre LocalStorage até a Fase 5, e depois continuam disponíveis em
-   modo somente-leitura sobre os dados já migrados.
-2. **Modo local (sem conta) é um modo de primeira classe, não um degradado.** Quem não quiser
-   criar conta continua usando o app como hoje. A conta habilita sala e sincronização — não é
-   pedágio para abrir o próprio boletim.
-3. **Nenhuma migração destrutiva.** `bdc:boletins:v1` **não é apagado** pela migração para o
-   banco local; vira snapshot de recuperação. Ver
-   [migrations/local-to-cloud.md](../migrations/local-to-cloud.md).
+   seguem funcionando sobre LocalStorage e, a partir da Fase 5, passam a viver em `/legado` —
+   ainda editáveis, ainda offline, ainda com PDF.
+2. **A plataforma exige conta; o legado não**
+   ([ADR-025](../decisions.md#adr-025--conta-obrigatória-na-plataforma-legado-sem-conta)). Sem
+   conta não há sala, membro, permissão nem autoria de campo, e o produto começa em "entrar na
+   sala". Quem quiser só preencher um boletim avulso usa o legado. O login exige rede **uma
+   vez**; a sessão persiste e nunca é reverificada para editar.
+3. **Nenhuma migração destrutiva.** `bdc:boletins:v1` **não é apagado**. A importação para a
+   plataforma é opcional e repetível — ver
+   [migrations/local-to-cloud.md](../migrations/local-to-cloud.md) e
+   [ADR-023](../decisions.md#adr-023--a-migração-vira-importação-opcional).
 4. **Feature flags** (`NEXT_PUBLIC_PLATFORM_*`) mantêm cada fase desligável em produção.
 5. **Backup JSON continua funcionando** em ambos os formatos.
+6. **Design system único** — nenhum módulo novo inventa componente que já existe
+   ([ADR-024](../decisions.md#adr-024--design-system-único-o-do-boletim-de-câmera)).
 
 ---
 

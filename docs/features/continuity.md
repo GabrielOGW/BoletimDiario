@@ -76,26 +76,19 @@ take ou perder a precisão do copo.
 Itens de cena são **herdados** pelos setups e takes na visualização (herança de exibição, sem
 cópia de linha) e só viram registro próprio quando o estado muda.
 
-## 5. Fotografias (§13)
+## 5. Fotografias — fora da v1
 
-O recurso mais importante do módulo, e o que mais depende do offline funcionar: fotos de
-continuidade são tiradas em locação, sem sinal.
+**Não há fotografias nesta versão**
+([ADR-022](../decisions.md#adr-022--sem-fotografias-na-v1)). Elas saem de requisitos, modelo,
+armazenamento, sincronização, UX e gestão de cota — não há tabela `photos`, não há blob no
+IndexedDB, não há upload.
 
-Uma foto pode se associar a cena, setup, take, personagem, figurino, prop ou cenário
-(`subject_type` + `subject_id`).
+O objetivo é manter o aplicativo leve, rápido e barato. O modelo continua extensível
+(`subject_type` + `subject_id` é o formato natural quando/se voltar), mas **nada é implementado
+agora**.
 
-```
-tira foto → comprime no cliente → blob no IndexedDB → aparece na UI IMEDIATAMENTE
-                                        ↓ (quando houver rede)
-                              upload → blob storage → remote_url
-```
-
-A foto **nunca** espera upload para existir. Mecânica completa em
-[../architecture/offline-first.md](../architecture/offline-first.md#fotografias).
-
-Consequências dimensionadas: ~200 fotos por diária a ~300 KB comprimidas ≈ 60 MB no
-dispositivo. Confortável para IndexedDB, inviável para LocalStorage — é a razão técnica mais
-direta da troca de banco local.
+Consequência prática para o módulo: a continuidade de estado é registrada em **texto**, nas
+quatro coleções do §4. É como o caderno funciona hoje, e é o que a equipe já sabe fazer.
 
 ## 6. Fluxo em set
 
@@ -104,7 +97,7 @@ direta da troca de banco local.
 │ 24B · C · TAKE 5        35mm T2.8 · Roll 004│ ← lido de Câmera e Som
 ├────────────────────────────────────────────┤
 │  [ CIRCLE ]  [ OK ]  [ NG ]                │
-│  ⏱ 00:42                    📷 foto        │
+│  ⏱ 00:42                                    │
 │  Obs  João pega o copo com a mão direita   │
 │  ▸ props · figurino · cabelo/maq · cenário │
 └────────────────────────────────────────────┘
@@ -116,13 +109,13 @@ próprias observações.
 
 ## 7. Relatório
 
-PDF em A4 (mesmo mecanismo): por cena, com setups, takes, selecionados destacados, notas de
-ação e miniaturas das fotos. Fotos em alta resolução ficam no ZIP da diária (§26).
+PDF em A4 (mesmo mecanismo): por cena, com setups, takes, selecionados destacados e notas de
+ação.
 
 ## 8. Escopo da Fase 7
 
-Entra: cena, setup, take, notas de ação, props, figurino, cabelo/maquiagem, cenografia, fotos
-offline, PDF.
+Entra: cena, setup, take, notas de ação, props, figurino, cabelo/maquiagem, cenografia, PDF.
 
-Não entra: import de roteiro (PDF/Final Draft), lined script, marcação de cobertura por linha
-de diálogo, timing automático. São o passo seguinte natural e nenhum bloqueia o uso.
+Não entra: **fotografias** (ADR-022), import de roteiro (PDF/Final Draft), lined script,
+marcação de cobertura por linha de diálogo, timing automático. São o passo seguinte natural e
+nenhum bloqueia o uso.

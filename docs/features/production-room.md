@@ -78,7 +78,7 @@ Origem de cada informação:
 | Som                   | `sound_take_data` + `sound_take_tracks`                                                                            |
 | Continuidade          | `continuity_take_data`                                                                                             |
 | Equipamento do dia    | `equipment_assignments` da diária (§23)                                                                            |
-| Membros online        | `production_members.last_seen_at` (heartbeat do SSE/pull)                                                          |
+| Membros online        | `production_members.last_seen_at`, atualizado no próprio pull — sem canal separado                                 |
 | Status de sync        | fila local **por departamento** — ver [synchronization.md §6](../architecture/synchronization.md#6-estado-visível) |
 
 Offline, o dashboard mostra o **último estado conhecido**, com a hora da última

@@ -1,203 +1,238 @@
-# Offline-first
+# Offline — fronteira, banco local e PWA
 
-O app **já é** offline-first. O risco desta evolução é perder isso ao introduzir um banco
-remoto. Este documento existe para tornar essa perda impossível por construção.
-
-> **Invariante:** nenhuma interação de preenchimento em set pode depender de rede.
-> Se a única cópia de um dado estiver no servidor, o design está errado.
+> **Revisado na rodada 2.** A estratégia deixou de ser "offline-first absoluto" e passou a ser
+> **offline capable + synchronization**, delimitada por uma fronteira explícita
+> ([ADR-016](../decisions.md#adr-016--fronteira-offline-explícita)). O capítulo de fotografias
+> foi **removido** ([ADR-022](../decisions.md#adr-022--sem-fotografias-na-v1)).
 
 ---
 
-## 1. Banco local
+## 1. A fronteira
+
+A pergunta não é "o app funciona offline?". É **"o que precisa funcionar offline?"** — e a
+resposta é uma só: **preencher a diária**. Login, criar produção, entrar por código, gerenciar
+membros e ler relatório de produção encerrada são operações de preparação, feitas com sinal e
+sentado, nunca com a claquete batendo.
+
+```
+┌─ SUPERFÍCIE DE DIÁRIA ─────────────────┐   ┌─ RESTO DA PLATAFORMA ───────────┐
+│ fonte de verdade: BANCO LOCAL           │   │ fonte de verdade: SERVIDOR       │
+│                                         │   │                                  │
+│ ShootingDay (fixadas)                   │   │ auth / sessão                    │
+│ Scene · Setup · Take                    │   │ Production · membros · papéis    │
+│ CameraTakeData                          │   │ criar produção · entrar por      │
+│ SoundTakeData · SoundTakeTrack          │   │   código · convites              │
+│ ContinuityTakeData (+ props, figurino,  │   │ catálogo de equipamento (edição) │
+│   cabelo/maquiagem, cenografia)         │   │ relatórios de diárias fechadas   │
+│ CameraUnit e equipamento (leitura)      │   │ busca global · configurações     │
+│                                         │   │                                  │
+│ escreve offline · outbox · sync         │   │ fetch normal · exige rede        │
+└─────────────────────────────────────────┘   └──────────────────────────────────┘
+```
+
+> **Invariante:** nenhuma interação de **preenchimento** pode depender de rede. Fora da
+> fronteira, depender de rede é normal e esperado.
+
+Duas regras duras, ambas verificáveis em revisão de PR:
+
+1. **Dentro da fronteira não existe `fetch`.** Os módulos de departamento conhecem apenas
+   `lib/offline/repos/*`; quem fala com o servidor é `lib/sync`.
+2. **Fora da fronteira não existe Dexie.** Aquelas telas são Next.js comum — Server Components
+   lendo Drizzle — e podem exigir rede.
+
+O ganho não é ideológico: o Dexie cai de ~20 para ~9 tabelas de domínio, e o schema local, o
+snapshot, o pull e a resolução de conflito encolhem na mesma proporção. **A maior parte da
+plataforma volta a ser um CRUD.**
+
+---
+
+## 2. Banco local
 
 ### Avaliação
 
-| Opção               | Volume | Blobs | Índice | Transação | Reativo            | Peso      |
-| ------------------- | ------ | ----- | ------ | --------- | ------------------ | --------- |
-| LocalStorage (hoje) | ~5 MB  | ❌    | ❌     | ❌        | via evento próprio | 0         |
-| IndexedDB cru       | GBs    | ✅    | ✅     | ✅        | ❌ manual          | 0         |
-| `idb` (wrapper)     | GBs    | ✅    | ✅     | ✅        | ❌                 | ~1 kB     |
-| **Dexie**           | GBs    | ✅    | ✅     | ✅        | ✅ `liveQuery`     | ~25 kB gz |
+| Opção               | Volume | Índice | Transação | Reativo            | Peso      |
+| ------------------- | ------ | ------ | --------- | ------------------ | --------- |
+| LocalStorage (hoje) | ~5 MB  | ❌     | ❌        | via evento próprio | 0         |
+| IndexedDB cru       | GBs    | ✅     | ✅        | ❌ manual          | 0         |
+| `idb` (wrapper)     | GBs    | ✅     | ✅        | ❌                 | ~1 kB     |
+| **Dexie**           | GBs    | ✅     | ✅        | ✅ `liveQuery`     | ~25 kB gz |
 
-LocalStorage está descartado por três motivos independentes, qualquer um deles fatal: é
-síncrono (trava a UI ao escrever a base inteira), não guarda binário (fotos são requisito §13)
-e tem teto de poucos megabytes.
+LocalStorage está descartado por ser síncrono (trava a UI ao escrever a base inteira) e por não
+suportar transação — e é a transação que sustenta a garantia mais importante do sistema (§2.2).
 
-Entre IndexedDB cru e Dexie: a diferença não é "açúcar sintático". É **upgrade versionado de
-schema**, **transações declarativas**, **consultas por índice composto** e, principalmente,
-`liveQuery` — observabilidade reativa que já funciona **entre abas**. Sem isso, seria preciso
-reimplementar à mão exatamente o que `lib/storage.ts` faz hoje com `CustomEvent`, só que
-sobre uma API assíncrona bem mais hostil, e com fotos e fila de sync no mesmo banco.
+Entre IndexedDB cru e Dexie, a diferença não é açúcar sintático: é **upgrade versionado de
+schema**, **transações declarativas**, **índices compostos** e `liveQuery` — reatividade que já
+funciona **entre abas**. Sem isso seria preciso reimplementar à mão o que `lib/storage.ts` faz
+hoje com `CustomEvent`, só que sobre uma API assíncrona bem mais hostil e com a fila de sync no
+mesmo banco.
 
 ### Decisão
 
-> **Dexie** (+ `dexie-react-hooks` para `useLiveQuery`).
+> **Dexie** (+ `dexie-react-hooks` para `useLiveQuery`), aplicado **só dentro da fronteira**.
 
-Isto é uma **exceção consciente** à regra de zero dependências de runtime, registrada em
-[decisions.md](../decisions.md). A regra vale para o que é trivial de escrever (ícones, uuid,
-`cn`, PDF). Um banco local transacional com migração de schema não é trivial, e errar nele
-significa **perder o boletim de um dia de filmagem** — o pior modo de falha do produto.
+Exceção consciente à regra de zero dependências, registrada em
+[ADR-003](../decisions.md#adr-003--dexie-como-banco-local). A regra vale para o que é trivial
+(ícone, uuid, `cn`, PDF) e continua valendo. Um banco local transacional não é trivial, e errar
+nele significa perder o boletim de um dia de filmagem.
 
 ### Schema local
 
-Banco `bdc-platform`. Espelha o modelo remoto, mais três coleções de infraestrutura:
+Banco `bdc-platform`:
 
 ```ts
-// lib/offline/db.ts (Fase 3)
-productions        id, joinCode, name, updatedAt, _dirty
-productionMembers  id, productionId, userId, role, department
-shootingDays       id, productionId, date
-scenes             id, productionId, [number+block]
-setups             id, productionId, sceneId, shootingDayId, sortOrder
-takes              id, productionId, setupId, [setupId+number]
-cameraTakeData     id, productionId, takeId, [takeId+cameraUnitId]
-soundTakeData      id, productionId, takeId
-soundTakeTracks    id, productionId, takeId, [takeId+index]
-continuityTakeData id, productionId, takeId
-continuityProps / Wardrobe / HairMakeup / SetDressing
-cameraUnits · equipment · equipmentAssignments · photos
+// lib/offline/db.ts (Fase 4)
+── domínio (espelho parcial: só o que está fixado) ──
+shootingDays        id, productionId, date
+scenes              id, productionId, [number+block]
+setups              id, productionId, sceneId, shootingDayId, sortOrder
+takes               id, productionId, setupId, [setupId+number]
+cameraTakeData      id, productionId, takeId, [takeId+cameraUnitId]
+soundTakeData       id, productionId, takeId
+soundTakeTracks     id, productionId, takeId, [takeId+index]
+continuityTakeData  id, productionId, takeId
+continuityDetails   id, productionId, takeId, kind   ← props/figurino/cabelo/cenografia
+
+── referência somente leitura, vinda do snapshot ──
+refs                key                              ← cameraUnits, equipamento, membros
 
 ── infraestrutura ──
-outbox     id, userId, productionId, status, createdAt   ← fila de sync (§18)
-blobs      id (photoId), blob, uploadedAt                ← binários das fotos
-meta       key                                           ← cursores, identidade, flags
+outbox          id, productionId, status, createdAt, [entityType+entityId]
+syncConflicts   id, productionId, status, [entityType+entityId+field]
+meta            key                                  ← cursor, pins, versões, identidade
 ```
 
 Regras:
 
-- **Ids são UUID gerados no cliente.** Um take criado offline já nasce com o id definitivo;
-  não existe id temporário nem remapeamento na sincronização — que é a fonte clássica de
-  referência quebrada em sistemas offline.
-- Toda entidade guarda `version`, `updatedAt`, `updatedBy` e `_dirty` (há mudança local
-  ainda não confirmada pelo servidor).
-- Soft delete local também (`deletedAt`), pelo mesmo motivo do servidor: um delete precisa
-  ser propagável.
-- Os binários ficam em tabela **separada** de `photos`. Assim uma consulta de metadados nunca
-  arrasta megabytes de imagem para a memória.
+- **Ids vêm do cliente** e são definitivos. Onde há chave natural (cena, setup, take,
+  `*TakeData`), são **derivados** dela — ver
+  [ADR-019](../decisions.md#adr-019--ids-determinísticos-por-chave-natural). Não existe id
+  temporário nem remapeamento na sincronização, que é a fonte clássica de referência quebrada.
+- Toda entidade guarda `version`, `updatedAt`, `updatedBy`, `deletedAt` e `_dirty`.
+- Soft delete local também, pelo mesmo motivo do servidor: um delete precisa ser propagável.
+- **Não existe tabela de blobs.** Não há fotos na v1.
 
 ### Repositórios
 
-`lib/offline/repos/*.ts` é a única camada que toca no Dexie — mesmo papel que `lib/storage.ts`
-tem hoje. Nenhum componente chama `db.takes.put()` diretamente.
+`lib/offline/repos/*.ts` é a única camada que toca no Dexie — mesmo papel de `lib/storage.ts`
+hoje. Nenhum componente chama `db.takes.put()` diretamente.
 
 Toda escrita passa por uma transação única que faz **as duas coisas juntas**:
 
 ```ts
 await db.transaction('rw', db.takes, db.outbox, async () => {
   await db.takes.put(next); // 1. estado local
-  await enqueue('UPDATE', 'take', next); // 2. intenção de sync
+  await enqueue('UPDATE', 'take', delta); // 2. intenção de sync
 });
 ```
 
 Isso não é detalhe de implementação: se a escrita local e o enfileiramento não forem atômicos,
-existe uma janela em que o dado está salvo mas nunca será sincronizado — e ninguém percebe
-até o fim da diária.
+existe uma janela em que o dado está salvo mas nunca será sincronizado — e ninguém percebe até
+o fim da diária.
 
 ---
 
-## 2. Reatividade
+## 3. Fixação (pin) da diária
+
+É o que impede a fronteira de virar armadilha (risco R2b).
+
+- Abrir uma diária a **fixa**: snapshot completo no Dexie, permanente.
+- Estando online, a produção ativa fixa **automaticamente** a diária de hoje e a de amanhã, em
+  background. Chegar na locação com a diária baixada é o caso normal, não a sorte.
+- **Criar diária offline funciona**: o id é derivado de `(productionId, date)`, então sincroniza
+  depois e converge com a que outro dispositivo tiver criado para o mesmo dia.
+- Diária não fixada e sem rede mostra estado explícito — _"Esta diária ainda não foi baixada.
+  Conecte-se uma vez para trabalhar nela offline."_ — e não uma tela de erro.
+- Desfixar é manual e só é oferecido com a fila vazia.
+
+---
+
+## 4. Reatividade
 
 `useLiveQuery` substitui o `subscribe()` atual. Ganho direto: já funciona entre abas e entre
-janelas do PWA, sem o `CustomEvent` + evento `storage` que existe hoje.
+janelas do PWA, sem o `CustomEvent` + evento `storage` de hoje.
 
 O contrato do `useBoletim` (auto-save com debounce de 500 ms, flush no unmount, estado
-`idle/saving/saved`) é **preservado**; muda só o destino da escrita. Isso importa porque esse
-contrato é o que faz o app não ter botão salvar — comportamento validado em set.
+`idle/saving/saved`) é **preservado**; muda só o destino da escrita. Isso importa porque é esse
+contrato que faz o app não ter botão salvar — comportamento validado em set.
 
 ---
 
-## 3. Fotografias
+## 5. Modos de operação
 
-Requisito §13: funcionam offline. Fotos de continuidade são tiradas exatamente onde não há
-sinal.
+| Modo                    | Condição                       | Comportamento                                            |
+| ----------------------- | ------------------------------ | -------------------------------------------------------- |
+| **LEGADO**              | `/legado`, sem conta           | O app de hoje, intacto: LocalStorage, offline, PDF, backup |
+| **OFFLINE AUTENTICADO** | conta + diária fixada          | Tudo editável; outbox acumula; indicador de pendências   |
+| **ONLINE**              | conta + rede                   | Push/pull ativos; polling adaptativo                     |
+| **SÓ LEITURA**          | `VIEWER`, ou permissão perdida | Edição desabilitada; leitura local mantida               |
 
-```
-Foto tirada (input capture / câmera)
-        │
-        ├─► redimensiona e comprime no cliente (canvas → WebP/JPEG, lado maior ~2000px)
-        │
-        ├─► db.blobs.put({ id, blob })            ← binário, local
-        ├─► db.photos.put({ id, …metadados, storageKey: null })
-        └─► outbox: CREATE photo  +  UPLOAD blob
-                    │
-              (quando online)
-                    ├─ 1. upload do binário → Vercel Blob → storageKey/remoteUrl
-                    └─ 2. PATCH photo com a chave
-```
-
-Decisões:
-
-- **Binário nunca vai para o Postgres.** Blob storage guarda o arquivo; o Postgres guarda a
-  chave. Postgres com imagens vira backup caro, lento e difícil de replicar.
-- **Compressão antes de guardar**, não antes de subir. Um iPhone gera 4–8 MB por foto; uma
-  diária de continuidade passa fácil de 200 fotos. Comprimir na captura mantém o banco local
-  em dezenas de megabytes em vez de gigabytes.
-- **Upload é operação separada da criação do registro.** A foto aparece na UI imediatamente
-  (via `URL.createObjectURL` do blob local), independentemente do upload.
-- **O blob local só é descartado** após confirmação do upload **e** apenas sob pressão de
-  cota — enquanto houver espaço, a cópia local fica, porque é ela que serve offline.
-- **Cota**: `navigator.storage.estimate()` monitorado; aviso ao usuário em ~80 % e sugestão de
-  exportar a diária. `navigator.storage.persist()` solicitado no primeiro login para reduzir
-  risco de despejo pelo navegador.
+A plataforma **exige conta** ([ADR-025](../decisions.md#adr-025--conta-obrigatória-na-plataforma-legado-sem-conta));
+o login precisa de rede uma vez, e a sessão persiste — nunca é reverificada para editar.
+Trocar de modo nunca apaga dado local.
 
 ---
 
-## 4. Modos de operação
+## 6. Estado de conectividade
 
-| Modo                    | Condição                       | Comportamento                                           |
-| ----------------------- | ------------------------------ | ------------------------------------------------------- |
-| **LOCAL**               | sem conta                      | Idêntico à v1. Sem sala, sem sync. Backup JSON funciona |
-| **OFFLINE AUTENTICADO** | conta + sem rede               | Tudo editável; outbox acumula; indicador "pendências"   |
-| **ONLINE**              | conta + rede                   | Push/pull ativos; realtime quando disponível            |
-| **SÓ LEITURA**          | `VIEWER`, ou permissão perdida | Edição desabilitada; leitura offline mantida            |
+Três eixos independentes, um indicador só:
 
-Trocar de modo **nunca** apaga dado local. Ir de LOCAL para ONLINE é uma migração aditiva
-(ver [local-to-cloud.md](../migrations/local-to-cloud.md)).
+```
+NETWORK           navigator.onLine   → apenas GATILHO, nunca verdade
+SERVER_REACHABLE  último push/pull   → ALCANÇÁVEL após sucesso; INALCANÇÁVEL após 2 falhas
+SYNC              fila + conflitos   → IDLE · SYNCING · PENDING(n) · CONFLICT(n) · ERROR
+```
+
+`navigator.onLine` é notoriamente otimista: Teradek e captive portal de locação reportam
+"online" sem internet. A verdade é **o resultado da última requisição**, e o próprio pull
+periódico serve de sonda — não há endpoint de heartbeat.
+
+| Indicador                | Significado                                    |
+| ------------------------ | ---------------------------------------------- |
+| ● Sincronizado           | fila vazia, servidor alcançável                |
+| ⟳ Sincronizando          | push ou pull em andamento                      |
+| ● Pendências (n)         | online, n operações na fila                    |
+| ○ Offline · n pendências | sem servidor; edição normal                    |
+| ▲ Conflitos (n)          | n campos aguardando decisão                    |
+| ✕ Erro de sincronização  | falhas persistentes → tela de diagnóstico      |
+| ⬆ Atualize o app         | protocolo incompatível — bloqueia só o sync    |
+
+**Regra de UX: o indicador informa, nunca bloqueia.** Não existe spinner que impeça digitar,
+nem "aguarde sincronizar" antes de criar o próximo take. Nem o último estado da tabela bloqueia
+o preenchimento: a edição continua e a fila acumula.
 
 ---
 
-## 5. PWA
+## 7. PWA
 
-O Service Worker atual é bom e **permanece escrito à mão**. Ajustes necessários:
+O Service Worker atual é bom e **permanece escrito à mão**. Ajustes necessários
+([ADR-026](../decisions.md#adr-026--três-versões-encadeadas)):
 
-| Ajuste                                                         | Motivo                                                                    |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Gerar o `APP_SHELL` no build em vez de enumerar rotas à mão    | Rotas dinâmicas (`/p/[id]/…`) e chunks não podem ser listados manualmente |
-| **Nunca** cachear `/api/**`                                    | Resposta de sync em cache é dado corrompido silencioso                    |
-| Bump de `VERSION` automatizado no build                        | Hoje é manual; um esquecimento serve app velho indefinidamente            |
-| Rota de fallback para `/p/**` offline                          | Navegação direta para uma produção sem rede precisa abrir                 |
-| Manter navegação network-first + assets stale-while-revalidate | Estratégia atual está correta                                             |
+| Ajuste                                                         | Motivo                                                     |
+| -------------------------------------------------------------- | ---------------------------------------------------------- |
+| `VERSION` gerado no build (`prebuild`)                         | Hoje é `'v1'` manual em `public/sw.js`; esquecer serve app velho |
+| `APP_SHELL` gerado no build em vez de enumerado à mão          | Rotas dinâmicas (`/p/[id]/…`) e chunks não se listam à mão |
+| **Nunca** cachear `/api/**`                                    | Resposta de sync em cache é dado corrompido silencioso     |
+| `registration.waiting` → aviso "Atualizar agora"               | Usuário não pode ficar preso em versão antiga              |
+| Rota de fallback para `/p/**` offline                          | Navegação direta para uma produção sem rede precisa abrir  |
+| Manter navegação network-first + assets stale-while-revalidate | Estratégia atual está correta                              |
 
-**O que o Service Worker não faz:** guardar dado de produção. §27 é explícito — dado de
-produção vive no IndexedDB, estruturado. Cache HTTP guarda **casca**, nunca conteúdo.
-
-### Indicador de conectividade
-
-`useOnlineStatus` já existe e vira a base de um estado mais rico, exibido no header e no
-dashboard (§24):
-
-```
-ONLINE · OFFLINE · SINCRONIZANDO · PENDÊNCIAS (n) · CONFLITO (n) · ERRO
-```
-
-`navigator.onLine` é notoriamente otimista (rede de set com captive portal ou Teradek reporta
-"online" sem internet). O estado real vem de **o último push/pull ter tido sucesso**, com
-`navigator.onLine` apenas como gatilho para tentar.
+**O que o Service Worker não faz:** guardar dado de produção. Dado de produção vive no
+IndexedDB, estruturado. Cache HTTP guarda **casca**, nunca conteúdo.
 
 ---
 
-## 6. Durabilidade
+## 8. Durabilidade
 
 Camadas de proteção contra perda de dado, da mais frequente para a mais rara:
 
 1. Escrita local **imediata e transacional** a cada alteração.
 2. Flush no `unmount` e em `visibilitychange` (usuário fecha o PWA no meio da diária).
-3. Outbox persistida — sobrevive a fechar o app, reiniciar o aparelho e ficar dias sem rede.
-4. `bdc:boletins:v1` do LocalStorage **preservado** como snapshot pré-migração.
-5. Export JSON manual continua disponível offline (rede de segurança do usuário).
+3. Outbox persistida — sobrevive a fechar o app, reiniciar o aparelho e dias sem rede.
+4. `navigator.storage.persist()` solicitado no primeiro login.
+5. Export JSON manual, offline — rede de segurança do usuário.
 6. Servidor, quando alcançável.
 
-Cenário de teste obrigatório (§39), a rodar antes de cada release:
+Cenário de teste obrigatório, antes de cada release:
 
 ```
 offline → cria take → fecha o PWA → reabre → dado presente
