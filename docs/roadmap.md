@@ -59,7 +59,14 @@ Neon, Drizzle, migrations, auth, produções, membros, permissões.
 - [x] `lib/contracts/` — schemas Zod compartilhados (inclui validação de UUID)
 - [x] `lib/db/queries/` — produções, membros, código de convite (com `import 'server-only'`)
 - [x] Rotas `(public)`: login, cadastro, recuperar senha, redefinir senha
-- [ ] **Deploy na Vercel** — pendente: exige a CLI da Vercel e as variáveis no projeto
+- [ ] **Deploy na Vercel** — **falhando desde `2026-08-10`**, e a causa está diagnosticada:
+      o ambiente **Production** do projeto não tem `DATABASE_URL` nem `BETTER_AUTH_SECRET`.
+      Todo deploy de Preview passa e todo deploy de Production falha, sempre no mesmo
+      ponto. Reproduzido localmente escondendo o `.env`: o build morre em
+      `Failed to collect page data for /api/sync/snapshot`, que **parece** defeito de
+      código. Desde `2026-08-11` o `prebuild` roda `scripts/check-env.mjs` e a falta
+      aparece no topo do log, com o nome da variável. Resolver exige marcar as variáveis
+      para Production no painel da Vercel — é ação de quem tem a conta.
 
 **Entregue:** cadastro devolve id UUID, sessão de 90 dias, o ciclo completo de reset de senha
 funciona, e o id da Better Auth serve de `created_by` no domínio com o trigger de `sync_log`
@@ -111,7 +118,7 @@ sessão de quem não é membro, `/p/<id>` responde **404**, não 403.
 - Equipamentos, busca global e visão consolidada continuam nas Fases 8–9.
 - Convite direto por e-mail e rate limit no resgate do código: Fase 10
   ([permissions.md §4](architecture/permissions.md#4-entrada-na-sala)).
-- Deploy na Vercel segue pendente desde a Fase 2.
+- Deploy na Vercel segue pendente desde a Fase 2 — causa diagnosticada, ver Fase 2.
 
 O app de câmera continua intacto.
 
