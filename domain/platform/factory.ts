@@ -36,6 +36,7 @@ import type {
   Take,
   Timestamp,
 } from '@/domain/platform/types';
+import { DEFAULT_TAKE_KIND } from '@/domain/platform/enums';
 import type { Department, EquipmentCategory, MemberRole } from '@/domain/platform/enums';
 import { incrementSuffix } from '@/utils/sequence';
 import { uid } from '@/utils/id';
@@ -321,6 +322,9 @@ export function createTake(input: CreateTakeInput, ctx: CreateContext = {}): Tak
     setupId: input.setupId,
     number: input.number,
     status: 'RECORDED',
+    // `SYNC` por padrão, e é decisão de UX antes de ser de modelo: ninguém em set escolhe
+    // "sync" a cada tomada. A natureza só é tocada quando o take foge do normal (ADR-029).
+    kind: DEFAULT_TAKE_KIND,
     durationSec: null,
     startedAt: null,
     notes: '',
@@ -380,6 +384,7 @@ export function createCameraTakeData(
     cameraUnitId: input.cameraUnitId ?? null,
     cameraLabel: input.cameraLabel ?? '',
     status: null,
+    ngReason: '',
     approved: false,
     card: '',
     roll: '',
@@ -452,6 +457,10 @@ export function createSoundDayConfig(
     roll: '',
     soundMixer: '',
     boomOperator: '',
+    tcJamAt: null,
+    userBits: '',
+    mediaCopies: '',
+    mediaVerified: false,
     trackTemplate: [],
     ...audit(ctx),
   };
@@ -472,10 +481,7 @@ export function createSoundTakeData(
     tcStart: '',
     tcEnd: '',
     durationSec: null,
-    wild: false,
-    roomTone: false,
-    wildLines: false,
-    falseStart: false,
+    ngReason: '',
     notes: '',
     ...audit(ctx),
   };

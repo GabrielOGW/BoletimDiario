@@ -80,6 +80,8 @@ export const SYNC_ENTITIES = {
       setupId: 'text',
       number: 'int',
       status: 'text',
+      /** Natureza do take (ADR-029). Do take compartilhado, não de um departamento. */
+      kind: 'text',
       durationSec: 'int',
       notes: 'text',
       deletedAt: 'instant',
@@ -110,6 +112,7 @@ export const SYNC_ENTITIES = {
       takeId: 'text',
       cameraUnitId: 'text',
       status: 'text',
+      ngReason: 'text',
       approved: 'bool',
       card: 'text',
       roll: 'text',

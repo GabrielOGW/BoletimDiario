@@ -36,6 +36,8 @@ export const continuityTakeData = pgTable(
       .notNull()
       .references(() => takes.id, { onDelete: 'cascade' }),
     status: takeStatusEnum('status'),
+    /** Motivo do NG. "NG" sem motivo é anotação inútil na pós (ADR-029). */
+    ngReason: text('ng_reason'),
     /** O "circled" da continuísta. */
     selected: boolean('selected').notNull().default(false),
     durationSec: integer('duration_sec'),

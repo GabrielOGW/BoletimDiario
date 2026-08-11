@@ -129,9 +129,9 @@ este, de que take, gravado como, e chegou inteiro?".
 | Sample rate, bit depth, frame rate, drop/non-drop     | ✅                                                                               |
 | Formato (WAV/BWF), mono/poly, mídia, roll             | ✅                                                                               |
 | Modelos de recorder, mixer e microfones **impressos** | ✅ dado existe em `equipment_assignments`; ➕ falta imprimir no cabeçalho do PDF |
-| Fonte e **hora do jam** de timecode                   | ➕ `timecode_source` existe; falta `tc_jam_at`                                   |
-| **User bits** (UBITS)                                 | ➕ carregam data/roll e são o que a pós usa para desempatar                      |
-| **Cópias da mídia** — quantos destinos, verificado    | ➕ é a parte de "custódia" que hoje só vive no caderno                           |
+| Fonte e **hora do jam** de timecode                   | ✅ `tc_jam_at` (migration 0005)                                                  |
+| **User bits** (UBITS)                                 | ✅ `user_bits` (migration 0005)                                                  |
+| **Cópias da mídia** — quantos destinos, verificado    | ✅ `media_copies` + `media_verified` (migration 0005)                            |
 
 ### O que o relatório precisa dizer sobre cada take
 
@@ -142,10 +142,10 @@ este, de que take, gravado como, e chegou inteiro?".
 | TC início / TC fim / duração             | ✅                                                                                                              |
 | Circled                                  | ✅ independente do circled da câmera                                                                            |
 | Wild, room tone, wild lines, false start | ✅ (viram `TakeKind` por [ADR-029](../decisions.md#adr-029--julgamento-e-natureza-do-take-são-eixos-separados)) |
-| **MOS** — rodado sem som                 | ➕ **a lacuna mais séria**: hoje não há como dizer que o take existe e o som não                                |
-| **Playback**                             | ➕ o que foi gravado não é diálogo aproveitável, e a pós precisa saber                                          |
-| **Pick-up (PU)** e **série (SER)**       | ➕ notações padrão; sem elas o editor procura um take que não existe                                            |
-| **HOLD** e **motivo do NG**              | ➕ "NG" sem motivo é anotação inútil na pós                                                                     |
+| **MOS** — rodado sem som                 | ✅ `takes.kind = 'MOS'` (migration 0005) — a lacuna mais séria, fechada                                         |
+| **Playback**                             | ✅ `takes.kind = 'PLAYBACK'`                                                                                    |
+| **Pick-up (PU)** e **série (SER)**       | ✅ `takes.kind` = `PICKUP` / `SERIES`                                                                           |
+| **HOLD** e **motivo do NG**              | ✅ `take_status` ganhou `HOLD`; `ng_reason` nos três departamentos                                              |
 | Tracks: índice, nome, fonte, microfone   | ✅ `sound_take_tracks`, sem limite de 4                                                                         |
 | Observações ("avião no take 3")          | ✅ texto livre, e assim deve continuar                                                                          |
 

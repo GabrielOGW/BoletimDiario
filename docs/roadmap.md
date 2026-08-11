@@ -213,7 +213,17 @@ nada — e o boletim impresso sai igual ou melhor.
 
 ---
 
-## 📋 Fase 6 — Som · 📋 Fase 7 — Continuidade
+## ⏳ Fase 6 — Som · 📋 Fase 7 — Continuidade
+
+> **Fase 6 começou pelo banco (`2026-08-11`)**, que é a pré-condição declarada. Migrations
+> `0005` e `0006` implementam [ADR-029](decisions.md#adr-029--julgamento-e-natureza-do-take-são-eixos-separados):
+> `TakeStatus` fica sendo só julgamento (e ganha `HOLD`), a natureza vira `takes.kind` no
+> take **compartilhado**, `ng_reason` entra nos três departamentos, e a custódia do áudio
+> ganha `tc_jam_at`, `user_bits`, `media_copies` e `media_verified`.
+>
+> Com isso **MOS existe** — a lacuna que o levantamento chamou de mais séria: dizer que o
+> take existe e o som não. Falta `sync` (as entidades de som no protocolo) e depois
+> `modulo` (`features/sound/`), nessa ordem.
 
 Independentes entre si; podem correr em paralelo depois da Fase 5.
 

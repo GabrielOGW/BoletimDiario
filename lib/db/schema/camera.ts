@@ -50,6 +50,8 @@ export const cameraTakeData = pgTable(
 
     /** Julgamento técnico da Câmera — independente de `takes.status` (ADR-010). */
     status: takeStatusEnum('status'),
+    /** Motivo do NG. "NG" sem motivo é anotação inútil na pós (ADR-029). */
+    ngReason: text('ng_reason'),
     /** "Aprovado pelo diretor" do modelo v2. Preservado para não perder a semântica. */
     approved: boolean('approved').notNull().default(false),
 

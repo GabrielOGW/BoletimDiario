@@ -11,6 +11,7 @@ import {
   integer,
   pgTable,
   text,
+  timestamp,
   unique,
   uuid,
 } from 'drizzle-orm/pg-core';
@@ -45,6 +46,13 @@ export const soundDayConfig = pgTable(
     roll: text('roll'),
     soundMixer: text('sound_mixer'),
     boomOperator: text('boom_operator'),
+    /** Hora do jam de timecode — é o que explica deriva ao longo do dia para a pós. */
+    tcJamAt: timestamp('tc_jam_at', { withTimezone: true }),
+    /** User bits (UBITS): carregam data e roll, e desempatam quando o TC não basta. */
+    userBits: text('user_bits'),
+    /** Destinos da cópia, em texto livre: "cartão → LaCie → nuvem". Custódia da mídia. */
+    mediaCopies: text('media_copies'),
+    mediaVerified: boolean('media_verified').notNull().default(false),
     ...audit(),
   },
   (t) => [unique('sound_day_config_day').on(t.shootingDayId)],
@@ -67,10 +75,13 @@ export const soundTakeData = pgTable(
     tcStart: text('tc_start'),
     tcEnd: text('tc_end'),
     durationSec: integer('duration_sec'),
-    wild: boolean('wild').notNull().default(false),
-    roomTone: boolean('room_tone').notNull().default(false),
-    wildLines: boolean('wild_lines').notNull().default(false),
-    falseStart: boolean('false_start').notNull().default(false),
+    /** Motivo do NG. "NG" sem motivo é anotação inútil na pós (ADR-029). */
+    ngReason: text('ng_reason'),
+    /*
+     * `wild`, `room_tone`, `wild_lines` e `false_start` **saíram daqui** na migration
+     * 0006: viraram `takes.kind`. A natureza é do take, não do som — a câmera precisa
+     * saber que o take foi MOS tanto quanto o som precisa (ADR-029).
+     */
     notes: text('notes'),
     ...audit(),
   },

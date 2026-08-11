@@ -79,8 +79,12 @@ da Better Auth):
 create type department        as enum ('CAMERA','SOUND','CONTINUITY','DIRECTION','PRODUCTION',
                                        'DIT','LIGHTING','ART','WARDROBE','MAKEUP','EDITORIAL');
 create type member_role       as enum ('OWNER','ADMIN','MEMBER','VIEWER');
-create type take_status       as enum ('RECORDED','CIRCLE','NG','PARTIAL','WILD',
-                                       'ROOM_TONE','FALSE_START');
+-- Os dois eixos do take (ADR-029, migration 0005). Julgamento e natureza eram um enum só
+-- até a Fase 6; com um enum só, um wild circled ou um pick-up NG obrigavam a escolher qual
+-- informação perder — e a perdida era sempre a que o outro departamento precisava.
+create type take_status       as enum ('RECORDED','CIRCLE','HOLD','NG','PARTIAL');
+create type take_kind         as enum ('SYNC','MOS','WILD','ROOM_TONE','WILD_LINES',
+                                       'PLAYBACK','PICKUP','SERIES','FALSE_START');
 create type equipment_category as enum ('CAMERA','LENS','FILTER','RECORDER','MIXER','MICROPHONE',
                                         'WIRELESS','TIMECODE','MONITOR','OTHER');
 create type int_ext           as enum ('INT','EXT','INT_EXT');
@@ -246,7 +250,11 @@ create table takes (
   production_id uuid not null references productions(id) on delete cascade,
   setup_id      uuid not null references setups(id) on delete cascade,
   number        integer not null,          -- inteiro de verdade: ordena e incrementa
+  -- Os DOIS eixos do take (ADR-029, migration 0005). `status` responde "o take presta?" e
+  -- `kind` responde "que tipo de take é este?". `kind` fica aqui, no take compartilhado,
+  -- porque um take MOS é MOS para todo mundo.
   status        take_status not null default 'RECORDED',
+  kind          take_kind not null default 'SYNC',
   duration_sec  integer,
   started_at    timestamptz,
   notes         text,
@@ -307,6 +315,13 @@ create table sound_day_config (        -- configuração da diária (§11)
   poly            boolean,             -- poly (true) / mono (false)
   media           text, roll text,
   sound_mixer     text, boom_operator text,
+  -- Custódia do áudio (migration 0005): o que o sound report precisa dizer sobre o dia
+  -- além da configuração — de onde veio o TC, o que os user bits carregam, e para onde a
+  -- mídia foi copiada.
+  tc_jam_at       timestamptz,         -- hora do jam; explica deriva ao longo do dia
+  user_bits       text,                -- UBITS: carregam data e roll
+  media_copies    text,                -- "cartão → LaCie → nuvem", texto livre
+  media_verified  boolean not null default false,
   <audit>,
   unique (shooting_day_id)
 );
@@ -316,13 +331,12 @@ create table sound_take_data (
   production_id uuid not null references productions(id) on delete cascade,
   take_id       uuid not null references takes(id) on delete cascade,
   status        take_status,
+  ng_reason     text,                  -- "NG" sem motivo é anotação inútil na pós
   circled       boolean not null default false,
   sound_roll    text, file_name text,
   tc_start      text, tc_end text, duration_sec integer,
-  wild          boolean not null default false,
-  room_tone     boolean not null default false,
-  wild_lines    boolean not null default false,
-  false_start   boolean not null default false,
+  -- wild / room_tone / wild_lines / false_start SAÍRAM daqui na migration 0006: viraram
+  -- `takes.kind`. A natureza é do take, não do som (ADR-029).
   notes         text,
   <audit>,
   unique (take_id)

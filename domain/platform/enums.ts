@@ -67,17 +67,15 @@ export function roleAtLeast(role: MemberRole, minimum: MemberRole): boolean {
   return ROLE_RANK[role] >= ROLE_RANK[minimum];
 }
 
-// ---- Status do take ----
+// ---- Os dois eixos do take (ADR-029) ----
+//
+// `TakeStatus` responde "o take presta?" e `TakeKind` responde "que tipo de take é este?".
+// Com um enum só, cada combinação real — um wild track circled, um pick-up NG, um take MOS
+// com julgamento de câmera e nenhum de som — obrigava a escolher qual informação perder, e
+// a que se perdia era sempre a que o outro departamento precisava.
 
-export const TAKE_STATUSES = [
-  'RECORDED',
-  'CIRCLE',
-  'NG',
-  'PARTIAL',
-  'WILD',
-  'ROOM_TONE',
-  'FALSE_START',
-] as const;
+/** Julgamento: o take presta? É **por departamento** (ADR-010). */
+export const TAKE_STATUSES = ['RECORDED', 'CIRCLE', 'HOLD', 'NG', 'PARTIAL'] as const;
 
 export type TakeStatus = (typeof TAKE_STATUSES)[number];
 
@@ -88,12 +86,47 @@ export type TakeStatus = (typeof TAKE_STATUSES)[number];
 export const TAKE_STATUS_LABEL: Record<TakeStatus, string> = {
   RECORDED: 'OK',
   CIRCLE: 'Circle',
+  HOLD: 'Hold',
   NG: 'NG',
   PARTIAL: 'Parcial',
+};
+
+/**
+ * Natureza: que tipo de take é este? É do **take compartilhado**, não de um departamento —
+ * um take MOS é MOS para todo mundo, e é exatamente esse fato que o editor procura quando
+ * abre a diária perguntando por que não há áudio.
+ */
+export const TAKE_KINDS = [
+  'SYNC',
+  'MOS',
+  'WILD',
+  'ROOM_TONE',
+  'WILD_LINES',
+  'PLAYBACK',
+  'PICKUP',
+  'SERIES',
+  'FALSE_START',
+] as const;
+
+export type TakeKind = (typeof TAKE_KINDS)[number];
+
+export const TAKE_KIND_LABEL: Record<TakeKind, string> = {
+  SYNC: 'Sync',
+  MOS: 'MOS',
   WILD: 'Wild',
   ROOM_TONE: 'Room tone',
+  WILD_LINES: 'Wild lines',
+  PLAYBACK: 'Playback',
+  PICKUP: 'Pick-up',
+  SERIES: 'Série',
   FALSE_START: 'False start',
 };
+
+/**
+ * O padrão, e ele importa: **ninguém em set escolhe "SYNC" a cada tomada**. A natureza é um
+ * seletor secundário que só é tocado quando o take foge do normal (ADR-029).
+ */
+export const DEFAULT_TAKE_KIND: TakeKind = 'SYNC';
 
 // ---- Equipamentos ----
 

@@ -213,6 +213,72 @@ async function run() {
   `;
   const monotonic = cursor.every((row, i) => i === 0 || Number(row.seq) > Number(cursor[i - 1].seq));
   check('sync_log é estritamente crescente', cursor.length > 0 && monotonic);
+
+  await verificaEixos();
+}
+
+/**
+ * Os dois eixos do take (ADR-029, migrations 0005 e 0006).
+ *
+ * Verificação de **schema**, não de linha: o que interessa aqui é que o banco recuse o
+ * eixo errado por tipo, e não que a aplicação lembre de validar.
+ */
+async function verificaEixos() {
+  const [status] = await sql`
+    select array_agg(e.enumlabel order by e.enumsortorder)::text[] as valores
+      from pg_type t join pg_enum e on e.enumtypid = t.oid
+     where t.typname = 'take_status'
+  `;
+  const [kind] = await sql`
+    select array_agg(e.enumlabel order by e.enumsortorder)::text[] as valores
+      from pg_type t join pg_enum e on e.enumtypid = t.oid
+     where t.typname = 'take_kind'
+  `;
+
+  check(
+    'take_status é só julgamento, com HOLD',
+    status.valores.join(',') === 'RECORDED,CIRCLE,HOLD,NG,PARTIAL',
+  );
+  check('take_kind existe com MOS', (kind?.valores ?? []).includes('MOS'));
+  check(
+    'a natureza saiu do julgamento',
+    !status.valores.includes('WILD') && !status.valores.includes('ROOM_TONE'),
+  );
+
+  let recusou = false;
+  try {
+    await sql`select 'WILD'::take_status`;
+  } catch {
+    recusou = true;
+  }
+  check('o banco recusa natureza no campo de julgamento', recusou);
+
+  const [takeKind] = await sql`
+    select count(*)::int as total from information_schema.columns
+     where table_name = 'takes' and column_name = 'kind'
+  `;
+  check('takes.kind existe', takeKind.total === 1);
+
+  const [flags] = await sql`
+    select count(*)::int as total from information_schema.columns
+     where table_name = 'sound_take_data'
+       and column_name in ('wild', 'room_tone', 'wild_lines', 'false_start')
+  `;
+  check('as flags de natureza saíram do som', flags.total === 0);
+
+  const [motivos] = await sql`
+    select count(*)::int as total from information_schema.columns
+     where column_name = 'ng_reason'
+       and table_name in ('camera_take_data', 'sound_take_data', 'continuity_take_data')
+  `;
+  check('os três departamentos têm motivo de NG', motivos.total === 3);
+
+  const [custodia] = await sql`
+    select count(*)::int as total from information_schema.columns
+     where table_name = 'sound_day_config'
+       and column_name in ('tc_jam_at', 'user_bits', 'media_copies', 'media_verified')
+  `;
+  check('a custódia do áudio tem as quatro colunas', custodia.total === 4);
 }
 
 try {
