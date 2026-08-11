@@ -30,7 +30,7 @@ export default async function PublicLayout({ children }: { children: React.React
 
         <p className="mt-8 text-center text-xs leading-relaxed text-zinc-600">
           Só para a sala colaborativa. O boletim de câmera local continua funcionando{' '}
-          <Link href="/" className="text-zinc-400 underline underline-offset-2">
+          <Link href="/legado" className="text-zinc-400 underline underline-offset-2">
             sem conta
           </Link>
           .

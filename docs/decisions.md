@@ -636,3 +636,44 @@ afetados.
 
 **Consequência quando um módulo novo nascer:** basta entrar em `ACTIVE_DEPARTMENTS`. A tela
 deixa de ser somente leitura para aquele departamento sem nenhuma outra mudança.
+
+---
+
+### ADR-032 · `/legado` recebe as rotas do boletim, mas `/` continua sendo o boletim
+
+`2026-08-11` · **Aceita** · fecha um item da [Fase 5](roadmap.md#-fase-5--câmera-na-plataforma) · complementa [ADR-030](#adr-030--o-módulo-de-câmera-reproduz-o-boletim-tela-por-tela)
+
+O roadmap pedia "rotas atuais movidas para `/legado`, ainda funcionando sem conta". Movê-las é
+direto; o que não é direto é **o que fica em `/`**.
+
+`/` é o `start_url` e o `scope` do manifesto — é o que abre no aparelho de quem já instalou o
+app e usa em set. Apontá-lo para a plataforma cobraria um toque a mais, todo dia, de quem só
+quer os boletins que já estão no aparelho, e cobraria conta de quem não tem. As duas coisas
+contrariam regras já escritas: "o Boletim de Câmera não regride, nem em toques" (roadmap §1) e
+"uso sem conta continua sendo um modo suportado, não uma versão degradada"
+([features/camera.md §7](features/camera.md#7-compatibilidade)).
+
+**Decisão:**
+
+1. O editor local mora em `/legado`, `/legado/novo`, `/legado/editar`, `/legado/visualizar`.
+   Todo link interno do boletim aponta para lá.
+2. **`/` renderiza a mesma lista.** É a casa de quem não tem conta, e continua sendo.
+3. `/novo`, `/editar` e `/visualizar` continuam navegáveis por **rewrite**.
+4. A lista local ganha uma porta visível para a plataforma; a plataforma já tinha a porta de
+   volta.
+
+**Por que rewrite e não redirect** — a parte que não é estética. As três URLs antigas estão no
+precache do Service Worker e nos favoritos de quem usa o app. Uma resposta com a marca de
+redirecionamento, guardada em cache e devolvida depois para uma navegação, é **recusada pelo
+navegador**. O sintoma seria o app parar de abrir offline exatamente em quem criou o atalho —
+uma quebra silenciosa, só em produção, só para os usuários mais antigos. O rewrite é invisível:
+a URL não muda e a resposta é comum.
+
+**O que fica em aberto, de propósito:** `/` ser sensível à sessão — abrir na diária de hoje
+para quem tem conta — é assunto da [Fase 11](roadmap.md#-fase-11--caminho-curto-até-a-anotação),
+que existe justamente para o caminho curto até a anotação. Decidir isso agora seria adivinhar
+qual é a diária ativa antes de haver como saber.
+
+**Consequência para a importação:** a tela de importação dos boletins locais
+([local-to-cloud.md](migrations/local-to-cloud.md)) nasce em `/legado`, ao lado dos boletins que
+ela importa, e não na sala — quem tem o que importar está aqui.

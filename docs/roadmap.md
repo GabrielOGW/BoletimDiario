@@ -183,7 +183,9 @@ A fase mais sensível: migrar o módulo que está em uso. **Migração, não red
 - [x] PDF com a mesma qualidade de saída — folha A4 em sobreposição na própria rota da
       diária, com as mesmas classes de impressão e a diferença técnica por take
       ([features/camera.md §6](features/camera.md#como-ficou-fase-5))
-- [ ] Rotas atuais movidas para `/legado`, ainda funcionando sem conta
+- [x] Rotas atuais movidas para `/legado`, ainda funcionando sem conta — `/` continua
+      sendo o boletim local, e as URLs antigas seguem navegáveis por rewrite
+      ([ADR-032](decisions.md#adr-032--legado-recebe-as-rotas-do-boletim-mas--continua-sendo-o-boletim))
 - [ ] Importação opcional dos boletins locais ([migrations/local-to-cloud.md](migrations/local-to-cloud.md))
 
 **Pronta quando:** um usuário atual faz uma diária inteira no módulo novo sem sentir falta de

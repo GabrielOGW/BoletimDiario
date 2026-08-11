@@ -1,6 +1,24 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+
+  /**
+   * As URLs antigas do boletim continuam funcionando, agora servidas por `/legado`.
+   *
+   * **Rewrite e não redirect**, de propósito: `/novo`, `/editar` e `/visualizar` estão no
+   * precache do Service Worker e nos favoritos de quem já usa o app. Uma resposta com a
+   * marca de redirecionamento guardada em cache e devolvida depois para uma navegação é
+   * recusada pelo navegador — o sintoma seria o app parar de abrir offline exatamente em
+   * quem mais depende dele. O rewrite é invisível: a URL não muda e a resposta é comum.
+   */
+  async rewrites() {
+    return [
+      { source: '/novo', destination: '/legado/novo' },
+      { source: '/editar', destination: '/legado/editar' },
+      { source: '/visualizar', destination: '/legado/visualizar' },
+    ];
+  },
+
   async headers() {
     return [
       {

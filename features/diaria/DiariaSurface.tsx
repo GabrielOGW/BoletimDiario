@@ -114,7 +114,7 @@ export function DiariaSurface({
       {podeAnotar ? (
         <p className="rounded-xl border border-line bg-surface px-3.5 py-2.5 text-xs leading-relaxed text-zinc-500">
           Base compartilhada entre Câmera, Som e Continuidade — ainda em construção. O{' '}
-          <a href="/" className="text-zinc-300 underline underline-offset-2">
+          <a href="/legado" className="text-zinc-300 underline underline-offset-2">
             Boletim de Câmera
           </a>{' '}
           continua funcionando exatamente como antes.

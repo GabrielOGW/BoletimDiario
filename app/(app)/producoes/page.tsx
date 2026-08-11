@@ -63,7 +63,7 @@ export default async function ProducoesPage() {
 
         <p className="mt-2 text-center text-xs leading-relaxed text-zinc-600">
           O boletim de câmera local continua funcionando sem conta em{' '}
-          <Link href="/" className="text-zinc-400 underline underline-offset-2">
+          <Link href="/legado" className="text-zinc-400 underline underline-offset-2">
             boletins locais
           </Link>
           .
