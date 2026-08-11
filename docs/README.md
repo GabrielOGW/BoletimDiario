@@ -29,6 +29,7 @@ Onde um documento antigo conflitar com o plano v2, **o plano v2 vence**.
 | [decisions.md](decisions.md)                         | Registro de decisões (ADR-001 … ADR-028), imutável por reescrita                                        |
 | [risks.md](risks.md)                                 | Matriz de risco vigente, com status                                                                     |
 | [roadmap.md](roadmap.md)                             | Fases, ordem de implementação e critérios de conclusão                                                  |
+| [testes-manuais.md](testes-manuais.md)               | O que só dá para verificar à mão — sessão com senha, IndexedDB real, papel impresso                     |
 
 ### Arquitetura
 
