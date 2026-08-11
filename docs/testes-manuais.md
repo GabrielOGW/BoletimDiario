@@ -65,6 +65,13 @@ Todos já existiam no modelo e no banco; o que faltava era onde preencher. Confe
 - [ ] "Observações do plano" sai como `Obs.:` abaixo da tabela de takes
 - [ ] Corrigir o número da cena renomeia **todos** os blocos dela, não só o primeiro
 - [ ] Corrigir a letra do bloco reordena a cena corretamente
+- [ ] Focal, aspect ratio e VFX saem na linha técnica do plano
+- [ ] Nº de série do corpo sai no cabeçalho como `s/n`
+- [ ] "Mídia" no take abre fechada e mostra o roll no rótulo sem abrir
+- [ ] Roll preenchido aparece na linha "Rolls" do resumo
+- [ ] Observações de mídia saem sob a nota do take, prefixadas por "Mídia:"
+- [ ] **Contagem de toques:** marcar um take normal (cartão herdado, clip incrementado,
+      aprovar) continua custando o mesmo que antes — os campos novos não entraram no caminho
 
 ### 1.4 O toggle verde não regrediu
 

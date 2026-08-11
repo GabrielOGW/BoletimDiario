@@ -30,6 +30,7 @@ import { TakeRow } from './TakeRow';
 const TECNICA: { field: string; label: string; placeholder?: string }[] = [
   { field: 'codec', label: 'Formato de gravação', placeholder: 'ProRes 4444' },
   { field: 'resolution', label: 'Resolução', placeholder: '4.6K' },
+  { field: 'aspectRatio', label: 'Aspect ratio', placeholder: '2.39:1' },
   { field: 'fps', label: 'Frame rate', placeholder: '24' },
   { field: 'iso', label: 'ISO / ASA', placeholder: '800' },
   { field: 'shutter', label: 'Obturador', placeholder: '180°' },
@@ -41,8 +42,22 @@ const TECNICA: { field: string; label: string; placeholder?: string }[] = [
 
 const OPTICA: { field: string; label: string; placeholder?: string }[] = [
   { field: 'lens', label: 'Lente(s)', placeholder: 'Cooke S8/i 32mm' },
+  { field: 'focalLength', label: 'Focal', placeholder: '32mm' },
   { field: 'filter', label: 'Filtros', placeholder: 'ND 0.6' },
 ];
+
+/**
+ * VFX fica sozinho e por último.
+ *
+ * Não é configuração de captação: é um recado para a pós ("tracking markers", "green
+ * screen"). Misturá-lo entre ISO e obturador faria o olho de quem preenche em set
+ * atravessar um campo que quase nunca muda.
+ */
+const VFX = {
+  field: 'vfx',
+  label: 'VFX / nota para a pós',
+  placeholder: 'Marcadores no chão',
+};
 
 /** O único campo técnico que não é texto — e o boletim sempre teve (`optica.matteBox`). */
 const MATTE_BOX = 'matteBox';
@@ -207,6 +222,14 @@ export function PlanoCard({
             />
             Matte Box
           </label>
+
+          <TextField
+            label={VFX.label}
+            placeholder={VFX.placeholder}
+            value={String(tecnica[VFX.field] ?? '')}
+            disabled={!canEdit}
+            onChange={(valor) => void alteraTecnica(VFX.field, valor)}
+          />
 
           <TextField
             label="Observações do plano"

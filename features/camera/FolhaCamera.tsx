@@ -208,6 +208,7 @@ export function FolhaCamera({
                   <li key={camera.id}>
                     <span className="font-semibold text-zinc-900">{camera.label}</span>
                     {camera.model ? ` · ${camera.model}` : ''}
+                    {camera.bodySerial ? ` · s/n ${camera.bodySerial}` : ''}
                     {camera.operator ? ` · Op: ${camera.operator}` : ''}
                     {camera.focusPuller ? ` · Foco: ${camera.focusPuller}` : ''}
                     {camera.clapper ? ` · Claquete: ${camera.clapper}` : ''}
@@ -427,6 +428,11 @@ export function FolhaCamera({
                                                       {mudou.length > 0 ? (
                                                         <span className="block text-[10px] font-normal italic text-zinc-700">
                                                           {mudou.join(' · ')}
+                                                        </span>
+                                                      ) : null}
+                                                      {dados?.mediaNotes ? (
+                                                        <span className="block text-[10px] font-normal text-zinc-600">
+                                                          Mídia: {dados.mediaNotes}
                                                         </span>
                                                       ) : null}
                                                     </td>
