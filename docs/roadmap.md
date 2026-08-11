@@ -170,11 +170,14 @@ A fase mais sensível: migrar o módulo que está em uso. **Migração, não red
 > paridade exigida aqui é **de tela**, não só de campo: Cena → Bloco → **Plano** → Take, os
 > mesmos cartões, a mesma ordem de seções, os mesmos gestos, o mesmo toggle verde.
 
-- [ ] `features/camera/` sobre o modelo compartilhado e a superfície local
-- [ ] Paridade **campo a campo** com o editor atual (checklist de
-      [features/camera.md §1](features/camera.md#1-o-que-existe-hoje))
-- [ ] Paridade **de estrutura de tela**: cartões, ordem das seções, gestos e auto-save
-- [ ] A tela mínima de takes da Fase 4 sai de cena quando esta entrar
+- [x] `features/camera/` sobre o modelo compartilhado e a superfície local
+- [x] Paridade **de estrutura de tela**: Cena → Bloco → Plano → Take, cartões colapsáveis,
+      auto-save com debounce, toggle verde "Aprovado pelo diretor" intacto
+- [x] Câmeras cadastradas, técnica e óptica no cartão do Plano, cartão/clip-sync/nota no take
+- [x] Herança entre takes (`inheritCameraFlat`, no domínio e com teste)
+- [ ] Paridade **campo a campo** — conferir o checklist de
+      [features/camera.md §1](features/camera.md#1-o-que-existe-hoje) item a item
+- [ ] Mídia/Suporte (depende de equipamentos, Fase 8)
 - [ ] Novos campos de [features/camera.md §3](features/camera.md#3-organização-dos-campos-10)
 - [ ] `TakeStatus` **preservando** o toggle "Aprovado pelo diretor"
 - [ ] PDF com a mesma qualidade de saída (comparação lado a lado)

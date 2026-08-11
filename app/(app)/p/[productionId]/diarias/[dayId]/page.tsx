@@ -41,23 +41,36 @@ export default async function DiariaPage({
       />
 
       <PageContainer className="flex flex-col gap-4 py-4 pb-8">
-        {/*
-          Rótulo deliberadamente modesto: esta é a superfície mínima da Fase 4, feita para
-          provar a sincronização — não é o módulo de câmera, e chamá-la de "abrir a diária"
-          fez com que fosse lida como tal (ADR-030). Sai de cena na Fase 5.
-        */}
         <Link
-          href={`/p/${productionId}/diarias/${dayId}/takes`}
-          className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 transition hover:bg-surface-hover"
+          href={`/p/${productionId}/diarias/${dayId}/camera`}
+          className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-brand/30 bg-brand-soft px-4 py-3 transition hover:brightness-110"
         >
           <ClapperboardIcon size={20} className="text-brand" />
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-semibold text-zinc-100">
-              Cena · Setup · Take <span className="text-zinc-500">(prévia)</span>
+              Boletim de Câmera
             </span>
             <span className="block text-xs text-zinc-400">
-              Base compartilhada entre os departamentos. O Boletim de Câmera continua como
-              está.
+              Cena · Bloco · Plano · Take — funciona sem rede depois de aberto uma vez
+            </span>
+          </span>
+        </Link>
+
+        {/*
+          A superfície mínima da Fase 4 continua acessível enquanto Som e Continuidade não
+          têm módulo: para eles é a única porta. Rótulo modesto de propósito — ela não é o
+          boletim de ninguém (ADR-030).
+        */}
+        <Link
+          href={`/p/${productionId}/diarias/${dayId}/takes`}
+          className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 transition hover:bg-surface-hover"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium text-zinc-300">
+              Base compartilhada · Cena · Setup · Take
+            </span>
+            <span className="block text-xs text-zinc-500">
+              Enquanto Som e Continuidade não têm módulo próprio
             </span>
           </span>
         </Link>

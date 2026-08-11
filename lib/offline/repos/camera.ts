@@ -12,7 +12,14 @@
 
 import { deriveId } from '@/domain/platform/derive-id';
 import { inheritCameraFlat } from '@/domain/platform/factory';
-import { getDb, type LocalCameraTakeData, type LocalCameraUnit } from '../db';
+import { SYNC_ENTITIES, sameValue, type FieldKind } from '@/lib/contracts/sync';
+import {
+  getDb,
+  getMeta,
+  setMeta,
+  type LocalCameraTakeData,
+  type LocalCameraUnit,
+} from '../db';
 
 import { createEntity, listTakes, patchEntity } from './diaria';
 
@@ -100,10 +107,14 @@ export async function ensureCameraTakeData(input: {
   const existente = await db.cameraTakeData.get(id);
   if (existente && !existente.deletedAt) return id;
 
-  const anteriores = await takeAnterior(input);
+  // Take 1 nasce do rascunho do plano; os seguintes, do take anterior. Nos dois casos o
+  // take "nasce preenchido", que é a diferença entre dois toques e redigitar tudo.
+  const herdado =
+    (await takeAnterior(input)) ??
+    (await getPlanoDraft(input.setupId, input.cameraUnitId));
 
   return createEntity('cameraTakeData', id, {
-    ...(anteriores ?? {}),
+    ...herdado,
     id,
     productionId: input.productionId,
     takeId: input.takeId,
@@ -140,4 +151,98 @@ export async function patchCameraTakeData(
   changes: Record<string, unknown>,
 ): Promise<void> {
   await patchEntity('cameraTakeData', id, changes);
+}
+
+// ---- Os campos técnicos do Plano ----
+
+/**
+ * Editar técnica/óptica no cartão do Plano, do jeito que o boletim sempre fez.
+ *
+ * O valor mora nos takes (ADR-011), mas quem edita está olhando para o **plano**. Então
+ * a mudança acompanha todos os takes que ainda tinham o valor antigo — e **não** toca no
+ * take que alguém ajustou à mão. Isso é o que a pessoa espera: "mudei o ISO do plano"
+ * conserta o plano, sem apagar a exceção que ela mesma criou dois takes atrás.
+ *
+ * Sem take ainda, o valor vai para um rascunho local (ver `savePlanoDraft`): o boletim
+ * permite configurar o plano antes de rodar, e essa possibilidade não pode sumir.
+ */
+export async function patchPlanoTecnica(input: {
+  setupId: string;
+  cameraUnitId: string | null;
+  field: string;
+  valorAnterior: unknown;
+  valorNovo: unknown;
+}): Promise<void> {
+  const db = getDb();
+  const takes = await listTakes([input.setupId]);
+
+  if (takes.length === 0) {
+    await savePlanoDraft(input.setupId, input.cameraUnitId, {
+      [input.field]: input.valorNovo,
+    });
+    return;
+  }
+
+  const kind = (SYNC_ENTITIES.cameraTakeData.fields as Record<string, FieldKind>)[
+    input.field
+  ];
+
+  for (const take of takes) {
+    const id = cameraTakeDataId(take.id, input.cameraUnitId);
+    const dados = await db.cameraTakeData.get(id);
+    if (!dados) continue;
+
+    const atual = (dados as unknown as Record<string, unknown>)[input.field] ?? null;
+    if (!sameValue(kind, atual, input.valorAnterior)) continue;
+
+    await patchCameraTakeData(id, { [input.field]: input.valorNovo });
+  }
+}
+
+/**
+ * Rascunho do plano sem takes.
+ *
+ * Vive em `meta` e **não sincroniza**, de propósito: é rascunho de interface, não dado de
+ * produção. No instante em que o take 1 nasce, ele vira dado de verdade e o rascunho
+ * some. Guardá-lo em `meta` em vez de em estado de componente é o que faz o valor
+ * sobreviver a fechar o app antes de rodar o primeiro take.
+ */
+const draftKey = (setupId: string, cameraUnitId: string | null) =>
+  `planoDraft:${setupId}:${cameraUnitId ?? ''}`;
+
+export async function getPlanoDraft(
+  setupId: string,
+  cameraUnitId: string | null,
+): Promise<Record<string, unknown>> {
+  return getMeta<Record<string, unknown>>(draftKey(setupId, cameraUnitId), {});
+}
+
+export async function savePlanoDraft(
+  setupId: string,
+  cameraUnitId: string | null,
+  changes: Record<string, unknown>,
+): Promise<void> {
+  const atual = await getPlanoDraft(setupId, cameraUnitId);
+  await setMeta(draftKey(setupId, cameraUnitId), { ...atual, ...changes });
+}
+
+/**
+ * O valor que o cartão do Plano mostra.
+ *
+ * É o do último take — o mesmo que o próximo take herdaria. Sem takes, é o rascunho.
+ */
+export async function planoTecnica(
+  setupId: string,
+  cameraUnitId: string | null,
+): Promise<Record<string, unknown>> {
+  const takes = await listTakes([setupId]);
+  const ultimo = takes[takes.length - 1];
+
+  if (!ultimo) return getPlanoDraft(setupId, cameraUnitId);
+
+  const dados = await getDb().cameraTakeData.get(
+    cameraTakeDataId(ultimo.id, cameraUnitId),
+  );
+
+  return (dados as unknown as Record<string, unknown>) ?? {};
 }

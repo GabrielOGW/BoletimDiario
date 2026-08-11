@@ -14,10 +14,16 @@ E, desde `2026-08-10`, a regra tem uma segunda metade
 > gestos. `Setup` é o nome do conceito no modelo; na tela de câmera ele se chama **Plano**,
 > como sempre se chamou.
 
-> ⚠️ **A tela `/p/[id]/diarias/[dayId]/takes` não é o módulo de câmera.** Ela é a superfície
-> mínima da Fase 4, criada para provar o sync com o menor consumidor possível, e é
-> **provisória**. Quem quiser o boletim usa o boletim; a Fase 5 entrega o módulo real e essa
-> tela sai de cena.
+> **Status (Fase 5, primeira metade): o módulo existe** em
+> `/p/[id]/diarias/[dayId]/camera`, com Cena → Bloco → Plano → Take, câmeras cadastradas,
+> técnica e óptica no cartão do Plano, cartão/clip-sync/nota no take e o toggle verde
+> intacto. Código em `features/camera/` e `lib/offline/repos/camera.ts`.
+>
+> A tela `/takes` continua existindo enquanto Som e Continuidade não têm módulo — para eles
+> é a única porta. Ela nunca foi o boletim de ninguém.
+>
+> **Falta para fechar a fase:** PDF/impressão, mover as rotas atuais para `/legado` e a
+> importação opcional dos boletins locais.
 
 ---
 
@@ -65,6 +71,35 @@ Implementado e testado em
 | `equipeCamera[]`                                               | `ProductionMember` (departamento `CAMERA`) — sem conta enquanto não convidado                                                                 |
 | `cenasDoDia`                                                   | **Derivado**, não migrado — já é calculável (`computeStats`)                                                                                  |
 | `observacoesGerais`                                            | `ShootingDay.notes`                                                                                                                           |
+
+### Como a técnica do Plano se comporta na tela
+
+Decisão do proprietário, `2026-08-10`. Os campos técnicos continuam **no cartão do Plano**,
+como sempre estiveram, mas o valor mora nos takes (ADR-011). Editar um campo ali **acompanha
+todos os takes que ainda tinham o valor anterior** e não toca no take que alguém ajustou à
+mão:
+
+```
+PLANO 3 · 35mm · T2.8 · ISO 800
+  Take 1  [ISO 800]     Take 2  [ISO 800]     Take 3  [ISO 1600] ← ajustado à mão
+
+muda o ISO do plano para 400
+  Take 1 → 400          Take 2 → 400          Take 3 → 1600 (intocado)
+```
+
+É o que a pessoa quer dizer com "mudei o ISO do plano": conserta o plano sem apagar a exceção
+que ela mesma criou dois takes atrás. Regra em `patchPlanoTecnica`, não no componente.
+
+Plano ainda sem take guarda os valores num **rascunho local** (`meta`, sem sincronizar) que
+vira dado de verdade quando o take 1 nasce — o boletim sempre permitiu configurar o plano
+antes de rodar, e essa possibilidade não podia sumir.
+
+### Produção, Horários e Equipe
+
+Decisão do proprietário, `2026-08-10`: aparecem no boletim, no mesmo lugar de sempre, **em
+somente leitura**, com link para editar na sala. São dados de servidor, fora da fronteira
+offline (ADR-016); editá-los aqui exigiria rede no meio da diária, e nada na diária espera
+rede.
 
 ### Duas decisões que valem explicação
 
