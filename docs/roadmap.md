@@ -229,8 +229,15 @@ nada — e o boletim impresso sai igual ou melhor.
 > ganha `tc_jam_at`, `user_bits`, `media_copies` e `media_verified`.
 >
 > Com isso **MOS existe** — a lacuna que o levantamento chamou de mais séria: dizer que o
-> take existe e o som não. Falta `sync` (as entidades de som no protocolo) e depois
-> `modulo` (`features/sound/`), nessa ordem.
+> take existe e o som não.
+>
+> **A passagem de `sync` também está feita:** `soundDayConfig`, `soundTakeData` e
+> `soundTakeTrack` entraram no registro, no Dexie (versão 3) e no snapshot de fixação; o
+> repositório da fronteira é `lib/offline/repos/som.ts`. Protocolo em **3**, e o motor
+> passou a ignorar tipo desconhecido — com isso o próximo departamento entra sem
+> incrementar nada.
+>
+> Falta o `modulo` (`features/sound/`) — a tela.
 
 Independentes entre si; podem correr em paralelo depois da Fase 5.
 

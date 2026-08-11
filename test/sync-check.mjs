@@ -29,7 +29,9 @@ const { pushOperations } = await import('@/lib/db/queries/sync');
 const { pullChanges, loadSnapshot } = await import('@/lib/db/queries/sync-read');
 const { deriveId } = await import('@/domain/platform/derive-id');
 const { coalesceFields } = await import('@/lib/offline/outbox');
-const { normalizeValue, SYNC_ENTITIES } = await import('@/lib/contracts/sync');
+const { normalizeValue, SYNC_ENTITIES, SYNC_ENTITY_TYPES, ENTITY_BY_TABLE } = await import(
+  '@/lib/contracts/sync'
+);
 
 let passed = 0;
 let failed = 0;
@@ -94,10 +96,33 @@ async function run() {
   );
 
   check(
-    'o registro cobre o compartilhado e o módulo de câmera',
+    'o registro cobre o compartilhado, a câmera e o som',
     Object.keys(SYNC_ENTITIES).join(',') ===
-      'scene,setup,take,cameraUnit,cameraTakeData',
+      'scene,setup,take,cameraUnit,cameraTakeData,soundDayConfig,soundTakeData,soundTakeTrack',
   );
+
+  // Toda tabela do registro tem de existir de verdade: um nome errado aqui não quebra
+  // nada no build e some do pull em silêncio, que é o pior sintoma possível.
+  for (const [tipo, entidade] of Object.entries(SYNC_ENTITIES)) {
+    const [linha] = await sql`
+      select count(*)::int as total from information_schema.tables
+       where table_name = ${entidade.table}
+    `;
+    check(`a tabela de ${tipo} existe (${entidade.table})`, linha.total === 1);
+  }
+
+  // E toda coluna declarada também. `to_column` do contrato precisa bater com o banco.
+  for (const [tipo, entidade] of Object.entries(SYNC_ENTITIES)) {
+    const colunas = Object.keys(entidade.fields).map((campo) =>
+      campo.replace(/[A-Z]/g, (letra) => `_${letra.toLowerCase()}`),
+    );
+    const [linha] = await sql`
+      select count(*)::int as total from information_schema.columns
+       where table_name = ${entidade.table}
+         and column_name = any(${colunas})
+    `;
+    check(`todo campo de ${tipo} tem coluna`, linha.total === colunas.length);
+  }
 
   check(
     'booleano não some: `false` é valor, não ausência',
@@ -393,12 +418,21 @@ async function run() {
   // A produção, os membros e a diária também escrevem no log e **não** são entidades do
   // protocolo: são editados fora da fronteira. O cursor tem que avançar por cima delas,
   // senão a primeira escrita de sala travaria o pull de todo mundo para sempre.
+  // A verificação olha para o log em vez de contar itens na página: contar dependia de
+  // quantas escritas de sala caíram nos dez primeiros `seq`, o que varia — e um teste que
+  // varia é um teste que um dia falha sozinho e ensina a ignorar a suíte.
+  const tabelasNoLog = await sql`
+    select distinct entity_type from sync_log
+     where production_id = ${productionId} and seq <= ${primeiraPagina.cursor}
+  `;
+  const foraDoProtocolo = tabelasNoLog
+    .map((linha) => linha.entity_type)
+    .filter((tabela) => !ENTITY_BY_TABLE[tabela]);
+
   check(
     'entidade fora do protocolo é ignorada sem travar o cursor',
-    primeiraPagina.changes.length < 10 &&
-      primeiraPagina.changes.every((change) =>
-        ['scene', 'setup', 'take'].includes(change.entityType),
-      ),
+    foraDoProtocolo.length > 0 &&
+      primeiraPagina.changes.every((change) => SYNC_ENTITY_TYPES.includes(change.entityType)),
   );
 
   const repetida = await pullChanges({ productionId, since: 0, limit: 10 });

@@ -26,6 +26,7 @@ import {
   PINS_KEY,
   cursorKey,
   getDb,
+  tableFor,
   getMeta,
   setMeta,
   type LocalRecord,
@@ -38,17 +39,9 @@ import { enqueue, type Delta } from '../outbox';
 
 type AnyRecord = LocalRecord & Record<string, unknown>;
 
-function tableOf(entityType: SyncEntityType): Table<AnyRecord, string> {
-  const db = getDb();
-  const tables = {
-    scene: db.scenes,
-    setup: db.setups,
-    take: db.takes,
-    cameraUnit: db.cameraUnits,
-    cameraTakeData: db.cameraTakeData,
-  } as const;
-  return tables[entityType] as unknown as Table<AnyRecord, string>;
-}
+/** A tradução entidade → tabela mora em `../db`, num lugar só (ver `tableFor`). */
+const tableOf = (entityType: SyncEntityType): Table<AnyRecord, string> =>
+  tableFor(entityType) as unknown as Table<AnyRecord, string>;
 
 // ---- Fixação (pin) ----
 
@@ -73,6 +66,9 @@ export async function pinShootingDay(snapshot: SnapshotResponse): Promise<void> 
       db.takes,
       db.cameraUnits,
       db.cameraTakeData,
+      db.soundDayConfig,
+      db.soundTakeData,
+      db.soundTakeTracks,
       db.refs,
       db.meta,
     ],
@@ -90,6 +86,13 @@ export async function pinShootingDay(snapshot: SnapshotResponse): Promise<void> 
       await mergeRemote('take', snapshot.takes, snapshot.productionId);
       await mergeRemote('cameraUnit', snapshot.cameraUnits, snapshot.productionId);
       await mergeRemote('cameraTakeData', snapshot.cameraTakeData, snapshot.productionId);
+      await mergeRemote('soundDayConfig', snapshot.soundDayConfig, snapshot.productionId);
+      await mergeRemote('soundTakeData', snapshot.soundTakeData, snapshot.productionId);
+      await mergeRemote(
+        'soundTakeTrack',
+        snapshot.soundTakeTracks,
+        snapshot.productionId,
+      );
 
       await db.refs.put({
         key: `members:${snapshot.productionId}`,

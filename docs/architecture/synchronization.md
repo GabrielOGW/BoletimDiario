@@ -30,10 +30,14 @@ O escopo do que sincroniza é a **superfície de diária** — ver
 > compare-and-set vive em [`lib/db/queries/sync.ts`](../../lib/db/queries/sync.ts); a fila,
 > o cursor e a cadência em [`lib/sync/engine.ts`](../../lib/sync/engine.ts).
 >
-> Os `*TakeData` entram com os módulos (Fases 5–7): acrescentar um é acrescentar uma linha
-> em `SYNC_ENTITIES`, não um caminho de código novo.
+> **Câmera entrou na Fase 5** (`cameraUnit`, `cameraTakeData`) e **Som na Fase 6**
+> (`soundDayConfig`, `soundTakeData`, `soundTakeTrack`) — cada um como uma entrada em
+> `SYNC_ENTITIES` e uma tabela no Dexie, sem caminho de código novo. A tradução entidade →
+> tabela local vive num lugar só (`tableFor`, em `lib/offline/db.ts`): eram duas cópias, e
+> esquecer a segunda dava um sintoma cruel — o dado grava, entra na fila, e o pull nunca o
+> aplica de volta.
 >
-> **Três limites conscientes**, todos verificados por `npm run test:sync` (25 checks):
+> **Três limites conscientes**, todos verificados por `npm run test:sync` (45 checks):
 >
 > 1. `atualPor` no conflito é quem escreveu por último no **registro**, não no campo —
 >    `updated_by` é uma coluna só. Autoria por campo dobraria a escrita para melhorar um
@@ -65,6 +69,24 @@ GET  /api/sync/snapshot ?shootingDayId=…            primeira abertura (fixaç�
 POST /api/sync/push     { protocol, productionId, operations: [ … ] }
 GET  /api/sync/pull     ?productionId=…&since=<seq>&limit=500
 ```
+
+### Versões
+
+| Nº  | Quando | O que mudou                                          |
+| --- | ------ | ---------------------------------------------------- |
+| 1   | Fase 4 | Cena, setup e take                                   |
+| 2   | Fase 5 | `cameraUnit` e `cameraTakeData`                      |
+| 3   | Fase 6 | `soundDayConfig`, `soundTakeData` e `soundTakeTrack` |
+
+**Campo novo não incrementa; entidade nova incrementava.** Um campo que o cliente antigo
+não conhece é simplesmente ignorado por `rowFromWire`, que itera a lista **do cliente** —
+foi o caso de `takes.kind` e de `ngReason`, que entraram sem tocar no número. Uma
+**entidade** nova era outra história: o `pull` do cliente antigo procurava a tabela local
+do tipo que chegou e não achava.
+
+Desde a Fase 6 o motor **ignora tipo desconhecido e avança o cursor**, que é a mesma
+tolerância que o servidor já tinha no `pullChanges`. Com ela, o próximo departamento entra
+sem incrementar nada. O `3` cobre quem foi instalado antes de a tolerância existir.
 
 Guardas de toda rota, na ordem — implementados em
 [`app/api/sync/guard.ts`](../../app/api/sync/guard.ts):
