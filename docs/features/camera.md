@@ -25,9 +25,9 @@ E, desde `2026-08-10`, a regra tem uma segunda metade
 > A tela `/takes` continua existindo enquanto Som e Continuidade não têm módulo — para eles
 > é a única porta. Ela nunca foi o boletim de ninguém.
 >
-> **Falta para fechar a fase:** `TakeStatus` ao lado do toggle verde (§4) e os campos novos
-> de §3. As quatro lacunas de paridade que sobraram estão listadas em §1, cada uma com
-> dono. Mídia/Suporte depende da Fase 8.
+> **Falta para fechar a fase:** só Mídia/Suporte, que depende do catálogo de equipamentos
+> da Fase 8. As quatro lacunas de paridade que sobraram estão listadas em §1, cada uma com
+> dono declarado.
 
 ---
 
@@ -187,6 +187,33 @@ A UI atual já cobre quase tudo. Campos **novos** marcados com ➕:
 `codec` e `formatoGravacao` são campos distintos e ambos existem no modelo novo — hoje o app
 tem só `formatoGravacao`, que costuma receber os dois valores misturados. A migração leva o
 valor atual para `codec` e deixa `formatoGravacao` livre, sem perder nada.
+
+### Como ficou (Fase 5)
+
+Os campos novos que **já tinham coluna** entraram, cada um onde pertence:
+
+| Campo                          | Onde ficou                                           |
+| ------------------------------ | ---------------------------------------------------- |
+| `focalLength`                  | Óptica, ao lado da lente                             |
+| `aspectRatio`                  | Técnica, depois da resolução                         |
+| `vfx`                          | Sozinho e por último no cartão do Plano — ver abaixo |
+| `bodySerial`                   | Cartão da câmera; sai impresso como `s/n`            |
+| `roll`, `volume`, `mediaNotes` | Take, numa área **"Mídia" fechada** — ver abaixo     |
+
+**VFX fica sozinho e por último** porque não é configuração de captação: é um recado para a
+pós ("marcadores no chão", "green screen"). Entre o ISO e o obturador, ele faria o olho de
+quem preenche em set atravessar um campo que quase nunca muda.
+
+**Roll, volume e observações de mídia ficam fechados.** Pertencem ao take, mas quase nunca
+mudam de um para o outro — herdam do anterior — e o **teto de toques por take é critério de
+conclusão do módulo**, não recomendação. Quem precisa deles abre uma vez; quem não precisa
+nem os vê. O rótulo fechado já mostra o roll, então o valor é conferível sem abrir.
+
+Os demais itens de §3 não são campo de câmera: `2º AC` é `ProductionMember` na sala,
+`localização` é `ShootingDay.location` (e `Scene.location`), `observações para pós` são
+`vfx` e `mediaNotes`, e **fotografia de referência não existe**
+([ADR-022](../decisions.md#adr-022--sem-fotografias-na-v1)). Falta apenas `Plano.tipo`
+(`Setup.kind`), que não tem coluna — ver §1.
 
 ---
 

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/Badge';
-import { CheckCircleIcon, TrashIcon } from '@/components/ui/icons';
+import { CheckCircleIcon, ChevronDownIcon, TrashIcon } from '@/components/ui/icons';
 import { TextField } from '@/components/ui/TextField';
 import { IconButton } from '@/components/ui/IconButton';
 import type { LocalCameraTakeData, LocalTake } from '@/lib/offline/db';
@@ -128,6 +128,12 @@ export function TakeRow({
         />
       </div>
 
+      {/* Roll, volume e observações de mídia ficam **fechados**. Eles pertencem ao take,
+          mas quase nunca mudam de um para o outro — herdam do anterior — e o teto de
+          toques por take é critério de conclusão do módulo, não recomendação. Quem
+          precisa deles abre uma vez; quem não precisa nem os vê. */}
+      <MidiaDoTake dados={dados} canEdit={canEdit} onAltera={altera} />
+
       <button
         type="button"
         role="switch"
@@ -184,6 +190,69 @@ const JULGAMENTOS: { valor: string; rotulo: string }[] = [
   { valor: 'NG', rotulo: 'NG' },
   { valor: 'PARTIAL', rotulo: 'Parcial' },
 ];
+
+/**
+ * Roll, volume e observações de mídia — os campos que o modelo novo trouxe (§3).
+ *
+ * Fechado por padrão, e o rótulo já resume o que há dentro: quem tem roll preenchido vê
+ * "R01" no cabeçalho sem abrir.
+ */
+function MidiaDoTake({
+  dados,
+  canEdit,
+  onAltera,
+}: {
+  dados?: LocalCameraTakeData;
+  canEdit: boolean;
+  onAltera: (changes: Record<string, unknown>) => Promise<void>;
+}) {
+  const [aberto, setAberto] = useState(false);
+
+  const resumo = [dados?.roll, dados?.volume].filter(Boolean).join(' · ');
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        aria-expanded={aberto}
+        onClick={() => setAberto((valor) => !valor)}
+        className="flex min-h-[32px] w-full items-center gap-2 text-xs text-zinc-500 hover:text-zinc-300"
+      >
+        <ChevronDownIcon size={14} className={cn('transition', aberto && 'rotate-180')} />
+        Mídia
+        {resumo ? <span className="font-mono text-zinc-400">{resumo}</span> : null}
+      </button>
+
+      {aberto ? (
+        <div className="mt-2 flex flex-col gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <CampoComDebounce
+              label="Roll"
+              value={dados?.roll ?? ''}
+              disabled={!canEdit}
+              placeholder="R01"
+              onCommit={(valor) => void onAltera({ roll: valor || null })}
+            />
+            <CampoComDebounce
+              label="Volume"
+              value={dados?.volume ?? ''}
+              disabled={!canEdit}
+              placeholder="VOL_A"
+              onCommit={(valor) => void onAltera({ volume: valor || null })}
+            />
+          </div>
+          <CampoComDebounce
+            label="Observações de mídia"
+            value={dados?.mediaNotes ?? ''}
+            disabled={!canEdit}
+            placeholder="Cartão devolvido ao DIT às 14h"
+            onCommit={(valor) => void onAltera({ mediaNotes: valor || null })}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 /**
  * Campo de texto com auto-save de 500 ms e flush no desmonte.

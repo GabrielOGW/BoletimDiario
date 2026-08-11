@@ -330,6 +330,16 @@ function CamerasSection({
               />
             </div>
 
+            <TextField
+              label="Nº de série do corpo"
+              value={camera.bodySerial ?? ''}
+              disabled={!canEdit}
+              placeholder="ALEXA35-0421"
+              onChange={(valor) =>
+                void patchCameraUnit(camera.id, { bodySerial: valor }).then(syncNow)
+              }
+            />
+
             <div className="grid gap-3 sm:grid-cols-3">
               <TextField
                 label="Operador(a)"

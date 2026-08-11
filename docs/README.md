@@ -65,10 +65,12 @@ Onde um documento antigo conflitar com o plano v2, **o plano v2 vence**.
 | **Fase 5** — Câmera na plataforma                  | ⏳ em andamento                  |
 | Fases 6–11                                         | 📋 planejadas                    |
 
-A Fase 5 já entregou o módulo (`features/camera/`), a folha A4 impressa e a mudança das rotas
-do boletim local para `/legado`. Faltam a importação opcional dos boletins locais, o
-`TakeStatus` ao lado do toggle verde e a conferência campo a campo — Mídia/Suporte depende de
-equipamentos e fica para a Fase 8.
+A Fase 5 entregou o módulo (`features/camera/`), a folha A4 impressa, a mudança das rotas do
+boletim local para `/legado`, a importação opcional desses boletins, o `TakeStatus` ao lado
+do toggle verde, os campos novos de [features/camera.md §3](features/camera.md) e a
+conferência campo a campo. **Resta só Mídia/Suporte**, que depende do catálogo de
+equipamentos da Fase 8. As quatro lacunas de paridade que sobraram estão listadas em
+[features/camera.md §1](features/camera.md), cada uma com dono declarado.
 
 O código da plataforma está em [`domain/platform/`](../domain/platform) (modelo compartilhado,
 regras de set e o mapeador do `Boletim` v2), [`lib/db/`](../lib/db) e [`lib/auth/`](../lib/auth)

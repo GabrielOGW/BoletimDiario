@@ -160,9 +160,16 @@ de câmera. Ela é substituída pelo módulo real na Fase 5.
 
 ---
 
-## 📋 Fase 5 — Câmera na plataforma
+## ⏳ Fase 5 — Câmera na plataforma
 
 A fase mais sensível: migrar o módulo que está em uso. **Migração, não redesenho.**
+
+> **`2026-08-11`:** tudo entregue **menos Mídia/Suporte**, que depende do catálogo de
+> equipamentos da Fase 8 — não é dívida desta fase, é ordem de dependência. Quatro lacunas
+> de paridade ficaram com dono declarado em
+> [features/camera.md §1](features/camera.md#o-que-falta-e-por-quê): `Plano.tipo` e a
+> câmera do plano pedem uma passagem da skill `banco`; autocomplete e duplicação são
+> módulos novos, não adaptações.
 
 > **Reforçado em `2026-08-10`**, depois do teste da Fase 4 em set: a superfície mínima de
 > takes foi lida como "a área de câmera mudou". Ela não é o módulo de câmera e é provisória
@@ -182,7 +189,10 @@ A fase mais sensível: migrar o módulo que está em uso. **Migração, não red
       ficaram com dono declarado — `Plano.tipo` e a câmera do plano precisam de uma
       passagem de `banco`; autocomplete e duplicação são módulos novos
 - [ ] Mídia/Suporte (depende de equipamentos, Fase 8)
-- [ ] Novos campos de [features/camera.md §3](features/camera.md#3-organização-dos-campos-10)
+- [x] Novos campos de [features/camera.md §3](features/camera.md#3-organização-dos-campos-10)
+      — focal, aspect ratio, VFX, nº de série do corpo, roll, volume e observações de
+      mídia. Falta só `Plano.tipo`, que não tem coluna; os demais itens de §3 não são
+      campo de câmera (§3, "Como ficou")
 - [x] `TakeStatus` **preservando** o toggle "Aprovado pelo diretor" — o toggle passou a
       gravar `approved` **e** `takes.status = CIRCLE` (ADR-010), e ganhou ao lado uma
       fileira secundária com o julgamento da câmera
