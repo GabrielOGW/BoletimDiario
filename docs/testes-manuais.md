@@ -121,6 +121,22 @@ O que a suíte cobre é a regra; o que falta é o caminho pela tela, com duas co
 - [ ] Aceitar o aviso troca de versão e mantém o que estava no banco local
 - [ ] Um boletim local antigo (`bdc:boletins:v1`) continua abrindo depois da atualização
 
+### 4.1 O atalho antigo do aparelho, depois da mudança para `/legado`
+
+O teste que a mudança de rotas ([ADR-032](decisions.md#adr-032--legado-recebe-as-rotas-do-boletim-mas--continua-sendo-o-boletim))
+pede. O risco que ele cobre é a resposta redirecionada em cache — por isso a mudança usa
+`rewrite` e não `redirect`, mas quem confirma é o aparelho.
+
+1. Com a **versão anterior** instalada, crie um atalho na tela inicial para um boletim
+   (`/editar?id=…`) e visite `/novo` e `/visualizar?id=…` pelo menos uma vez, online.
+2. Publique esta versão e aceite o aviso de atualização.
+3. **Modo avião.**
+
+- [ ] O atalho `/editar?id=…` abre o boletim, offline, com a URL antiga intacta
+- [ ] `/novo` e `/visualizar?id=…` abrem offline
+- [ ] O ícone do PWA (`start_url` = `/`) abre a lista de boletins, como antes
+- [ ] `/legado` e `/legado/editar?id=…` também abrem offline
+
 ---
 
 ## Falhas encontradas
