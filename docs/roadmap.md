@@ -1,6 +1,6 @@
 # Roadmap
 
-Dez fases. Cada uma é **entregável e desligável por feature flag** — nenhuma deixa o app num
+Onze fases. Cada uma é **entregável e desligável por feature flag** — nenhuma deixa o app num
 estado intermediário quebrado, e nenhuma pode regredir o Boletim de Câmera.
 
 > **Reordenado na rodada 2.** A mudança de fundo: **a sala vem antes do sync, e o sync vem antes
@@ -230,6 +230,32 @@ existir é teste que nunca é escrito.
 - [ ] Rate limit, sessões por dispositivo, avaliação de RLS
 - [ ] Performance com produção grande (40 diárias, 2000 takes)
 - [ ] Auditoria de PWA, acessibilidade e UX mobile
+
+---
+
+## 📋 Fase 11 — Caminho curto até a anotação
+
+Hoje, do login até marcar um take: `produções → produção → diárias → diária → anotação`.
+**Quatro toques**, todo dia, para chegar no único lugar onde o trabalho acontece. Em set isso
+não é incômodo de UX: é o motivo pelo qual alguém volta para o caderno.
+
+A fase é deliberadamente tardia porque cada atalho depende de saber **qual** é a diária ativa —
+e isso só é confiável depois que produções, diárias e sync existem. Atalho construído cedo
+adivinha; construído aqui, ele sabe.
+
+- [ ] **Diária de hoje é o destino padrão.** Havendo uma única produção ativa com diária para
+      hoje, `/` e `/producoes` levam direto à anotação. Um toque.
+- [ ] **"Continuar de onde parei"** — a última diária aberta, com o departamento certo já
+      selecionado, mesmo sem rede
+- [ ] **Atalhos do PWA** (`shortcuts` no manifesto): "Diária de hoje" e "Última diária" no
+      menu longo do ícone, sem abrir o app antes
+- [ ] **Fixação automática** da diária de hoje e de amanhã em background — a pendência
+      registrada na Fase 4; sem ela o atalho leva a uma tela que precisa de rede
+- [ ] **Barra de diária ativa** persistente na sala, para voltar de qualquer tela
+- [ ] Medir: contar os toques antes e depois, e registrar o número no fim da fase
+
+**Pronta quando:** um assistente que abre o app em locação chega à tela de anotação em **um
+toque**, offline, sem passar por nenhuma lista.
 
 ---
 

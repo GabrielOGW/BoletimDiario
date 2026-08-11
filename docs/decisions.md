@@ -604,3 +604,35 @@ Som e Continuidade a usam como base — para eles não há "como era antes" a pr
 `TakeKind` (ADR-029) e os campos novos de [features/camera.md §3](features/camera.md#3-organização-dos-campos-10)
 continuam entrando. A regra é sobre **o que o usuário vê e os dedos fazem**, não sobre o que o
 banco guarda.
+
+---
+
+### ADR-031 · Departamento sem módulo entra para gestão, não para anotação
+
+`2026-08-10` · **Aceita** · complementa [ADR-016](#adr-016--fronteira-offline-explícita) e a matriz de [permissions.md §2](architecture/permissions.md#2-departamentos)
+
+`Department` tem onze valores; três têm módulo (`CAMERA`, `SOUND`, `CONTINUITY`). Um membro de
+Direção, Produção ou Elétrica entra na sala legitimamente — para criar diária, administrar
+equipe, acompanhar o dia — mas não tem **nada** para anotar.
+
+A matriz de permissões diz que dado compartilhado (`scenes`, `setups`, `takes`) é gravável por
+qualquer `MEMBER`+, independentemente do departamento. Levada ao pé da letra, ela abriria a
+tela de anotação para quem não tem o que anotar: um formulário vazio, num aplicativo que se
+propõe a ser mais rápido que um caderno.
+
+**Decisão:** a superfície de anotação é **somente leitura** para quem não tem nenhum
+departamento ativo, com o motivo dito na tela — _"cadastrado apenas para gestão; ainda não é
+possível fazer anotações do seu departamento no app"_. Vale para qualquer papel, `OWNER`
+inclusive.
+
+**Por que não abrir exceção para `ADMIN`/`OWNER`:** já existe o caminho certo para isso.
+`production_member_departments` permite acrescentar `CAMERA` a quem precisa corrigir dado de
+câmera — explícito, visível na tela de equipe, e reversível. Uma exceção por papel seria
+invisível e transformaria "sou dono" em "posso preencher o boletim dos outros".
+
+**O que isto não restringe:** leitura, que continua livre para todo membro, sempre — é a razão
+de a plataforma existir. Gestão da sala, diárias, equipamentos e relatórios também não são
+afetados.
+
+**Consequência quando um módulo novo nascer:** basta entrar em `ACTIVE_DEPARTMENTS`. A tela
+deixa de ser somente leitura para aquele departamento sem nenhuma outra mudança.

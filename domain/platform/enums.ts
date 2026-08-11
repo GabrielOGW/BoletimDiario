@@ -38,6 +38,17 @@ export const ACTIVE_DEPARTMENTS: readonly Department[] = [
   'CONTINUITY',
 ];
 
+/**
+ * O membro tem algum departamento com módulo para preencher?
+ *
+ * Quem não tem — direção, produção, cliente — está na sala para **gestão**: cria diária,
+ * administra equipe, lê tudo. Mostrar a ele uma tela de anotação vazia seria oferecer um
+ * trabalho que não existe (ADR-031). Ler continua livre, sempre: é o produto.
+ */
+export function hasActiveDepartment(departments: readonly Department[]): boolean {
+  return departments.some((department) => ACTIVE_DEPARTMENTS.includes(department));
+}
+
 // ---- Papel na sala (NÃO confundir com departamento) ----
 
 export const MEMBER_ROLES = ['OWNER', 'ADMIN', 'MEMBER', 'VIEWER'] as const;

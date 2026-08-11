@@ -42,10 +42,13 @@ export function DiariaSurface({
   productionId,
   shootingDayId,
   canEdit,
+  podeAnotar,
 }: {
   productionId: string;
   shootingDayId: string;
   canEdit: boolean;
+  /** Falso para quem não é de Câmera, Som ou Continuidade — ADR-031. */
+  podeAnotar: boolean;
 }) {
   const [fixacao, setFixacao] = useState<'CARREGANDO' | 'PRONTA' | 'SEM_REDE'>(
     'CARREGANDO',
@@ -72,6 +75,10 @@ export function DiariaSurface({
 
     return parar;
   }, [productionId, shootingDayId]);
+
+  // Sem departamento com módulo não há o que anotar, então a tela é de leitura —
+  // independentemente do papel na sala (ADR-031).
+  const editavel = canEdit && podeAnotar;
 
   const cenas = useLiveQuery(() => listScenes(productionId), [productionId], []);
   const setups = useLiveQuery(() => listSetups(shootingDayId), [shootingDayId], []);
@@ -104,17 +111,25 @@ export function DiariaSurface({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="rounded-xl border border-line bg-surface px-3.5 py-2.5 text-xs leading-relaxed text-zinc-500">
-        Base compartilhada entre Câmera, Som e Continuidade — ainda em construção. O{' '}
-        <a href="/" className="text-zinc-300 underline underline-offset-2">
-          Boletim de Câmera
-        </a>{' '}
-        continua funcionando exatamente como antes.
-      </p>
+      {podeAnotar ? (
+        <p className="rounded-xl border border-line bg-surface px-3.5 py-2.5 text-xs leading-relaxed text-zinc-500">
+          Base compartilhada entre Câmera, Som e Continuidade — ainda em construção. O{' '}
+          <a href="/" className="text-zinc-300 underline underline-offset-2">
+            Boletim de Câmera
+          </a>{' '}
+          continua funcionando exatamente como antes.
+        </p>
+      ) : (
+        <p className="rounded-xl border border-brand/30 bg-brand-soft px-3.5 py-3 text-sm leading-relaxed text-zinc-200">
+          Você está cadastrado apenas para gestão. Ainda não é possível fazer anotações do
+          seu departamento no app — mas você continua vendo tudo que Câmera, Som e
+          Continuidade registram.
+        </p>
+      )}
 
       <ConflictList productionId={productionId} />
 
-      {canEdit ? (
+      {editavel ? (
         <NovoSetup
           productionId={productionId}
           shootingDayId={shootingDayId}
@@ -131,7 +146,7 @@ export function DiariaSurface({
           icon={<ClapperboardIcon size={40} />}
           title="Nenhum setup nesta diária"
           description={
-            canEdit
+            editavel
               ? 'Crie o primeiro setup para começar a marcar takes.'
               : 'Você tem acesso de leitura a esta diária.'
           }
@@ -148,7 +163,7 @@ export function DiariaSurface({
             title={`${cena ? `Cena ${cena.number}${cena.block ?? ''} · ` : ''}Setup ${setup.code}`}
             summary={`${doSetup.length} take(s)`}
             action={
-              canEdit ? (
+              editavel ? (
                 <Button
                   size="sm"
                   variant="primary"
@@ -172,7 +187,7 @@ export function DiariaSurface({
             ) : (
               <ul className="flex flex-col gap-3">
                 {doSetup.map((take) => (
-                  <TakeRow key={take.id} take={take} canEdit={canEdit} />
+                  <TakeRow key={take.id} take={take} canEdit={editavel} />
                 ))}
               </ul>
             )}

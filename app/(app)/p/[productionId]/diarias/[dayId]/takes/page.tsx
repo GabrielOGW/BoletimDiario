@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { AppHeader } from '@/components/layout/AppHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
-import { roleAtLeast } from '@/domain/platform/enums';
+import { hasActiveDepartment, roleAtLeast } from '@/domain/platform/enums';
 import { requireMember } from '@/lib/auth/guards';
 import { uuidSchema } from '@/lib/contracts';
 import { getShootingDay } from '@/lib/db/queries/shooting-days';
@@ -53,6 +53,7 @@ export default async function TakesPage({
           productionId={productionId}
           shootingDayId={dayId}
           canEdit={roleAtLeast(membership.role, 'MEMBER')}
+          podeAnotar={hasActiveDepartment(membership.departments)}
         />
       </PageContainer>
     </>

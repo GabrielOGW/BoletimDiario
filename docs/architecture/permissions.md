@@ -81,6 +81,17 @@ Mapeamento departamento → tabelas graváveis:
 Um membro pode ter departamentos adicionais em `production_member_departments`; a checagem
 considera o conjunto.
 
+### Departamento sem módulo
+
+Dos onze departamentos, três têm módulo. Quem não tem nenhum departamento ativo — Direção,
+Produção, Elétrica, cliente — entra na sala **para gestão**: cria diária, administra equipe,
+lê tudo. A tela de anotação é somente leitura para ele, com o motivo dito na tela
+([ADR-031](../decisions.md#adr-031--departamento-sem-módulo-entra-para-gestão-não-para-anotação)).
+
+Vale para qualquer papel, `OWNER` inclusive: quem precisa mexer em dado de câmera acrescenta
+`CAMERA` aos próprios departamentos, o que é explícito e visível — não herda o direito por ser
+dono da produção.
+
 ---
 
 ## 3. Aplicação
