@@ -14,6 +14,7 @@
 
 import {
   SYNC_PROTOCOL,
+  rowFromWire,
   type PullResponse,
   type PushResponse,
   type SnapshotResponse,
@@ -295,7 +296,13 @@ async function registraConflitos(
 
 function tabela(entityType: SyncEntityType) {
   const db = getDb();
-  const tables = { scene: db.scenes, setup: db.setups, take: db.takes } as const;
+  const tables = {
+    scene: db.scenes,
+    setup: db.setups,
+    take: db.takes,
+    cameraUnit: db.cameraUnits,
+    cameraTakeData: db.cameraTakeData,
+  } as const;
   return tables[entityType] as unknown as {
     get: (id: string) => Promise<(LocalRecord & Record<string, unknown>) | undefined>;
     put: (row: LocalRecord & Record<string, unknown>) => Promise<string>;
@@ -370,22 +377,20 @@ export async function pull(productionId: string): Promise<void> {
     // saiu do aparelho é mais recente que o que veio do servidor.
     const protegidos = new Set(pendentes.flatMap((entry) => Object.keys(entry.fields)));
 
+    // `rowFromWire` devolve os tipos do registro (int, bool, instante). Converter aqui,
+    // pelo contrato, evita que cada tela reinvente um `Number(...)` esquecido.
+    const remoto = rowFromWire(change.entityType, change.data);
+
     const proximo: Record<string, unknown> = {
       ...(local ?? {}),
       ...Object.fromEntries(
-        Object.entries(change.data).filter(([field]) => !protegidos.has(field)),
+        Object.entries(remoto).filter(([field]) => !protegidos.has(field)),
       ),
       id: change.entityId,
       productionId,
       version: change.version,
       _dirty: protegidos.size > 0 ? 1 : 0,
     };
-
-    if (proximo.durationSec != null) proximo.durationSec = Number(proximo.durationSec);
-    if (proximo.sortOrder != null) proximo.sortOrder = Number(proximo.sortOrder);
-    if (proximo.number != null && change.entityType === 'take') {
-      proximo.number = Number(proximo.number);
-    }
 
     await table.put(proximo as LocalRecord & Record<string, unknown>);
   }

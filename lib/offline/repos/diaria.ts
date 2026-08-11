@@ -19,6 +19,7 @@ import {
   type FieldKind,
   type SnapshotResponse,
   type SyncEntityType,
+  rowFromWire,
   sameValue,
 } from '@/lib/contracts/sync';
 import {
@@ -43,6 +44,8 @@ function tableOf(entityType: SyncEntityType): Table<AnyRecord, string> {
     scene: db.scenes,
     setup: db.setups,
     take: db.takes,
+    cameraUnit: db.cameraUnits,
+    cameraTakeData: db.cameraTakeData,
   } as const;
   return tables[entityType] as unknown as Table<AnyRecord, string>;
 }
@@ -63,30 +66,30 @@ export async function pinShootingDay(snapshot: SnapshotResponse): Promise<void> 
 
   await db.transaction(
     'rw',
-    [db.shootingDays, db.scenes, db.setups, db.takes, db.refs, db.meta],
+    [
+      db.shootingDays,
+      db.scenes,
+      db.setups,
+      db.takes,
+      db.cameraUnits,
+      db.cameraTakeData,
+      db.refs,
+      db.meta,
+    ],
     async () => {
-      await db.shootingDays.put(
-        toLocal(
-          snapshot.shootingDay,
-          snapshot.productionId,
-        ) as unknown as LocalShootingDay,
-      );
+      await db.shootingDays.put({
+        ...snapshot.shootingDay,
+        id: String(snapshot.shootingDay.id),
+        productionId: snapshot.productionId,
+        version: Number(snapshot.shootingDay.version ?? 0),
+        _dirty: 0,
+      } as unknown as LocalShootingDay);
 
-      await mergeRemote(
-        db.scenes as unknown as Table<AnyRecord, string>,
-        snapshot.scenes,
-        snapshot.productionId,
-      );
-      await mergeRemote(
-        db.setups as unknown as Table<AnyRecord, string>,
-        snapshot.setups,
-        snapshot.productionId,
-      );
-      await mergeRemote(
-        db.takes as unknown as Table<AnyRecord, string>,
-        snapshot.takes,
-        snapshot.productionId,
-      );
+      await mergeRemote('scene', snapshot.scenes, snapshot.productionId);
+      await mergeRemote('setup', snapshot.setups, snapshot.productionId);
+      await mergeRemote('take', snapshot.takes, snapshot.productionId);
+      await mergeRemote('cameraUnit', snapshot.cameraUnits, snapshot.productionId);
+      await mergeRemote('cameraTakeData', snapshot.cameraTakeData, snapshot.productionId);
 
       await db.refs.put({
         key: `members:${snapshot.productionId}`,
@@ -107,27 +110,29 @@ export async function pinShootingDay(snapshot: SnapshotResponse): Promise<void> 
 }
 
 async function mergeRemote(
-  table: Table<AnyRecord, string>,
+  entityType: SyncEntityType,
   rows: Record<string, unknown>[],
   productionId: string,
 ): Promise<void> {
+  const table = tableOf(entityType);
   for (const row of rows) {
     const local = await table.get(String(row.id));
     if (local?._dirty) continue;
-    await table.put(toLocal(row, productionId));
+    await table.put(toLocal(entityType, row, productionId));
   }
 }
 
 /** Linha do servidor → registro local. Os tipos vêm como texto e voltam a ser tipos. */
-function toLocal(row: Record<string, unknown>, productionId: string): AnyRecord {
+function toLocal(
+  entityType: SyncEntityType,
+  row: Record<string, unknown>,
+  productionId: string,
+): AnyRecord {
   return {
-    ...row,
+    ...rowFromWire(entityType, row),
     id: String(row.id),
     productionId,
     version: Number(row.version ?? 0),
-    sortOrder: row.sortOrder === undefined ? undefined : Number(row.sortOrder),
-    number: row.number === undefined ? undefined : row.number,
-    durationSec: row.durationSec == null ? null : Number(row.durationSec),
     _dirty: 0,
   } as AnyRecord;
 }
@@ -155,7 +160,7 @@ export async function unpin(shootingDayId: string): Promise<void> {
  * id e, portanto, o mesmo registro: a colisão vira convergência em vez de erro, e não
  * existe id temporário para remapear depois — a fonte clássica de referência quebrada.
  */
-async function createEntity(
+export async function createEntity(
   entityType: SyncEntityType,
   id: string,
   record: AnyRecord,

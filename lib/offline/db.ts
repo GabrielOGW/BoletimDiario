@@ -73,6 +73,44 @@ export interface LocalTake extends LocalRecord {
   notes?: string | null;
 }
 
+export interface LocalCameraUnit extends LocalRecord {
+  label: string;
+  model?: string | null;
+  bodySerial?: string | null;
+  operator?: string | null;
+  focusPuller?: string | null;
+  clapper?: string | null;
+}
+
+/** Uma linha por câmera por take — técnica e óptica moram aqui (ADR-011). */
+export interface LocalCameraTakeData extends LocalRecord {
+  takeId: string;
+  cameraUnitId?: string | null;
+  status?: string | null;
+  approved: boolean;
+  card?: string | null;
+  roll?: string | null;
+  volume?: string | null;
+  fileName?: string | null;
+  mediaNotes?: string | null;
+  lens?: string | null;
+  focalLength?: string | null;
+  tStop?: string | null;
+  filter?: string | null;
+  matteBox?: boolean | null;
+  iso?: string | null;
+  fps?: string | null;
+  shutter?: string | null;
+  whiteBalance?: string | null;
+  resolution?: string | null;
+  codec?: string | null;
+  aspectRatio?: string | null;
+  lut?: string | null;
+  colorSpace?: string | null;
+  vfx?: string | null;
+  notes?: string | null;
+}
+
 export type OutboxStatus = 'PENDING' | 'SYNCING' | 'SYNCED' | 'FAILED';
 
 export interface OutboxEntry {
@@ -128,6 +166,8 @@ class PlatformDatabase extends Dexie {
   scenes!: Table<LocalScene, string>;
   setups!: Table<LocalSetup, string>;
   takes!: Table<LocalTake, string>;
+  cameraUnits!: Table<LocalCameraUnit, string>;
+  cameraTakeData!: Table<LocalCameraTakeData, string>;
   outbox!: Table<OutboxEntry, string>;
   syncConflicts!: Table<SyncConflict, string>;
   meta!: Table<MetaEntry, string>;
@@ -147,6 +187,13 @@ class PlatformDatabase extends Dexie {
         'id, productionId, status, [entityType+entityId+field], [productionId+status]',
       meta: 'key',
       refs: 'key',
+    });
+
+    // Versão 2: o módulo de Câmera (Fase 5). Upgrade versionado é a razão de o banco
+    // local ser Dexie e não IndexedDB cru — tabela nova não obriga ninguém a reinstalar.
+    this.version(2).stores({
+      cameraUnits: 'id, productionId, label',
+      cameraTakeData: 'id, productionId, takeId, [takeId+cameraUnitId]',
     });
   }
 }

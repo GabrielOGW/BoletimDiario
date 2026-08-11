@@ -66,12 +66,15 @@ function fromDb(raw: unknown): string | null {
 function fromComparable(kind: FieldKind, value: string | null): unknown {
   if (value === null) return null;
   if (kind === 'int') return Number(value);
+  if (kind === 'bool') return value === 'true';
   if (kind === 'instant') return new Date(Number(value)).toISOString();
   return value;
 }
 
 /** `''` é ausência de valor, não string vazia — a mesma regra dos formulários. */
 function forWrite(kind: FieldKind, value: unknown): unknown {
+  // Booleano é a exceção: `false` é valor, não ausência de valor.
+  if (kind === 'bool') return value === true || value === 'true';
   if (value === null || value === undefined || value === '') return null;
   if (kind === 'int') return Number(value);
   return value;

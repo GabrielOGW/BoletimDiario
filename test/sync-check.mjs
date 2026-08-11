@@ -94,8 +94,16 @@ async function run() {
   );
 
   check(
-    'o registro de entidades cobre cena, setup e take',
-    Object.keys(SYNC_ENTITIES).join(',') === 'scene,setup,take',
+    'o registro cobre o compartilhado e o módulo de câmera',
+    Object.keys(SYNC_ENTITIES).join(',') ===
+      'scene,setup,take,cameraUnit,cameraTakeData',
+  );
+
+  check(
+    'booleano não some: `false` é valor, não ausência',
+    normalizeValue('bool', false) === 'false' &&
+      normalizeValue('bool', 'false') === 'false' &&
+      normalizeValue('bool', true) === 'true',
   );
 
   // ---- Cenário ----
@@ -315,6 +323,61 @@ async function run() {
   check(
     'campo fora do contrato é recusado, não escrito',
     invalido[0].status === 'FAILED' && /não sincronizável/.test(invalido[0].reason),
+  );
+
+  // ---- Câmera (Fase 5): o tipo booleano no compare-and-set ----
+
+  const cameraUnitId = deriveId('cameraUnit', productionId, 'A');
+  const camTakeId = deriveId('take', setupId, '5');
+  const camDataId = deriveId('cameraTakeData', camTakeId, cameraUnitId);
+
+  const camera = await push([
+    op('cameraUnit', cameraUnitId, 'CREATE', {
+      label: { de: null, para: 'A' },
+      model: { de: null, para: 'ARRI Alexa 35' },
+    }),
+    op('cameraTakeData', camDataId, 'CREATE', {
+      takeId: { de: null, para: camTakeId },
+      cameraUnitId: { de: null, para: cameraUnitId },
+      card: { de: null, para: 'A012' },
+      lens: { de: null, para: '35mm' },
+      approved: { de: null, para: false },
+    }),
+  ]);
+
+  check(
+    'câmera e dados de câmera do take entram pelo mesmo caminho',
+    camera.every((result) => result.status === 'APPLIED'),
+  );
+
+  const aprova = await push([
+    op('cameraTakeData', camDataId, 'UPDATE', { approved: { de: false, para: true } }),
+  ]);
+  const [aprovado] = await sql`select approved from camera_take_data where id = ${camDataId}`;
+
+  const desaprova = await push([
+    op('cameraTakeData', camDataId, 'UPDATE', { approved: { de: true, para: false } }),
+  ]);
+  const [desaprovado] = await sql`
+    select approved from camera_take_data where id = ${camDataId}
+  `;
+
+  check(
+    'o toggle "Aprovado pelo diretor" liga e desliga pelo compare-and-set',
+    aprova[0].status === 'APPLIED' &&
+      aprovado.approved === true &&
+      desaprova[0].status === 'APPLIED' &&
+      desaprovado.approved === false,
+  );
+
+  const conflitoBooleano = await push(
+    [op('cameraTakeData', camDataId, 'UPDATE', { approved: { de: true, para: true } })],
+    bruno.id,
+  );
+  check(
+    'booleano com base velha conflita como qualquer outro campo',
+    conflitoBooleano[0].status === 'CONFLICT' &&
+      conflitoBooleano[0].conflicts[0].atual === false,
   );
 
   // ---- Cursor ----

@@ -179,6 +179,22 @@ export async function loadSnapshot(input: {
        )
   `);
 
+  const cameraUnits = await db.execute<Record<string, unknown>>(sql`
+    select ${entitySelect('cameraUnit')} from camera_units
+     where production_id = ${input.productionId} and deleted_at is null
+  `);
+
+  const cameraTakeData = await db.execute<Record<string, unknown>>(sql`
+    select ${entitySelect('cameraTakeData')} from camera_take_data
+     where production_id = ${input.productionId}
+       and take_id in (
+         select t.id from takes t
+           join setups s on s.id = t.setup_id
+          where s.production_id = ${input.productionId}
+            and s.shooting_day_id = ${input.shootingDayId}
+       )
+  `);
+
   const members = await db.execute<{
     id: string;
     userId: string;
@@ -203,6 +219,8 @@ export async function loadSnapshot(input: {
     scenes: scenes.rows,
     setups: setups.rows,
     takes: takes.rows,
+    cameraUnits: cameraUnits.rows,
+    cameraTakeData: cameraTakeData.rows,
     members: members.rows,
   };
 }

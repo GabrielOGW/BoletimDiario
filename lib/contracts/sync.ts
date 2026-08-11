@@ -19,7 +19,7 @@ import { uuidSchema } from './production';
  * entidade renomeada. Cliente e servidor divergentes ⇒ `426`, e o cliente recusado
  * **continua editando** — o sync trava, o preenchimento nunca.
  */
-export const SYNC_PROTOCOL = 1;
+export const SYNC_PROTOCOL = 2;
 
 // ---- Entidades sincronizáveis ----
 
@@ -29,13 +29,14 @@ export const SYNC_PROTOCOL = 1;
  * Ele existe para a comparação do compare-and-set: `5` e `'5'` são o mesmo valor de
  * `takes.number`, e sem normalizar o servidor acusaria conflito onde não há nenhum.
  */
-export type FieldKind = 'text' | 'int' | 'instant';
+export type FieldKind = 'text' | 'int' | 'bool' | 'instant';
 
 /**
- * A superfície da Fase 4: o que é **compartilhado** entre os departamentos.
+ * A superfície sincronizável.
  *
- * Os `*TakeData` entram com os respectivos módulos (Fases 5–7) — acrescentar um é
- * acrescentar uma linha aqui, não um caminho de código novo.
+ * `scene`/`setup`/`take` são compartilhados; `cameraUnit`/`cameraTakeData` são de Câmera
+ * (Fase 5). Som e Continuidade entram do mesmo jeito nas Fases 6–7 — acrescentar um
+ * módulo é acrescentar uma entrada aqui, não um caminho de código novo.
  *
  * `scenes.characters` está de fora de propósito: é lista ordenada, e lista ordenada não
  * tem merge por campo (limite conhecido em synchronization.md §5).
@@ -83,6 +84,56 @@ export const SYNC_ENTITIES = {
       deletedAt: 'instant',
     },
   },
+  cameraUnit: {
+    table: 'camera_units',
+    fields: {
+      label: 'text',
+      model: 'text',
+      bodySerial: 'text',
+      operator: 'text',
+      focusPuller: 'text',
+      clapper: 'text',
+      deletedAt: 'instant',
+    },
+  },
+  /**
+   * Uma linha **por câmera** por take — multicam de verdade.
+   *
+   * Técnica e óptica moram aqui, e não no setup (ADR-011): o foquista troca o T-stop
+   * entre takes do mesmo plano, e o boletim de hoje não tem onde registrar isso. A tela
+   * continua parecendo igual porque o valor é herdado do take anterior.
+   */
+  cameraTakeData: {
+    table: 'camera_take_data',
+    fields: {
+      takeId: 'text',
+      cameraUnitId: 'text',
+      status: 'text',
+      approved: 'bool',
+      card: 'text',
+      roll: 'text',
+      volume: 'text',
+      fileName: 'text',
+      mediaNotes: 'text',
+      lens: 'text',
+      focalLength: 'text',
+      tStop: 'text',
+      filter: 'text',
+      matteBox: 'bool',
+      iso: 'text',
+      fps: 'text',
+      shutter: 'text',
+      whiteBalance: 'text',
+      resolution: 'text',
+      codec: 'text',
+      aspectRatio: 'text',
+      lut: 'text',
+      colorSpace: 'text',
+      vfx: 'text',
+      notes: 'text',
+      deletedAt: 'instant',
+    },
+  },
 } as const satisfies Record<string, { table: string; fields: Record<string, FieldKind> }>;
 
 export type SyncEntityType = keyof typeof SYNC_ENTITIES;
@@ -118,12 +169,45 @@ export function normalizeValue(kind: FieldKind, value: unknown): string | null {
     return Number.isFinite(parsed) ? String(parsed) : null;
   }
 
+  if (kind === 'bool') {
+    // `'false'` é falso: vem assim do `::text` do Postgres e de `FormData`. Passar por
+    // `Boolean('false')` daria `true`, e o toggle "Aprovado" nunca desligaria.
+    return value === true || value === 'true' || value === 1 ? 'true' : 'false';
+  }
+
   if (kind === 'instant') {
     const parsed = value instanceof Date ? value.getTime() : Date.parse(String(value));
     return Number.isFinite(parsed) ? String(parsed) : null;
   }
 
   return String(value);
+}
+
+/**
+ * Valor que veio do servidor (sempre texto) de volta ao tipo do cliente.
+ *
+ * O servidor projeta tudo como texto de propósito — é o que torna a comparação do
+ * compare-and-set independente de `DateStyle` e de driver. A conversão de volta acontece
+ * num lugar só, aqui, senão cada tela reinventa um `Number(...)` esquecido.
+ */
+export function fromWire(kind: FieldKind, value: unknown): unknown {
+  if (value === null || value === undefined) return null;
+  if (kind === 'int') return value === '' ? null : Number(value);
+  if (kind === 'bool') return value === true || value === 'true';
+  return value;
+}
+
+/** Converte a linha inteira de uma entidade, campo a campo pelo registro. */
+export function rowFromWire(
+  entityType: SyncEntityType,
+  row: Record<string, unknown>,
+): Record<string, unknown> {
+  const kinds = SYNC_ENTITIES[entityType].fields as Record<string, FieldKind>;
+  const out: Record<string, unknown> = { ...row };
+  for (const [field, kind] of Object.entries(kinds)) {
+    if (field in row) out[field] = fromWire(kind, row[field]);
+  }
+  return out;
 }
 
 // ---- Push ----
@@ -212,6 +296,8 @@ export interface SnapshotResponse {
   scenes: Record<string, unknown>[];
   setups: Record<string, unknown>[];
   takes: Record<string, unknown>[];
+  cameraUnits: Record<string, unknown>[];
+  cameraTakeData: Record<string, unknown>[];
   /** Referência somente leitura: quem é quem na sala, para exibir autoria de conflito. */
   members: { id: string; userId: string; name: string; department: string }[];
 }
