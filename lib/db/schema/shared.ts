@@ -22,7 +22,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { audit } from './columns';
-import { dayNightEnum, intExtEnum, takeStatusEnum } from './enums';
+import { dayNightEnum, intExtEnum, takeKindEnum, takeStatusEnum } from './enums';
 import { productions, shootingDays } from './production';
 
 export const scenes = pgTable(
@@ -105,8 +105,16 @@ export const takes = pgTable(
       .references(() => setups.id, { onDelete: 'cascade' }),
     /** Inteiro de verdade: ordena e incrementa. */
     number: integer('number').notNull(),
-    /** O status da tomada como evento de set — o que a claquete diz (ADR-010). */
+    /** Julgamento: o take presta? Cada departamento tem o seu (ADR-010). */
     status: takeStatusEnum('status').notNull().default('RECORDED'),
+    /**
+     * Natureza: que tipo de take é este? (ADR-029)
+     *
+     * Fica no take **compartilhado**, não em cada departamento: um take MOS é MOS para
+     * todo mundo, e é esse fato que o editor procura ao abrir a diária perguntando por
+     * que não há áudio.
+     */
+    kind: takeKindEnum('kind').notNull().default('SYNC'),
     durationSec: integer('duration_sec'),
     startedAt: timestamp('started_at', { withTimezone: true }),
     notes: text('notes'),

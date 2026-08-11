@@ -17,7 +17,14 @@ import {
   softDelete,
   tracksFromTemplate,
 } from '@/domain/platform/factory.ts';
-import { canWriteDepartmentData, roleAtLeast } from '@/domain/platform/enums.ts';
+import {
+  canWriteDepartmentData,
+  roleAtLeast,
+  TAKE_KIND_LABEL,
+  TAKE_KINDS,
+  TAKE_STATUS_LABEL,
+  TAKE_STATUSES,
+} from '@/domain/platform/enums.ts';
 import { deriveId, deriveJoinCode } from '@/domain/platform/derive-id.ts';
 
 const NOW = '2026-08-10T12:00:00.000Z';
@@ -48,6 +55,37 @@ ok(
 );
 // Trocar de setup (24B → 24C) devolve 1 porque o escopo é o setup — sem código especial.
 ok('trocar de setup reseta o take para 1', nextTakeNumber([]) === 1);
+
+// ---- Os dois eixos do take (ADR-029) ----
+const takeNovo = createTake({ productionId: PROD, setupId: 's1', number: 1 }, ctx);
+ok('take nasce julgado como RECORDED', takeNovo.status === 'RECORDED');
+// Ninguém em set escolhe "sync" a cada tomada: é o padrão, e a natureza só é tocada
+// quando o take foge do normal.
+ok('take nasce com natureza SYNC', takeNovo.kind === 'SYNC');
+// Um wild não faz o próximo take ser wild — a natureza é do take, não do setup.
+const depoisDeUmWild = createTake({ productionId: PROD, setupId: 's1', number: 2 }, ctx);
+ok('a natureza não vaza para o take seguinte', depoisDeUmWild.kind === 'SYNC');
+ok(
+  'julgamento e natureza são listas disjuntas',
+  !TAKE_STATUSES.some((status) => TAKE_KINDS.includes(status)),
+);
+ok('julgamento ganhou HOLD', TAKE_STATUSES.includes('HOLD'));
+ok(
+  'os valores de natureza saíram do julgamento',
+  !TAKE_STATUSES.includes('WILD') &&
+    !TAKE_STATUSES.includes('ROOM_TONE') &&
+    !TAKE_STATUSES.includes('FALSE_START'),
+);
+// A lacuna que o levantamento chamou de mais séria: dizer que o take existe e o som não.
+ok('MOS existe no eixo de natureza', TAKE_KINDS.includes('MOS'));
+ok(
+  'todo valor de natureza tem rótulo',
+  TAKE_KINDS.every((kind) => Boolean(TAKE_KIND_LABEL[kind])),
+);
+ok(
+  'todo valor de julgamento tem rótulo',
+  TAKE_STATUSES.every((status) => Boolean(TAKE_STATUS_LABEL[status])),
+);
 
 // ---- Herança de câmera (§29) ----
 const take3 = createCameraTakeData({ productionId: PROD, takeId: 't3' }, ctx);
@@ -93,17 +131,23 @@ const som4 = {
   tcStart: '14:32:10:12',
   tcEnd: '14:32:58:00',
   circled: true,
-  wild: true,
-  roomTone: true,
+  status: 'NG',
+  ngReason: 'avião no meio',
   notes: 'avião',
 };
 const som5 = inheritSoundTakeData(som4, 't5', ctx);
 ok('som herda o roll', som5.soundRoll === '004');
 ok('som auto-incrementa o arquivo', som5.fileName === '004_013');
 ok('som NÃO herda timecode', som5.tcStart === '' && som5.tcEnd === '');
+// Julgamento não se herda: cada take é julgado por si. E desde ADR-029 a natureza nem
+// mora aqui — é `Take.kind`, do take compartilhado.
 ok(
-  'som NÃO herda flags',
-  som5.circled === false && som5.wild === false && som5.roomTone === false,
+  'som NÃO herda julgamento nem motivo de NG',
+  som5.circled === false && som5.status === null && som5.ngReason === '',
+);
+ok(
+  'a natureza saiu do som e virou eixo do take',
+  som5.wild === undefined && som5.roomTone === undefined,
 );
 ok('som NÃO herda notas', som5.notes === '');
 

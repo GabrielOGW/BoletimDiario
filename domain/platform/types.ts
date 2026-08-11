@@ -24,6 +24,7 @@ import type {
   MemberRole,
   SyncOperationKind,
   SyncStatus,
+  TakeKind,
   TakeStatus,
 } from '@/domain/platform/enums';
 
@@ -189,6 +190,15 @@ export interface Take extends Audited {
   number: number;
   /** Status da tomada como evento de set. Cada departamento tem o seu próprio (ADR-010). */
   status: TakeStatus;
+  /**
+   * Natureza do take — sync, MOS, wild, playback, pick-up… (ADR-029).
+   *
+   * Mora aqui, no take compartilhado, e não em cada departamento: um take MOS é MOS para
+   * todo mundo. É esse fato que o editor procura ao abrir a diária perguntando por que não
+   * há áudio — sem ele, a ausência de `SoundTakeData` fica ambígua entre "foi MOS" e "o som
+   * ainda não preencheu".
+   */
+  kind: TakeKind;
   durationSec: number | null;
   startedAt: Timestamp | null;
   notes: string;
@@ -247,6 +257,8 @@ export interface CameraTakeData extends Audited {
   /** Rótulo livre da câmera, quando não há unidade cadastrada. */
   cameraLabel: string;
   status: TakeStatus | null;
+  /** Motivo do NG, em texto livre. "NG" sem motivo é anotação inútil na pós (ADR-029). */
+  ngReason: string;
   /** "Aprovado pelo diretor" — semântica preservada do modelo v2 (ADR-010). */
   approved: boolean;
   // mídia
@@ -281,6 +293,14 @@ export interface SoundDayConfig extends Audited {
   roll: string;
   soundMixer: string;
   boomOperator: string;
+  /** Hora do jam de timecode. É o que a pós usa para explicar deriva ao longo do dia. */
+  tcJamAt: Timestamp | null;
+  /** User bits (UBITS) — carregam data e roll, e desempatam quando o TC não basta. */
+  userBits: string;
+  /** Destinos da cópia da mídia, em texto livre: "cartão → LaCie → nuvem". */
+  mediaCopies: string;
+  /** Cópias conferidas. É a parte de custódia que hoje só vive no caderno. */
+  mediaVerified: boolean;
   /** Layout de tracks herdado por todo take novo — sem limite de 4 (§11). */
   trackTemplate: SoundTrackTemplate[];
 }
@@ -303,10 +323,14 @@ export interface SoundTakeData extends Audited {
   tcStart: string;
   tcEnd: string;
   durationSec: number | null;
-  wild: boolean;
-  roomTone: boolean;
-  wildLines: boolean;
-  falseStart: boolean;
+  /**
+   * Motivo do NG, em texto livre.
+   *
+   * A natureza do take (wild, room tone, wild lines, false start) **saiu daqui** e virou
+   * `Take.kind` (ADR-029): ela é do take, não do som — a câmera precisa saber que o take
+   * foi MOS tanto quanto o som precisa.
+   */
+  ngReason: string;
   notes: string;
 }
 

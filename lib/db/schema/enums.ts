@@ -16,12 +16,15 @@ import {
   INT_EXT_VALUES,
   MEMBER_ROLES,
   SYNC_OPERATIONS,
+  TAKE_KINDS,
   TAKE_STATUSES,
 } from '@/domain/platform/enums';
 
 export const departmentEnum = pgEnum('department', DEPARTMENTS);
 export const memberRoleEnum = pgEnum('member_role', MEMBER_ROLES);
 export const takeStatusEnum = pgEnum('take_status', TAKE_STATUSES);
+/** Natureza do take — o eixo irmão do julgamento (ADR-029). */
+export const takeKindEnum = pgEnum('take_kind', TAKE_KINDS);
 export const equipmentCategoryEnum = pgEnum('equipment_category', EQUIPMENT_CATEGORIES);
 export const intExtEnum = pgEnum('int_ext', INT_EXT_VALUES);
 export const dayNightEnum = pgEnum('day_night', DAY_NIGHT_VALUES);

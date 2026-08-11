@@ -17,15 +17,15 @@ npm run lint           # ESLint (no-explicit-any and no-unused-vars are errors)
 npm run format         # Prettier --write
 npm run format:check
 npm run icons          # regenerate PWA PNG icons from public/icons/icon.svg
-npm test               # all four check suites below (200 assertions)
+npm test               # all four check suites below (217 assertions)
 npm run test:migration # a real v1 boletim through v2 normalization (22 assertions)
-npm run test:platform  # domain/platform set rules: inheritance, take numbering (60)
+npm run test:platform  # domain/platform set rules: inheritance, take axes, numbering (70)
 npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-to-end (87)
 npm run test:camera    # camera sheet structure: grouping, print line, take judgment (31)
-npm run test:db        # schema/triggers against the real Neon (20) — needs DATABASE_URL
+npm run test:db        # schema/triggers/enums against the real Neon (28) — needs DATABASE_URL
 npm run test:sala      # room rules against the real Neon (27) — needs DATABASE_URL
 npm run test:sync      # compare-and-set, idempotency, cursor (29) — needs DATABASE_URL
-npm run test:import    # local-boletim import: idempotency, ownership (28) — needs DATABASE_URL
+npm run test:import    # local-boletim import: idempotency, ownership (29) — needs DATABASE_URL
 ```
 
 There is no unit/e2e test runner. All suites are plain `.mjs` files run directly through Node's experimental TS type-stripping with a custom loader (this is why `features/camera/estrutura.ts` — the structure the screen and the printed sheet share — is a plain module with type-only imports: it is testable without React or Dexie) (`test/alias-loader.mjs`, which resolves `@/`, extensionless relative imports and `index.ts` folders); ESLint ignores `test/**`. `test:db`, `test:sala`, `test:sync` and `test:import` need a real database and are **not** part of `npm test` — the day the main suite needs a network is the day it stops being run. `test:sala`, `test:sync` and `test:import` also need `--conditions=react-server`, because the query layer imports `server-only`, which fails by design outside the server. Because of type-stripping, code reachable from a test may not use `enum`, `namespace`, or parameter properties, and type-only imports must use `import type`. To test offline behavior: `npm run build && npm run start`, load the app once online, then go airplane mode and reload.

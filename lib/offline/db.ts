@@ -70,7 +70,10 @@ export interface LocalSetup extends LocalRecord {
 export interface LocalTake extends LocalRecord {
   setupId: string;
   number: number;
+  /** Julgamento: o take presta? (ADR-010) */
   status: string;
+  /** Natureza: sync, MOS, wild, playback… Do take compartilhado (ADR-029). */
+  kind?: string | null;
   durationSec?: number | null;
   notes?: string | null;
 }
@@ -89,6 +92,8 @@ export interface LocalCameraTakeData extends LocalRecord {
   takeId: string;
   cameraUnitId?: string | null;
   status?: string | null;
+  /** Motivo do NG. "NG" sem motivo é anotação inútil na pós (ADR-029). */
+  ngReason?: string | null;
   approved: boolean;
   card?: string | null;
   roll?: string | null;
