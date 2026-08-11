@@ -62,6 +62,9 @@ const VFX = {
 /** O único campo técnico que não é texto — e o boletim sempre teve (`optica.matteBox`). */
 const MATTE_BOX = 'matteBox';
 
+/** Os mesmos de `PRESETS.tipoPlano` do boletim. São sugestão, não lista fechada. */
+const TIPOS_DE_PLANO = ['Normal', 'Série', 'Insert', 'Pickup', 'Drone'];
+
 /**
  * O cartão de Plano.
  *
@@ -141,6 +144,11 @@ export function PlanoCard({
         )}
       >
         <span className="text-sm font-semibold text-zinc-100">Plano {setup.code}</span>
+        {/* "Normal" não vira badge: é o padrão, e um selo em todo plano não informa nada
+            — a mesma regra do cartão de plano do boletim. */}
+        {setup.kind && setup.kind !== 'Normal' ? (
+          <Badge tone="brand">{setup.kind}</Badge>
+        ) : null}
         {aprovados > 0 ? <Badge tone="approved">{aprovados}</Badge> : null}
         <span className="flex-1" />
         <span className="truncate text-xs text-zinc-500">
@@ -185,6 +193,19 @@ export function PlanoCard({
               }
             />
           </div>
+
+          {/* Texto livre com sugestões, como no boletim: `tipo` sempre aceitou valor
+              digitado ("Dolly de aproximação"), e um seletor fechado viraria perda de
+              dado na importação. */}
+          <TextField
+            label="Tipo / Captação"
+            value={setup.kind ?? ''}
+            disabled={!canEdit}
+            options={TIPOS_DE_PLANO}
+            onChange={(valor) =>
+              void patchEntity('setup', setup.id, { kind: valor || null }).then(syncNow)
+            }
+          />
 
           <div className="grid gap-3 sm:grid-cols-2">
             {TECNICA.map((campo) => (

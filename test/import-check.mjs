@@ -93,6 +93,7 @@ function boletimCru(overrides = {}) {
               {
                 id: 'plano_1',
                 numero: '1',
+                tipo: 'Insert',
                 cameraId: 'cam_a',
                 tecnica: { iso: '800', frameRate: '24', diafragma: 'T2.8' },
                 optica: { lentes: 'Cooke 32mm' },
@@ -163,6 +164,12 @@ async function run() {
      where t.production_id = ${primeira.productionId} and t.number = 2
   `;
   check('aprovado pelo diretor vira CIRCLE no take', take?.status === 'CIRCLE');
+
+  // `Plano.tipo` era descartado em silêncio antes de `setups.kind` existir.
+  const [plano] = await sql`
+    select kind from setups where production_id = ${primeira.productionId}
+  `;
+  check('o tipo de captação do plano é importado', plano?.kind === 'Insert');
 
   // ---- Reimportação: a promessa central ----
 

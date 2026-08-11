@@ -63,6 +63,7 @@ export const SYNC_ENTITIES = {
       shootingDayId: 'text',
       code: 'text',
       name: 'text',
+      kind: 'text',
       shotSize: 'text',
       angle: 'text',
       movement: 'text',

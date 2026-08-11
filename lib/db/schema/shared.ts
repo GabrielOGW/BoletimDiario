@@ -65,6 +65,14 @@ export const setups = pgTable(
     /** "A", "B", "C" — ou "1", "2". */
     code: text('code').notNull(),
     name: text('name'),
+    /**
+     * Tipo de captação: Normal, Série, Insert, Pickup, Drone.
+     *
+     * `text` livre e não enum: é o `Plano.tipo` do boletim, que sempre aceitou valor
+     * digitado ("Dolly de aproximação"), e um enum transformaria isso em perda de dado
+     * na importação. `Setup.kind` no modelo compartilhado.
+     */
+    kind: text('kind'),
     shotSize: text('shot_size'),
     angle: text('angle'),
     movement: text('movement'),
