@@ -41,17 +41,23 @@ export default async function DiariaPage({
       />
 
       <PageContainer className="flex flex-col gap-4 py-4 pb-8">
+        {/*
+          Rótulo deliberadamente modesto: esta é a superfície mínima da Fase 4, feita para
+          provar a sincronização — não é o módulo de câmera, e chamá-la de "abrir a diária"
+          fez com que fosse lida como tal (ADR-030). Sai de cena na Fase 5.
+        */}
         <Link
           href={`/p/${productionId}/diarias/${dayId}/takes`}
-          className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-brand/30 bg-brand-soft px-4 py-3 transition hover:brightness-110"
+          className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 transition hover:bg-surface-hover"
         >
           <ClapperboardIcon size={20} className="text-brand" />
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-semibold text-zinc-100">
-              Abrir a diária
+              Cena · Setup · Take <span className="text-zinc-500">(prévia)</span>
             </span>
             <span className="block text-xs text-zinc-400">
-              Cena, setup e take — funciona sem rede depois de aberta uma vez
+              Base compartilhada entre os departamentos. O Boletim de Câmera continua como
+              está.
             </span>
           </span>
         </Link>

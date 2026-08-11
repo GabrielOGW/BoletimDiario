@@ -107,15 +107,81 @@ O cabeçalho técnico vem dos outros departamentos, em tempo real quando online.
 funcionando: a continuísta vê lente, T-stop, status de som e timecode enquanto escreve as
 próprias observações.
 
-## 7. Relatório
+## 7. O que a prática exige — levantamento
 
-PDF em A4 (mesmo mecanismo): por cena, com setups, takes, selecionados destacados e notas de
-ação.
+`2026-08-10`. Confronto do modelo acima com a papelada que a continuísta de fato entrega. A
+descoberta principal não é um campo: é que **falta um documento inteiro**.
 
-## 8. Escopo da Fase 7
+### O take: três vereditos, não dois
 
-Entra: cena, setup, take, notas de ação, props, figurino, cabelo/maquiagem, cenografia, PDF.
+A prática usa **print / hold / NG**, e o `NG` vem sempre com motivo — "NG" sozinho não ajuda
+ninguém na sala de montagem. O modelo hoje tem `status` e `selected` (o circled), e não tem
+onde guardar "bom, mas não perfeito" nem o porquê do descarte.
+
+| Item                                                  | Estado                                                                                   |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Circled / print                                       | ✅ `selected`                                                                            |
+| **HOLD** e **motivo do NG**                           | ➕ [ADR-029](../decisions.md#adr-029--julgamento-e-natureza-do-take-são-eixos-separados) |
+| **Natureza do take**: PU, série, MOS, incompleto      | ➕ mesmo ADR                                                                             |
+| Duração cronometrada do take                          | ✅ `duration_sec`                                                                        |
+| **Tempo acumulado por cena** e **minutagem estimada** | ➕ derivados, mas hoje ninguém os calcula                                                |
+| Posição, ação, direção, entradas/saídas, eyeline      | ✅                                                                                       |
+| Alterações de diálogo, improviso, desvio de roteiro   | ✅                                                                                       |
+| Lente e câmera do take                                | ✅ lidos de `camera_take_data`, nunca redigitados                                        |
+
+### O documento que falta: o Relatório de Progresso da Diária
+
+É o entregável que a produção consome **todo dia**, e o modelo atual não o contempla em lugar
+nenhum. Ele não é um relatório de takes: é o balanço do dia.
+
+| Bloco       | Conteúdo                                                                    |
+| ----------- | --------------------------------------------------------------------------- |
+| Horários    | call, hora do primeiro take, intervalos, wrap                               |
+| Contagens   | cenas rodadas, **páginas em oitavos**, número de setups, minutagem estimada |
+| Cobertura   | cenas cobertas, cenas parciais, cenas puladas, cenas adicionadas            |
+| Mídia       | cartões de câmera e rolls de som usados no dia                              |
+| Observações | descrição livre do dia, e a assinatura de quem preencheu                    |
+
+Quase tudo aí é **derivável** do que a plataforma já vai ter: cenas e setups saem dos
+registros, cartões e rolls saem de câmera e som, horários saem da `ShootingDay`. O que precisa
+de entrada humana é pouco — páginas em oitavos, minutagem estimada e as observações.
+
+Esse é o argumento mais forte a favor da plataforma que apareceu no levantamento: hoje esse
+relatório é montado à mão, no fim do dia, somando números de três cadernos. Aqui ele é uma
+consulta com três campos preenchidos.
+
+> **Página em oitavos** é a convenção do setor: uma página de roteiro vale 8/8, e a cobertura
+> se mede em frações dela. `scenes.page` hoje é texto livre; para somar, precisa aceitar
+> `2 4/8` e guardar o total em oitavos como inteiro.
+
+### O que **não** entra na v1
+
+- **Fotografias** ([ADR-022](../decisions.md#adr-022--sem-fotografias-na-v1)) — decisão firme.
+- **Lined script e facing pages.** É o formato tradicional, e reproduzi-lo exige importar o
+  roteiro e marcar cobertura linha a linha. Fica para depois, e o que ele entrega de mais
+  valioso — que take cobre que trecho — já é aproximado pela descrição do setup.
+- **Timing automático.** Cronômetro continua sendo o dedo da continuísta.
+
+---
+
+## 8. Relatório
+
+- **PDF de continuidade** em A4 (mesmo mecanismo): por cena, com setups, takes, selecionados
+  destacados e notas de ação.
+- **Relatório de Progresso da Diária**, do §7 — em PDF, com os números calculados e os campos
+  livres preenchidos na hora do wrap.
+
+## 9. Escopo da Fase 7
+
+Entra: cena, setup, take, notas de ação, três vereditos com motivo de NG, natureza do take,
+props, figurino, cabelo/maquiagem, cenografia, PDF de continuidade e **Relatório de Progresso
+da Diária**.
 
 Não entra: **fotografias** (ADR-022), import de roteiro (PDF/Final Draft), lined script,
 marcação de cobertura por linha de diálogo, timing automático. São o passo seguinte natural e
 nenhum bloqueia o uso.
+
+**Fontes do levantamento:** [Script supervisor (Wikipedia)](https://en.wikipedia.org/wiki/Script_supervisor) ·
+[Script Supervisor Report Explained — SetHero](https://sethero.com/blog/script-supervisor-report-explained/) ·
+[Ultimate Guide to Script Supervisors — StudioBinder](https://www.studiobinder.com/blog/script-supervisor-forms-template/) ·
+[How to Read a Lined Script — EditStock](https://editstock.com/blogs/all/how-to-read-a-lined-script)

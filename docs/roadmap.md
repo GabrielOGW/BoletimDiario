@@ -164,9 +164,17 @@ de câmera. Ela é substituída pelo módulo real na Fase 5.
 
 A fase mais sensível: migrar o módulo que está em uso. **Migração, não redesenho.**
 
+> **Reforçado em `2026-08-10`**, depois do teste da Fase 4 em set: a superfície mínima de
+> takes foi lida como "a área de câmera mudou". Ela não é o módulo de câmera e é provisória
+> ([ADR-030](decisions.md#adr-030--o-módulo-de-câmera-reproduz-o-boletim-tela-por-tela)). A
+> paridade exigida aqui é **de tela**, não só de campo: Cena → Bloco → **Plano** → Take, os
+> mesmos cartões, a mesma ordem de seções, os mesmos gestos, o mesmo toggle verde.
+
 - [ ] `features/camera/` sobre o modelo compartilhado e a superfície local
 - [ ] Paridade **campo a campo** com o editor atual (checklist de
       [features/camera.md §1](features/camera.md#1-o-que-existe-hoje))
+- [ ] Paridade **de estrutura de tela**: cartões, ordem das seções, gestos e auto-save
+- [ ] A tela mínima de takes da Fase 4 sai de cena quando esta entrar
 - [ ] Novos campos de [features/camera.md §3](features/camera.md#3-organização-dos-campos-10)
 - [ ] `TakeStatus` **preservando** o toggle "Aprovado pelo diretor"
 - [ ] PDF com a mesma qualidade de saída (comparação lado a lado)
@@ -182,12 +190,21 @@ nada — e o boletim impresso sai igual ou melhor.
 
 Independentes entre si; podem correr em paralelo depois da Fase 5.
 
+> **Levantamento de `2026-08-10`** contra a prática real do setor — as lacunas concretas estão
+> em [features/sound.md §5](features/sound.md#5-o-que-a-prática-exige--levantamento) e
+> [features/continuity.md §7](features/continuity.md#7-o-que-a-prática-exige--levantamento).
+> As duas mais importantes: **MOS** (hoje não há como dizer que o take existe e o som não) e o
+> **Relatório de Progresso da Diária**, um entregável diário que o modelo não contemplava.
+
 **Som:** configuração de som da diária · tracks dinâmicas com herança entre takes · status
-rápidos e flags (wild, room tone, wild lines, false start) · equipamentos · sound report em PDF
-e **CSV**.
+rápidos e natureza do take (wild, room tone, MOS, playback, PU, série, false start) · motivo
+de NG · timecode com jam e user bits · equipamentos · sound report em PDF e **CSV** com colunas
+espelhando iXML.
 
 **Continuidade:** metadados de cena · setup (tamanho, ângulo, movimento, eyeline) · continuidade
-de ação no take · props, figurino, cabelo/maquiagem, cenografia · PDF.
+de ação no take · três vereditos (print/hold/NG com motivo) · props, figurino, cabelo/maquiagem,
+cenografia · PDF · **Relatório de Progresso da Diária** (contagens, páginas em oitavos,
+minutagem, cobertura, cartões e rolls do dia).
 **Sem fotografias** ([ADR-022](decisions.md#adr-022--sem-fotografias-na-v1)).
 
 ## 📋 Fase 8 — Integração

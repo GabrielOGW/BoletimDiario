@@ -111,20 +111,84 @@ conciliação. É exatamente o problema que o modelo compartilhado existe para e
 
 ---
 
-## 5. Relatório
+## 5. O que a prática exige — levantamento
 
-- **PDF** — sound report em A4, mesmo mecanismo de impressão da Câmera.
-- **CSV** — prioritário aqui: é o formato que a pós consome para conformar áudio.
-  Uma linha por take, colunas de tracks expandidas, cabeçalho estável entre diárias.
+`2026-08-10`. Confronto do modelo acima com o sound report como ele é usado de fato e com os
+metadados que a pós consome (BWF/iXML). O que já existe no schema está marcado ✅; o que falta,
+➕.
+
+### O que o relatório precisa dizer sobre o dia
+
+O sound report é, antes de tudo, **cadeia de custódia do áudio**: ele responde "que arquivo é
+este, de que take, gravado como, e chegou inteiro?".
+
+| Item                                                  | Estado                                                                           |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Produção, data, diária, locação                       | ✅ herdados da `Production`/`ShootingDay`                                        |
+| Sound mixer, boom operator, equipe                    | ✅ `sound_day_config`                                                            |
+| Sample rate, bit depth, frame rate, drop/non-drop     | ✅                                                                               |
+| Formato (WAV/BWF), mono/poly, mídia, roll             | ✅                                                                               |
+| Modelos de recorder, mixer e microfones **impressos** | ✅ dado existe em `equipment_assignments`; ➕ falta imprimir no cabeçalho do PDF |
+| Fonte e **hora do jam** de timecode                   | ➕ `timecode_source` existe; falta `tc_jam_at`                                   |
+| **User bits** (UBITS)                                 | ➕ carregam data/roll e são o que a pós usa para desempatar                      |
+| **Cópias da mídia** — quantos destinos, verificado    | ➕ é a parte de "custódia" que hoje só vive no caderno                           |
+
+### O que o relatório precisa dizer sobre cada take
+
+| Item                                     | Estado                                                                                                          |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Cena, setup, take                        | ✅ vêm do take compartilhado, sem redigitar                                                                     |
+| Sound roll, nome do arquivo              | ✅ herdados e auto-incrementados                                                                                |
+| TC início / TC fim / duração             | ✅                                                                                                              |
+| Circled                                  | ✅ independente do circled da câmera                                                                            |
+| Wild, room tone, wild lines, false start | ✅ (viram `TakeKind` por [ADR-029](../decisions.md#adr-029--julgamento-e-natureza-do-take-são-eixos-separados)) |
+| **MOS** — rodado sem som                 | ➕ **a lacuna mais séria**: hoje não há como dizer que o take existe e o som não                                |
+| **Playback**                             | ➕ o que foi gravado não é diálogo aproveitável, e a pós precisa saber                                          |
+| **Pick-up (PU)** e **série (SER)**       | ➕ notações padrão; sem elas o editor procura um take que não existe                                            |
+| **HOLD** e **motivo do NG**              | ➕ "NG" sem motivo é anotação inútil na pós                                                                     |
+| Tracks: índice, nome, fonte, microfone   | ✅ `sound_take_tracks`, sem limite de 4                                                                         |
+| Observações ("avião no take 3")          | ✅ texto livre, e assim deve continuar                                                                          |
+
+**MOS merece o destaque.** É o cruzamento mais consultado entre câmera e som — o editor abre a
+diária justamente para saber por que não há áudio para aquele take. Sem o campo, a ausência de
+`sound_take_data` fica ambígua: pode ser MOS, pode ser o som não ter preenchido ainda. Uma
+ambiguidade dessas é exatamente o que a plataforma existe para eliminar.
+
+### O que **não** entra, e por quê
+
+- **Estruturar o ruído externo em taxonomia** (avião / gerador / vento). Escrever é mais rápido
+  que escolher, e a busca já resolve. Campo livre continua sendo a resposta certa.
+- **Captura automática de timecode**, import de BWF, reconciliação com o arquivo do recorder.
+  Dependem de hardware ou de acesso a arquivo e nenhum bloqueia o uso.
+
+---
+
+## 6. Relatório
+
+- **PDF** — sound report em A4, mesmo mecanismo de impressão da Câmera. O cabeçalho imprime os
+  equipamentos do dia; o corpo, uma linha por arquivo.
+- **CSV** — prioritário aqui: é o formato que a pós consome para conformar áudio. Uma linha por
+  take, colunas de tracks expandidas, cabeçalho estável entre diárias.
+
+  As colunas espelham os campos de iXML que a pós já espera, com os nomes em pt-BR na
+  interface e estáveis no arquivo: `projeto`, `cena`, `take`, `roll`, `arquivo`, `tc_inicio`,
+  `tc_fim`, `circled`, `natureza`, `nota`, `track_1..N`. Espelhar o padrão não é purismo — é o
+  que faz o arquivo abrir do outro lado sem alguém renomear coluna à mão.
+
 - Entra no relatório consolidado da diária (Fase 9), relacionado por cena/setup/take.
 
 ---
 
-## 6. Escopo da Fase 6
+## 7. Escopo da Fase 6
 
-Entra: configuração da diária, tracks dinâmicas com herança, take com status rápidos e flags,
-integração com equipamentos, PDF e CSV.
+Entra: configuração da diária, tracks dinâmicas com herança, take com status rápidos e
+natureza, MOS/playback/PU/série, motivo de NG, timecode com jam e user bits, integração com
+equipamentos, PDF e CSV.
 
 Não entra: captura automática de timecode por hardware, import de metadados de arquivo BWF,
-reconciliação automática com o arquivo do recorder. São extensões naturais, todas dependentes
-de acesso a hardware ou arquivo, e nenhuma bloqueia o uso do módulo.
+reconciliação automática com o arquivo do recorder.
+
+**Fontes do levantamento:** [Sound report (Wikipedia)](https://en.wikipedia.org/wiki/Sound_report) ·
+[iXML (Wikipedia)](https://en.wikipedia.org/wiki/IXML) ·
+[iXML and BWF Metadata — Metadata Guru](https://metadata.guru/gathering-and-using-technical-metadata/metadata-standards/ixml-and-bwf-metadata/) ·
+[How to Make Sound Reports — Beverly Boy](https://beverlyboy.com/filmmaking/how-to-make-sound-reports/)

@@ -6,6 +6,19 @@ O núcleo do produto e o único módulo **já em produção**. A regra que gover
 > equivalente. Se uma decisão de plataforma exigir regredir uma funcionalidade de câmera,
 > a decisão é que está errada.
 
+E, desde `2026-08-10`, a regra tem uma segunda metade
+([ADR-030](../decisions.md#adr-030--o-módulo-de-câmera-reproduz-o-boletim-tela-por-tela)):
+
+> **A paridade é de tela, não só de campo.** A hierarquia visível continua sendo
+> **Cena → Bloco → Plano → Take**, com os mesmos cartões, a mesma ordem de seções e os mesmos
+> gestos. `Setup` é o nome do conceito no modelo; na tela de câmera ele se chama **Plano**,
+> como sempre se chamou.
+
+> ⚠️ **A tela `/p/[id]/diarias/[dayId]/takes` não é o módulo de câmera.** Ela é a superfície
+> mínima da Fase 4, criada para provar o sync com o menor consumidor possível, e é
+> **provisória**. Quem quiser o boletim usa o boletim; a Fase 5 entrega o módulo real e essa
+> tela sai de cena.
+
 ---
 
 ## 1. O que existe hoje
