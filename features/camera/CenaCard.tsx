@@ -13,7 +13,7 @@ import type {
   LocalSetup,
   LocalTake,
 } from '@/lib/offline/db';
-import { createScene, createSetup } from '@/lib/offline/repos/diaria';
+import { createScene, createSetup, patchEntity } from '@/lib/offline/repos/diaria';
 import { syncNow } from '@/lib/sync/engine';
 import { cn } from '@/utils/cn';
 
@@ -95,6 +95,20 @@ export function CenaCard({
 
       {aberto ? (
         <div className="flex flex-col gap-3 p-3">
+          {canEdit ? (
+            <NumeroDaCena
+              valor={numero}
+              /* Uma "cena" na tela são N `Scene` — uma por bloco (ADR-002). Corrigir o
+                 número tem de renomear todas, senão o bloco B ficaria numa cena órfã. */
+              onChange={(valor) => {
+                for (const bloco of ordenados) {
+                  void patchEntity('scene', bloco.id, { number: valor });
+                }
+                syncNow();
+              }}
+            />
+          ) : null}
+
           {ordenados.map((bloco) => (
             <BlocoCard
               key={bloco.id}
@@ -183,6 +197,19 @@ function BlocoCard({
 
       {aberto ? (
         <div className="flex flex-col gap-3 p-3">
+          {canEdit ? (
+            <TextField
+              label="Letra do bloco"
+              className="w-28"
+              value={bloco.block ?? ''}
+              onChange={(valor) =>
+                void patchEntity('scene', bloco.id, {
+                  block: valor.toUpperCase() || null,
+                }).then(syncNow)
+              }
+            />
+          ) : null}
+
           {ordenados.length === 0 ? (
             <p className="text-sm text-zinc-500">Sem planos neste bloco.</p>
           ) : null}

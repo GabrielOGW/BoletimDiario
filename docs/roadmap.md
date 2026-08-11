@@ -175,8 +175,12 @@ A fase mais sensível: migrar o módulo que está em uso. **Migração, não red
       auto-save com debounce, toggle verde "Aprovado pelo diretor" intacto
 - [x] Câmeras cadastradas, técnica e óptica no cartão do Plano, cartão/clip-sync/nota no take
 - [x] Herança entre takes (`inheritCameraFlat`, no domínio e com teste)
-- [ ] Paridade **campo a campo** — conferir o checklist de
-      [features/camera.md §1](features/camera.md#1-o-que-existe-hoje) item a item
+- [x] Paridade **campo a campo** — conferida item a item em
+      [features/camera.md §1](features/camera.md#conferência-campo-a-campo--2026-08-11).
+      Entraram os campos que faltavam: operador/foco/claquetista da câmera, matte box,
+      observações do plano, número da cena e letra do bloco editáveis. Quatro lacunas
+      ficaram com dono declarado — `Plano.tipo` e a câmera do plano precisam de uma
+      passagem de `banco`; autocomplete e duplicação são módulos novos
 - [ ] Mídia/Suporte (depende de equipamentos, Fase 8)
 - [ ] Novos campos de [features/camera.md §3](features/camera.md#3-organização-dos-campos-10)
 - [ ] `TakeStatus` **preservando** o toggle "Aprovado pelo diretor"

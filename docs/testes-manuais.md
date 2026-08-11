@@ -55,7 +55,18 @@ Observar:
 - [ ] A folha abre e o PDF sai completo, sem rede
 - [ ] De volta à rede, as pendências sobem sozinhas e o contador zera
 
-### 1.3 O toggle verde não regrediu
+### 1.3 Os campos que entraram na conferência de paridade
+
+Todos já existiam no modelo e no banco; o que faltava era onde preencher. Conferir que
+**preenchem, sincronizam e saem impressos**:
+
+- [ ] Câmera: operador, foco e claquetista aparecem no cabeçalho da folha
+- [ ] Matte Box marcado aparece na linha técnica do plano
+- [ ] "Observações do plano" sai como `Obs.:` abaixo da tabela de takes
+- [ ] Corrigir o número da cena renomeia **todos** os blocos dela, não só o primeiro
+- [ ] Corrigir a letra do bloco reordena a cena corretamente
+
+### 1.4 O toggle verde não regrediu
 
 - [ ] Aprovar um take custa **um** toque, sem modal e sem confirmação
 - [ ] O botão continua verde, largo e com a mesma frase ("Aprovado pelo diretor")
