@@ -13,9 +13,20 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-/** Rotas navegáveis que valem precache. Chunks ficam com o stale-while-revalidate. */
+/**
+ * Rotas navegáveis que valem precache. Chunks ficam com o stale-while-revalidate.
+ *
+ * As três URLs antigas (`/novo`, `/editar`, `/visualizar`) continuam na lista mesmo depois
+ * da mudança para `/legado`: elas estão no histórico e nos favoritos de quem já usa o app,
+ * e um `rewrite` as mantém navegáveis. Tirá-las daqui seria fazer o app parar de abrir
+ * offline justamente no atalho que a pessoa criou.
+ */
 const APP_SHELL = [
   '/',
+  '/legado',
+  '/legado/novo',
+  '/legado/editar',
+  '/legado/visualizar',
   '/novo',
   '/editar',
   '/visualizar',

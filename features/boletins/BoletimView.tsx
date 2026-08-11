@@ -111,7 +111,7 @@ export function BoletimView({ id }: { id: string | null }) {
   if (notFound || !boletim) {
     return (
       <div className="flex min-h-dvh flex-col bg-ink">
-        <AppHeader title="Boletim não encontrado" backHref="/" />
+        <AppHeader title="Boletim não encontrado" backHref="/legado" />
         <PageContainer className="flex flex-1 items-center justify-center py-20 text-center">
           <p className="text-sm text-zinc-400">
             Este boletim não existe neste dispositivo.
@@ -154,7 +154,7 @@ export function BoletimView({ id }: { id: string | null }) {
         <AppHeader
           title="Visualizar boletim"
           subtitle={producao.tituloProjeto.trim() || undefined}
-          backHref={`/editar?id=${boletim.id}`}
+          backHref={`/legado/editar?id=${boletim.id}`}
           right={<OfflineBadge />}
         />
       </div>
@@ -533,7 +533,7 @@ export function BoletimView({ id }: { id: string | null }) {
             label="Editar boletim"
             variant="surface"
             icon={<PencilIcon size={18} />}
-            onClick={() => router.push(`/editar?id=${boletim.id}`)}
+            onClick={() => router.push(`/legado/editar?id=${boletim.id}`)}
           />
           <IconButton
             label="Exportar este boletim em JSON"

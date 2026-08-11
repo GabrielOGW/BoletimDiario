@@ -55,7 +55,7 @@ export function BoletimCard({
   return (
     <li className="overflow-hidden rounded-2xl border border-line bg-surface">
       <Link
-        href={`/editar?id=${boletim.id}`}
+        href={`/legado/editar?id=${boletim.id}`}
         className="block p-4 transition hover:bg-surface-hover"
       >
         <div className="flex items-start justify-between gap-3">

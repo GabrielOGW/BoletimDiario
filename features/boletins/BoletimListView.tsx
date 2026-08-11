@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Boletim } from '@/types/boletim';
 import { useBoletins } from '@/hooks/useBoletins';
@@ -16,7 +17,14 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { OfflineBadge } from '@/components/pwa/OfflineBadge';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
-import { ClapperboardIcon, PlusIcon, SearchIcon } from '@/components/ui/icons';
+import {
+  ArrowLeftIcon,
+  ClapperboardIcon,
+  PlusIcon,
+  SearchIcon,
+  UploadIcon,
+  UsersIcon,
+} from '@/components/ui/icons';
 
 import { BoletimCard } from '@/features/boletins/BoletimCard';
 import { BackupControls } from '@/features/backup/BackupControls';
@@ -32,7 +40,7 @@ export function BoletimListView() {
 
   const handleNew = () => {
     const created = create();
-    router.push(`/editar?id=${created.id}`);
+    router.push(`/legado/editar?id=${created.id}`);
   };
 
   return (
@@ -47,6 +55,43 @@ export function BoletimListView() {
         <PageContainer className="space-y-4">
           <InstallPrompt />
           <BackupControls count={all.length} />
+
+          {/* A porta para a plataforma. Fica aqui, e não no lugar desta tela: usar o
+              boletim sem conta continua sendo um modo suportado, não uma versão
+              degradada (features/camera.md §7). */}
+          <Link
+            href="/producoes"
+            className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 transition hover:bg-surface-hover"
+          >
+            <UsersIcon size={20} className="shrink-0 text-brand" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium text-zinc-100">
+                Trabalhar com a equipe
+              </span>
+              <span className="block text-xs leading-relaxed text-zinc-500">
+                Produções sincronizadas, com Som e Continuidade na mesma diária.
+              </span>
+            </span>
+            <ArrowLeftIcon size={16} className="shrink-0 rotate-180 text-zinc-500" />
+          </Link>
+
+          {all.length > 0 ? (
+            <Link
+              href="/legado/importar"
+              className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 transition hover:bg-surface-hover"
+            >
+              <UploadIcon size={20} className="shrink-0 text-zinc-400" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-zinc-100">
+                  Levar estes boletins para a plataforma
+                </span>
+                <span className="block text-xs leading-relaxed text-zinc-500">
+                  Opcional. Nada é apagado daqui, e importar de novo não duplica.
+                </span>
+              </span>
+              <ArrowLeftIcon size={16} className="shrink-0 rotate-180 text-zinc-500" />
+            </Link>
+          ) : null}
 
           {all.length > 0 ? (
             <SearchInput
@@ -93,7 +138,7 @@ export function BoletimListView() {
                 <BoletimCard
                   key={boletim.id}
                   boletim={boletim}
-                  onView={() => router.push(`/visualizar?id=${boletim.id}`)}
+                  onView={() => router.push(`/legado/visualizar?id=${boletim.id}`)}
                   onDuplicate={() => duplicate(boletim.id)}
                   onDelete={() => setPendingDelete(boletim)}
                 />

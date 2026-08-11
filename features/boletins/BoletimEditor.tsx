@@ -37,7 +37,7 @@ import { ObservacoesGeraisSection } from '@/features/boletins/sections/Observaco
 function StateScreen({ title, message }: { title: string; message: string }) {
   return (
     <div className="flex min-h-dvh flex-col bg-ink">
-      <AppHeader title={title} backHref="/" />
+      <AppHeader title={title} backHref="/legado" />
       <PageContainer className="flex flex-1 flex-col items-center justify-center py-20 text-center">
         <p className="text-sm text-zinc-400">{message}</p>
       </PageContainer>
@@ -190,7 +190,7 @@ export function BoletimEditor({ id }: { id: string | null }) {
         <AppHeader
           title={headerTitle}
           subtitle={headerSubtitle}
-          backHref="/"
+          backHref="/legado"
           right={
             <>
               <OfflineBadge />
@@ -264,7 +264,7 @@ export function BoletimEditor({ id }: { id: string | null }) {
             variant="primary"
             fullWidth
             leftIcon={<EyeIcon size={18} />}
-            onClick={() => router.push(`/visualizar?id=${boletim.id}`)}
+            onClick={() => router.push(`/legado/visualizar?id=${boletim.id}`)}
           >
             Visualizar / PDF
           </Button>

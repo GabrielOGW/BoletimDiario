@@ -26,7 +26,7 @@ Onde um documento antigo conflitar com o plano v2, **o plano v2 vence**.
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | [plano-arquitetural-v2.md](plano-arquitetural-v2.md) | **Decisões finais da rodada 2** — arquitetura, banco, sync, conflitos, offline, skills, roadmap, riscos |
 | [risks-response.md](risks-response.md)               | Retorno do proprietário sobre os riscos (entrada da rodada 2)                                           |
-| [decisions.md](decisions.md)                         | Registro de decisões (ADR-001 … ADR-028), imutável por reescrita                                        |
+| [decisions.md](decisions.md)                         | Registro de decisões (ADR-001 … ADR-032), imutável por reescrita                                        |
 | [risks.md](risks.md)                                 | Matriz de risco vigente, com status                                                                     |
 | [roadmap.md](roadmap.md)                             | Fases, ordem de implementação e critérios de conclusão                                                  |
 | [testes-manuais.md](testes-manuais.md)               | O que só dá para verificar à mão — sessão com senha, IndexedDB real, papel impresso                     |
@@ -62,8 +62,13 @@ Onde um documento antigo conflitar com o plano v2, **o plano v2 vence**.
 | **Fase 2** — Fundação servidor (Neon/Drizzle/Auth) | ✅ concluída (falta só o deploy) |
 | **Fase 3** — Sala (produções, membros, diárias)    | ✅ concluída                     |
 | **Fase 4** — Superfície offline + sync             | ✅ concluída                     |
-| Fase 5 — Câmera na plataforma                      | ⏳ próxima                       |
-| Fases 6–10                                         | 📋 planejadas                    |
+| **Fase 5** — Câmera na plataforma                  | ⏳ em andamento                  |
+| Fases 6–11                                         | 📋 planejadas                    |
+
+A Fase 5 já entregou o módulo (`features/camera/`), a folha A4 impressa e a mudança das rotas
+do boletim local para `/legado`. Faltam a importação opcional dos boletins locais, o
+`TakeStatus` ao lado do toggle verde e a conferência campo a campo — Mídia/Suporte depende de
+equipamentos e fica para a Fase 8.
 
 O código da plataforma está em [`domain/platform/`](../domain/platform) (modelo compartilhado,
 regras de set e o mapeador do `Boletim` v2), [`lib/db/`](../lib/db) e [`lib/auth/`](../lib/auth)

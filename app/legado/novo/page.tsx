@@ -14,7 +14,7 @@ export default function NovoPage() {
     if (created.current) return;
     created.current = true;
     const boletim = upsert(createEmptyBoletim());
-    router.replace(`/editar?id=${boletim.id}`);
+    router.replace(`/legado/editar?id=${boletim.id}`);
   }, [router]);
 
   return (

@@ -203,7 +203,18 @@ export function mapGroupToSnapshot(
   const ctx: CreateContext = { actorId: options.actorId, now: options.now };
   const first = group.boletins[0];
 
-  const productionId = deriveId('production', group.key);
+  /**
+   * O id da produção inclui **quem** importa, e não só o nome do projeto.
+   *
+   * Sem isso, duas pessoas importando "Filme X · Produtora Y" de seus próprios aparelhos
+   * derivariam o mesmo id — e a segunda importação cairia dentro da produção da primeira,
+   * onde ela nem é membro. Determinismo continua valendo, que é o que importa: a **mesma**
+   * pessoa importando de novo converge para a mesma produção, sem duplicar (ADR-019).
+   *
+   * As cenas derivam deste id e acompanham. Diária, setup, take e dados de câmera derivam
+   * do id legado, que já é único por aparelho.
+   */
+  const productionId = deriveId('production', options.actorId ?? '', group.key);
   const production = createProduction(
     {
       id: productionId,
@@ -211,7 +222,7 @@ export function mapGroupToSnapshot(
       company: group.company,
       director: first?.producao.diretor ?? '',
       dop: first?.producao.diretorFotografia ?? '',
-      joinCode: deriveJoinCode(group.name, group.key),
+      joinCode: deriveJoinCode(group.name, `${options.actorId ?? ''} ${group.key}`),
       isProvisional: options.provisional ?? true,
     },
     ctx,

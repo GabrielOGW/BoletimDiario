@@ -230,6 +230,25 @@ ok('ids de cena estáveis', snap.scenes[0].id === again.scenes[0].id);
 ok('ids de take estáveis', snap.takes[0].id === again.takes[0].id);
 ok('id de produção estável', snap.production.id === again.production.id);
 
+// Duas pessoas importando o MESMO projeto do próprio aparelho não podem cair na mesma
+// produção: a segunda estaria escrevendo dentro da sala da primeira, onde nem é membro.
+const deOutro = mapBoletimToProduction(legacy, { ...OPTS, actorId: 'user_2' });
+ok('outro importador gera outra produção', snap.production.id !== deOutro.production.id);
+ok(
+  'outro importador gera outro código de sala',
+  snap.production.joinCode !== deOutro.production.joinCode,
+);
+ok(
+  'as cenas acompanham a produção do importador',
+  snap.scenes[0].id !== deOutro.scenes[0].id,
+);
+// A diária deriva do id legado do boletim, que já é único por aparelho — é o mesmo
+// registro visto por dois donos, e não duas diárias.
+ok(
+  'a diária continua derivando do boletim de origem',
+  snap.shootingDays[0].id === deOutro.shootingDays[0].id,
+);
+
 // ============================================================
 // 3. Cena com múltiplos blocos → 24A / 24B / 24C (ADR-002)
 // ============================================================

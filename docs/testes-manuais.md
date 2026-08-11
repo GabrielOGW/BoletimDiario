@@ -113,6 +113,26 @@ O que a suíte cobre é a regra; o que falta é o caminho pela tela, com duas co
 
 ---
 
+## 3.1 Fase 5 — a importação, pela tela
+
+A lógica está coberta por `npm run test:import` (28 checks contra o Neon real). O que falta
+é o caminho pela interface, que exige sessão.
+
+1. Com boletins no aparelho e conta criada, abra `/legado` → "Levar estes boletins para a
+   plataforma".
+
+- [ ] Cada projeto aparece como um cartão, com diárias, cenas, planos, takes e aprovados
+- [ ] Sem sessão, a tela explica e oferece "Entrar" — **não** joga para o login sozinha
+- [ ] Depois de entrar, volta para `/legado/importar` (o `voltarPara`)
+- [ ] "Importar" cria a produção e o link "Abrir a produção" leva à sala certa
+- [ ] Os boletins **continuam** em `/legado`, intactos
+- [ ] Abrir a diária importada em `/p/[id]/diarias/[dia]/camera` mostra cenas, planos,
+      takes e os aprovados com o toggle verde ligado
+- [ ] Importar o mesmo projeto de novo diz "Nada novo: tudo já estava lá"
+- [ ] Editar um cartão na plataforma e importar de novo **não** desfaz a edição
+
+---
+
 ## 4. PWA e atualização
 
 - [ ] Instalar pelo ícone funciona e o app abre em `standalone`
@@ -120,6 +140,22 @@ O que a suíte cobre é a regra; o que falta é o caminho pela tela, com duas co
       sozinha no meio de uma diária
 - [ ] Aceitar o aviso troca de versão e mantém o que estava no banco local
 - [ ] Um boletim local antigo (`bdc:boletins:v1`) continua abrindo depois da atualização
+
+### 4.1 O atalho antigo do aparelho, depois da mudança para `/legado`
+
+O teste que a mudança de rotas ([ADR-032](decisions.md#adr-032--legado-recebe-as-rotas-do-boletim-mas--continua-sendo-o-boletim))
+pede. O risco que ele cobre é a resposta redirecionada em cache — por isso a mudança usa
+`rewrite` e não `redirect`, mas quem confirma é o aparelho.
+
+1. Com a **versão anterior** instalada, crie um atalho na tela inicial para um boletim
+   (`/editar?id=…`) e visite `/novo` e `/visualizar?id=…` pelo menos uma vez, online.
+2. Publique esta versão e aceite o aviso de atualização.
+3. **Modo avião.**
+
+- [ ] O atalho `/editar?id=…` abre o boletim, offline, com a URL antiga intacta
+- [ ] `/novo` e `/visualizar?id=…` abrem offline
+- [ ] O ícone do PWA (`start_url` = `/`) abre a lista de boletins, como antes
+- [ ] `/legado` e `/legado/editar?id=…` também abrem offline
 
 ---
 

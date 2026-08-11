@@ -211,7 +211,13 @@ com a lista de rolls quando houver.
 
 1. `/`, `/novo`, `/editar?id=`, `/visualizar?id=` continuam funcionando sobre LocalStorage
    até a Fase 5.
-2. Depois da Fase 5, permanecem acessíveis em `/legado` para os boletins ainda não migrados.
+2. **Feito na Fase 5** ([ADR-032](../decisions.md#adr-032--legado-recebe-as-rotas-do-boletim-mas--continua-sendo-o-boletim)):
+   o editor local mora em `/legado`, `/legado/novo`, `/legado/editar`, `/legado/visualizar`.
+   **`/` renderiza a mesma lista** — é o `start_url` do PWA já instalado, e trocá-lo pela
+   plataforma cobraria um toque a mais, todo dia, de quem só quer os boletins que já estão
+   no aparelho. As três URLs antigas continuam navegáveis por **rewrite**, não por
+   redirect: uma resposta redirecionada guardada em cache é recusada pelo navegador numa
+   navegação, e o sintoma seria o app parar de abrir offline em quem criou o atalho.
 3. `bdc:boletins:v1` **não é apagado**. Ver
    [../migrations/local-to-cloud.md](../migrations/local-to-cloud.md).
 4. Importar backup no formato antigo continua funcionando — passa por `normalizeBoletim` e
