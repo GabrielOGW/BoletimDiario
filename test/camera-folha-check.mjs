@@ -8,6 +8,7 @@ import {
   assinaturaDoPlano,
   diferencasDoPlano,
   partesTecnicas,
+  rotuloDoJulgamento,
 } from '@/features/camera/estrutura.ts';
 
 const checks = [];
@@ -106,6 +107,18 @@ ok(
   'plano sem take agrupa com outro plano sem take',
   assinaturaDoPlano('A', undefined) === assinaturaDoPlano('A', undefined),
 );
+
+// ---- Julgamento da câmera no papel ----
+
+ok('NG é impresso', rotuloDoJulgamento('NG') === 'NG');
+ok('PARTIAL vira "Parcial"', rotuloDoJulgamento('PARTIAL') === 'Parcial');
+// `RECORDED` é o padrão de todo take: imprimir "OK" em cada linha gastaria tinta e atenção.
+ok('RECORDED não vira marca', rotuloDoJulgamento('RECORDED') === null);
+// A aprovação já tem selo próprio; repetir a mesma informação com dois nomes confunde.
+ok('CIRCLE não duplica o selo de aprovado', rotuloDoJulgamento('CIRCLE') === null);
+ok('sem julgamento não imprime nada', rotuloDoJulgamento(null) === null);
+// Os valores que mudam de eixo na Fase 6 (ADR-029) ainda não têm apresentação própria.
+ok('WILD ainda não é impresso como julgamento', rotuloDoJulgamento('WILD') === null);
 
 let failed = 0;
 for (const c of checks) {

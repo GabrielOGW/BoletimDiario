@@ -183,7 +183,10 @@ A fase mais sensível: migrar o módulo que está em uso. **Migração, não red
       passagem de `banco`; autocomplete e duplicação são módulos novos
 - [ ] Mídia/Suporte (depende de equipamentos, Fase 8)
 - [ ] Novos campos de [features/camera.md §3](features/camera.md#3-organização-dos-campos-10)
-- [ ] `TakeStatus` **preservando** o toggle "Aprovado pelo diretor"
+- [x] `TakeStatus` **preservando** o toggle "Aprovado pelo diretor" — o toggle passou a
+      gravar `approved` **e** `takes.status = CIRCLE` (ADR-010), e ganhou ao lado uma
+      fileira secundária com o julgamento da câmera
+      ([features/camera.md §4](features/camera.md#como-ficou-fase-5-1))
 - [x] PDF com a mesma qualidade de saída — folha A4 em sobreposição na própria rota da
       diária, com as mesmas classes de impressão e a diferença técnica por take
       ([features/camera.md §6](features/camera.md#como-ficou-fase-5))

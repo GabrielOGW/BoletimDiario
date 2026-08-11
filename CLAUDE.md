@@ -17,11 +17,11 @@ npm run lint           # ESLint (no-explicit-any and no-unused-vars are errors)
 npm run format         # Prettier --write
 npm run format:check
 npm run icons          # regenerate PWA PNG icons from public/icons/icon.svg
-npm test               # all four check suites below (190 assertions)
+npm test               # all four check suites below (200 assertions)
 npm run test:migration # a real v1 boletim through v2 normalization (22 assertions)
 npm run test:platform  # domain/platform set rules: inheritance, take numbering (60)
-npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-to-end (83)
-npm run test:camera    # camera sheet structure: scene/block grouping, print line (25)
+npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-to-end (87)
+npm run test:camera    # camera sheet structure: grouping, print line, take judgment (31)
 npm run test:db        # schema/triggers against the real Neon (20) — needs DATABASE_URL
 npm run test:sala      # room rules against the real Neon (27) — needs DATABASE_URL
 npm run test:sync      # compare-and-set, idempotency, cursor (29) — needs DATABASE_URL

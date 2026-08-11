@@ -200,6 +200,28 @@ o gesto mais usado do app. O enum aparece como uma fileira de ações rápidas a
 Trocar o toggle por um seletor de status seria uma regressão de UX em nome de pureza de
 modelo.
 
+### Como ficou (Fase 5)
+
+**O toggle escreve nos dois lugares.** Aprovar continua sendo um toque, e grava
+`camera_take_data.approved = true` **e** `takes.status = 'CIRCLE'` — o mesmo fato dito no
+vocabulário compartilhado, que é o que Som e Continuidade leem. Antes ele gravava só
+`approved`, e a diária digitada aqui divergia da importada, onde o mapeador já produzia
+`CIRCLE` (ADR-010). Desaprovar volta para `RECORDED` **só** se o status era `CIRCLE`: um take
+que alguém pôs em outro status por outro caminho não é rebaixado por uma desaprovação.
+
+**A fileira de julgamento é secundária e opcional.** "Câmera: NG · Parcial", menor e abaixo
+do toggle, escrevendo `camera_take_data.status` — o julgamento **da câmera**, que é outro eixo
+que a aprovação do diretor. Tocar de novo no mesmo botão limpa; em set, desfazer não pode
+custar um menu. Um take normal não precisa de nenhum toque aqui.
+
+Só entraram `NG` e `PARTIAL`. `WILD`, `ROOM_TONE` e `FALSE_START` mudam para `TakeKind` na
+Fase 6 ([ADR-029](../decisions.md#adr-029--julgamento-e-natureza-do-take-são-eixos-separados)),
+e construir uma fileira agora para desmanchá-la daqui a uma fase seria trabalho negativo.
+
+No papel, o julgamento sai ao lado do selo de aprovado — um take pode ser aprovado pelo
+diretor e NG para a câmera, e a pós precisa saber. `RECORDED` e `CIRCLE` não viram marca:
+o primeiro é o padrão de todo take, e o segundo já tem selo próprio.
+
 ---
 
 ## 5. Automações preservadas e novas
