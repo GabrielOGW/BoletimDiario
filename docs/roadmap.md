@@ -186,7 +186,10 @@ A fase mais sensível: migrar o módulo que está em uso. **Migração, não red
 - [x] Rotas atuais movidas para `/legado`, ainda funcionando sem conta — `/` continua
       sendo o boletim local, e as URLs antigas seguem navegáveis por rewrite
       ([ADR-032](decisions.md#adr-032--legado-recebe-as-rotas-do-boletim-mas--continua-sendo-o-boletim))
-- [ ] Importação opcional dos boletins locais ([migrations/local-to-cloud.md](migrations/local-to-cloud.md))
+- [x] Importação opcional dos boletins locais em `/legado/importar` — o cliente manda o
+      boletim cru, o servidor normaliza, mapeia e insere com `on conflict do nothing`
+      ([migrations/local-to-cloud.md §3](migrations/local-to-cloud.md#3-fluxo)); verificada
+      por `npm run test:import` (28 checks contra o Neon real)
 
 **Pronta quando:** um usuário atual faz uma diária inteira no módulo novo sem sentir falta de
 nada — e o boletim impresso sai igual ou melhor.

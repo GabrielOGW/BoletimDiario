@@ -22,6 +22,7 @@ import {
   ClapperboardIcon,
   PlusIcon,
   SearchIcon,
+  UploadIcon,
   UsersIcon,
 } from '@/components/ui/icons';
 
@@ -73,6 +74,24 @@ export function BoletimListView() {
             </span>
             <ArrowLeftIcon size={16} className="shrink-0 rotate-180 text-zinc-500" />
           </Link>
+
+          {all.length > 0 ? (
+            <Link
+              href="/legado/importar"
+              className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 transition hover:bg-surface-hover"
+            >
+              <UploadIcon size={20} className="shrink-0 text-zinc-400" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-zinc-100">
+                  Levar estes boletins para a plataforma
+                </span>
+                <span className="block text-xs leading-relaxed text-zinc-500">
+                  Opcional. Nada é apagado daqui, e importar de novo não duplica.
+                </span>
+              </span>
+              <ArrowLeftIcon size={16} className="shrink-0 rotate-180 text-zinc-500" />
+            </Link>
+          ) : null}
 
           {all.length > 0 ? (
             <SearchInput

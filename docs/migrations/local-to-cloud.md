@@ -45,21 +45,57 @@ formato de entrada, não com o histórico inteiro do schema.
 
 ## 3. Fluxo
 
+**Implementado na Fase 5.** Tela em `/legado/importar`, ação em
+[`features/legado/actions.ts`](../../features/legado/actions.ts), escrita em
+[`lib/db/queries/import.ts`](../../lib/db/queries/import.ts).
+
 ```
 bdc:boletins:v1  (LocalStorage — nunca apagado)
         │
-        ▼  normalizeBoletim()            ← código existente, testado
+        ▼  o navegador só AGRUPA e CONTA, para mostrar o que vai subir
+   groupBoletins() + countBoletins()
+        │
+        ▼  Server Action recebe o JSON CRU do grupo escolhido
+        │
+        ▼  normalizeBoletim()            ← no servidor; é a fronteira de confiança
    Boletim v2 em memória
         │
-        ▼  mapBoletimToProduction()      ← domain/platform/from-boletim.ts (Fase 1 ✅)
+        ▼  mapGroupToSnapshot()          ← domain/platform/from-boletim.ts (Fase 1 ✅)
    Production · ShootingDay · Scene · Setup · Take · CameraTakeData · CameraUnit
         │
-        ▼  grava na produção escolhida (Dexie da diária + outbox)
-   sincroniza como qualquer outra escrita
+        ▼  insert … on conflict do nothing, em lotes, na ordem das dependências
+   o sync_log avisa os outros dispositivos como avisaria de qualquer escrita
 ```
 
-Não há caminho especial de subida: o que a importação produz entra na fila normal, com
-idempotência, ordem e retry. Menos código, menos superfície de bug.
+### Três decisões que valem explicação
+
+**O cliente manda o boletim cru, não o modelo mapeado.** Aceitar o modelo já mapeado seria
+abrir uma porta de escrita direta nas tabelas — bastaria forjar o payload. Mandando o
+boletim, a primeira coisa que acontece no servidor é `normalizeBoletim()`, que já é uma
+coerção defensiva sem `any` capaz de transformar _qualquer_ JSON num `Boletim` válido. De
+quebra, garante que a importação use exatamente o mapeador testado, e não uma cópia que o
+navegador rodou.
+
+**A importação é fora da fronteira offline** (ADR-016), e por isso **não** passa pela
+outbox. É uma operação feita sentado, com sinal, uma vez. Fazê-la passar pela fila exigiria
+fixar cada diária antes de importar — e `ShootingDay` nem entra no pull, porque é editada
+fora da fronteira. Escrever direto é o caminho mais curto e o único que não inventa
+mecanismo novo.
+
+**Nada é sobrescrito.** Toda inserção é `on conflict do nothing`, e o relatório mostra o
+que **de fato** entrou. Reimportar depois de alguém ter corrigido um cartão na plataforma
+não desfaz a correção; devolve zeros, que é a confirmação visível de que nada duplicou.
+
+### O que a importação não leva
+
+| Item               | Por quê                                                                                                                             |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `equipeCamera[]`   | Membro da sala **é uma conta** (`production_members.user_id` é `not null`). Os nomes continuam no boletim local, que não é apagado. |
+| `midiaSuporte[]`   | Depende do catálogo de equipamentos, que é da Fase 8.                                                                               |
+| Som e Continuidade | Não existem no boletim de origem.                                                                                                   |
+
+O mapeador continua produzindo esses registros — o que a Fase 5 não faz é gravá-los. Quando
+a Fase 8 chegar, é uma chamada a mais no mesmo lugar.
 
 ---
 
@@ -87,6 +123,23 @@ direta: **importar duas vezes produz exatamente o mesmo resultado**, sem duplica
 
 É isso que substitui toda a maquinaria de reversibilidade da versão anterior: se saiu errado,
 corrija e importe de novo.
+
+### O id da produção inclui quem importa
+
+Correção feita na Fase 5, junto com a implementação. O id da produção derivava só de
+`slug(título) + slug(produtora)` — determinístico, como tinha de ser, mas **igual para
+pessoas diferentes**. Duas pessoas importando "Filme X · Produtora Y" dos próprios aparelhos
+derivariam o mesmo id, e a segunda importação cairia dentro da produção da primeira, onde
+ela nem é membro.
+
+Agora `deriveId('production', actorId, group.key)`. O determinismo que a repetibilidade
+exige continua valendo — a **mesma** pessoa importando de novo converge para a mesma
+produção. As cenas derivam do id da produção e acompanham; diária, setup, take e dados de
+câmera derivam do id legado, que já é único por aparelho.
+
+Por precaução, a importação ainda recusa (`NAO_E_DONO`) se encontrar a produção derivada
+pertencendo a outra pessoa. Colisão aqui é improvável a ponto de ser sintoma de outra coisa,
+e despejar boletins na sala de um desconhecido é o único erro sem conserto desta tela.
 
 ---
 
@@ -127,8 +180,14 @@ Implementado e testado em
 - [x] Ids derivados ⇒ mapear duas vezes produz o mesmo resultado
 - [x] `aprovado` → `approved` + `CIRCLE`
 - [x] Contagens conferem (cenas, setups, takes, aprovados)
-- [ ] Agrupamento de boletins em produções
-- [ ] Colisão de data → `unit` incrementada
+- [x] Agrupamento de boletins em produções
+- [x] Colisão de data → `unit` incrementada
+- [x] Importador diferente ⇒ produção diferente (`npm run test:mapping`)
+- [x] **Contra o banco real** (`npm run test:import`, 28 checks): a produção é criada com
+      quem importa como `OWNER`; reimportar não insere nada e não duplica; reimportar não
+      sobrescreve o que alguém editou depois; o mesmo projeto de outra pessoa vira outra
+      produção e a primeira não entra nela; payload vazio, não-lista e boletim quase vazio
+      respondem sem quebrar
 
 Um boletim v1 **real** já serve de fixture em `test/migration-check.mjs`, e o mesmo boletim
 atravessa `test/platform-mapping-check.mjs` — o que valida `v1 → v2 → plataforma` de ponta a
