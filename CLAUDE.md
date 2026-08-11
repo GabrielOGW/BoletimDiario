@@ -17,6 +17,7 @@ npm run lint           # ESLint (no-explicit-any and no-unused-vars are errors)
 npm run format         # Prettier --write
 npm run format:check
 npm run icons          # regenerate PWA PNG icons from public/icons/icon.svg
+npm run check:env      # what the build needs before it starts (runs on prebuild)
 npm test               # all four check suites below (217 assertions)
 npm run test:migration # a real v1 boletim through v2 normalization (22 assertions)
 npm run test:platform  # domain/platform set rules: inheritance, take axes, numbering (70)
