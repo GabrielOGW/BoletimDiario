@@ -71,6 +71,10 @@ Todos já existiam no modelo e no banco; o que faltava era onde preencher. Confe
 - [ ] Aprovar um take custa **um** toque, sem modal e sem confirmação
 - [ ] O botão continua verde, largo e com a mesma frase ("Aprovado pelo diretor")
 - [ ] Desaprovar custa um toque também
+- [ ] Aprovar deixa o take como `CIRCLE` (confere em outro dispositivo, depois do sync)
+- [ ] "Câmera: NG" fica marcado **junto** com a aprovação, sem uma desfazer a outra
+- [ ] Tocar de novo em "NG" limpa o julgamento
+- [ ] No PDF, um take aprovado **e** NG mostra as duas marcas
 
 ---
 

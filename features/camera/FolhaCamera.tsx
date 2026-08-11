@@ -16,6 +16,7 @@ import {
   assinaturaDoPlano,
   diferencasDoPlano,
   partesTecnicas,
+  rotuloDoJulgamento,
 } from './estrutura';
 
 /**
@@ -377,6 +378,9 @@ export function FolhaCamera({
                                               {takesDoPlano.map((take) => {
                                                 const dados = dadosDoTake(setup, take);
                                                 const aprovado = dados?.approved ?? false;
+                                                const julgamento = rotuloDoJulgamento(
+                                                  dados?.status,
+                                                );
                                                 const mudou = diferencasDoPlano(
                                                   dados,
                                                   referencia,
@@ -431,11 +435,27 @@ export function FolhaCamera({
                                                         <span className="inline-block rounded bg-approved px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-white">
                                                           ✓ Aprovado
                                                         </span>
-                                                      ) : (
+                                                      ) : null}
+                                                      {/* O julgamento da câmera é outro
+                                                          eixo (ADR-010): um take pode ser
+                                                          aprovado pelo diretor e NG para
+                                                          a câmera, e a pós precisa saber. */}
+                                                      {julgamento ? (
+                                                        <span
+                                                          className={cn(
+                                                            'inline-block rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide',
+                                                            aprovado ? 'ml-1' : '',
+                                                            'border-zinc-400 text-zinc-700',
+                                                          )}
+                                                        >
+                                                          {julgamento}
+                                                        </span>
+                                                      ) : null}
+                                                      {!aprovado && !julgamento ? (
                                                         <span className="text-zinc-300">
                                                           —
                                                         </span>
-                                                      )}
+                                                      ) : null}
                                                     </td>
                                                   </tr>
                                                 );

@@ -111,6 +111,23 @@ export function diferencasDoPlano(
 }
 
 /**
+ * O julgamento **da câmera** sobre o take, quando há um (ADR-010).
+ *
+ * É outro eixo que a aprovação do diretor: um take pode ser aprovado e ser NG para a
+ * câmera, e a pós precisa saber. `RECORDED` é o padrão de todo take e não vira marca no
+ * papel — imprimir "OK" em cada linha gastaria tinta e atenção. `CIRCLE` também não: a
+ * aprovação já tem selo próprio, e repetir a mesma informação com dois nomes confunde.
+ *
+ * Só o eixo de julgamento aparece aqui. `WILD`, `ROOM_TONE` e `FALSE_START` mudam para
+ * `TakeKind` na Fase 6 (ADR-029) e ganham apresentação própria quando isso acontecer.
+ */
+const JULGAMENTO_IMPRESSO: Record<string, string> = { NG: 'NG', PARTIAL: 'Parcial' };
+
+export function rotuloDoJulgamento(status: string | null | undefined): string | null {
+  return status ? (JULGAMENTO_IMPRESSO[status] ?? null) : null;
+}
+
+/**
  * Assinatura técnica de um plano — planos consecutivos iguais são impressos como um só.
  *
  * `groupPlanos` do boletim atual, mesma intenção: uma diária de dez planos idênticos não

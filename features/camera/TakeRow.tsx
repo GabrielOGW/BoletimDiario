@@ -8,7 +8,7 @@ import { TextField } from '@/components/ui/TextField';
 import { IconButton } from '@/components/ui/IconButton';
 import type { LocalCameraTakeData, LocalTake } from '@/lib/offline/db';
 import { ensureCameraTakeData, patchCameraTakeData } from '@/lib/offline/repos/camera';
-import { softDelete } from '@/lib/offline/repos/diaria';
+import { patchEntity, softDelete } from '@/lib/offline/repos/diaria';
 import { syncNow } from '@/lib/sync/engine';
 import { cn } from '@/utils/cn';
 
@@ -50,6 +50,34 @@ export function TakeRow({
   async function altera(changes: Record<string, unknown>) {
     await patchCameraTakeData(await comDados(), changes);
     syncNow();
+  }
+
+  /**
+   * Aprovar é **um** gesto e escreve nos dois lugares que ADR-010 exige.
+   *
+   * `approved` guarda a semântica "aprovado pelo diretor", que o boletim sempre teve, e
+   * `take.status = CIRCLE` é o mesmo fato dito no vocabulário compartilhado — é o que o
+   * Som e a Continuidade leem, e é exatamente o que a importação dos boletins locais já
+   * produzia. Escrever só um dos dois faria a diária digitada aqui divergir da importada.
+   */
+  async function alternaAprovacao() {
+    const proximo = !aprovado;
+    await patchCameraTakeData(await comDados(), { approved: proximo });
+
+    // Só volta para `RECORDED` o que este toggle marcou: um take que alguém pôs em outro
+    // status por outro caminho não é rebaixado por uma desaprovação.
+    if (proximo || take.status === 'CIRCLE') {
+      await patchEntity('take', take.id, {
+        status: proximo ? 'CIRCLE' : 'RECORDED',
+      });
+    }
+
+    syncNow();
+  }
+
+  /** O julgamento **da câmera**, separado da aprovação do diretor (ADR-010). */
+  async function alteraJulgamento(valor: string | null) {
+    await altera({ status: dados?.status === valor ? null : valor });
   }
 
   return (
@@ -105,7 +133,7 @@ export function TakeRow({
         role="switch"
         aria-checked={aprovado}
         disabled={!canEdit}
-        onClick={() => void altera({ approved: !aprovado })}
+        onClick={() => void alternaAprovacao()}
         className={cn(
           'mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition',
           aprovado
@@ -117,9 +145,45 @@ export function TakeRow({
         <CheckCircleIcon size={18} />
         {aprovado ? 'Aprovado pelo diretor' : 'Marcar como aprovado'}
       </button>
+
+      {/* O julgamento da câmera, ao lado e menor — nunca no lugar do toggle (ADR-010,
+          ADR-029). É opcional: o take normal não precisa de nenhum toque aqui. */}
+      {canEdit ? (
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-xs text-zinc-500">Câmera:</span>
+          {JULGAMENTOS.map((julgamento) => (
+            <button
+              key={julgamento.valor}
+              type="button"
+              aria-pressed={dados?.status === julgamento.valor}
+              onClick={() => void alteraJulgamento(julgamento.valor)}
+              className={cn(
+                'min-h-[32px] rounded-lg border px-2.5 text-xs font-medium transition',
+                dados?.status === julgamento.valor
+                  ? 'border-brand/60 bg-brand-soft text-zinc-100'
+                  : 'border-line bg-surface-raised text-zinc-400 hover:bg-surface-hover',
+              )}
+            >
+              {julgamento.rotulo}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
+
+/**
+ * Só o eixo de **julgamento**, e só os valores que sobrevivem a ADR-029.
+ *
+ * `WILD`, `ROOM_TONE` e `FALSE_START` mudam de eixo na Fase 6, quando `TakeKind` nasce —
+ * pô-los aqui agora seria construir uma fileira para desmanchar daqui a uma fase. Tocar
+ * de novo no mesmo botão limpa: em set, desfazer não pode custar um menu.
+ */
+const JULGAMENTOS: { valor: string; rotulo: string }[] = [
+  { valor: 'NG', rotulo: 'NG' },
+  { valor: 'PARTIAL', rotulo: 'Parcial' },
+];
 
 /**
  * Campo de texto com auto-save de 500 ms e flush no desmonte.
