@@ -18,8 +18,14 @@ import { uuidSchema } from './production';
  * Incrementar em toda mudança incompatível: campo novo obrigatório, semântica alterada,
  * entidade renomeada. Cliente e servidor divergentes ⇒ `426`, e o cliente recusado
  * **continua editando** — o sync trava, o preenchimento nunca.
+ *
+ * `3` (Fase 6): as entidades de Som entram no registro. **Campo** novo é compatível — o
+ * cliente antigo simplesmente não o conhece e o ignora, que foi o caso de `takes.kind`.
+ * **Entidade** nova não era: o `pull` do cliente antigo procurava a tabela local do tipo
+ * que chegou e não achava. O motor passou a ignorar tipo desconhecido, como o servidor já
+ * fazia; o incremento cobre quem foi instalado antes dessa tolerância existir.
  */
-export const SYNC_PROTOCOL = 2;
+export const SYNC_PROTOCOL = 3;
 
 // ---- Entidades sincronizáveis ----
 
@@ -134,6 +140,75 @@ export const SYNC_ENTITIES = {
       lut: 'text',
       colorSpace: 'text',
       vfx: 'text',
+      notes: 'text',
+      deletedAt: 'instant',
+    },
+  },
+
+  /**
+   * Configuração de som da diária — uma por `ShootingDay`.
+   *
+   * Entra na fronteira porque é **preenchimento de diária**: sample rate, TC e roll são
+   * decididos e corrigidos em set, com o gravador na mão. Deixá-la do lado do servidor
+   * faria a primeira coisa que o som faz no dia exigir sinal.
+   */
+  soundDayConfig: {
+    table: 'sound_day_config',
+    fields: {
+      shootingDayId: 'text',
+      sampleRate: 'text',
+      bitDepth: 'text',
+      frameRate: 'text',
+      timecodeSource: 'text',
+      tcJamAt: 'instant',
+      userBits: 'text',
+      dropFrame: 'bool',
+      fileFormat: 'text',
+      poly: 'bool',
+      media: 'text',
+      roll: 'text',
+      mediaCopies: 'text',
+      mediaVerified: 'bool',
+      soundMixer: 'text',
+      boomOperator: 'text',
+      deletedAt: 'instant',
+    },
+  },
+
+  /** Uma linha por take — o som não é multicam. */
+  soundTakeData: {
+    table: 'sound_take_data',
+    fields: {
+      takeId: 'text',
+      status: 'text',
+      ngReason: 'text',
+      circled: 'bool',
+      soundRoll: 'text',
+      fileName: 'text',
+      tcStart: 'text',
+      tcEnd: 'text',
+      durationSec: 'int',
+      notes: 'text',
+      deletedAt: 'instant',
+    },
+  },
+
+  /**
+   * Tracks do take, uma linha por canal — e é por isso que são tabela e não lista.
+   *
+   * O limite de quatro canais do caderno de papel não é do domínio, e uma lista ordenada
+   * dentro de um registro não teria merge por campo (synchronization.md §5): duas pessoas
+   * mexendo em canais diferentes do mesmo take conflitariam sem motivo. Como linhas, cada
+   * canal é um registro com id derivado de `(take, índice)` e converge sozinho.
+   */
+  soundTakeTrack: {
+    table: 'sound_take_tracks',
+    fields: {
+      takeId: 'text',
+      index: 'int',
+      name: 'text',
+      source: 'text',
+      equipmentId: 'text',
       notes: 'text',
       deletedAt: 'instant',
     },
@@ -302,6 +377,9 @@ export interface SnapshotResponse {
   takes: Record<string, unknown>[];
   cameraUnits: Record<string, unknown>[];
   cameraTakeData: Record<string, unknown>[];
+  soundDayConfig: Record<string, unknown>[];
+  soundTakeData: Record<string, unknown>[];
+  soundTakeTracks: Record<string, unknown>[];
   /** Referência somente leitura: quem é quem na sala, para exibir autoria de conflito. */
   members: { id: string; userId: string; name: string; department: string }[];
 }

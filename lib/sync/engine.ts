@@ -13,6 +13,7 @@
  */
 
 import {
+  SYNC_ENTITY_TYPES,
   SYNC_PROTOCOL,
   rowFromWire,
   type PullResponse,
@@ -23,6 +24,7 @@ import {
 import {
   cursorKey,
   getDb,
+  tableFor,
   getMeta,
   setMeta,
   type LocalRecord,
@@ -294,16 +296,9 @@ async function registraConflitos(
   await table.put(convergido as LocalRecord & Record<string, unknown>);
 }
 
+/** A tradução entidade → tabela mora em `lib/offline/db`, num lugar só. */
 function tabela(entityType: SyncEntityType) {
-  const db = getDb();
-  const tables = {
-    scene: db.scenes,
-    setup: db.setups,
-    take: db.takes,
-    cameraUnit: db.cameraUnits,
-    cameraTakeData: db.cameraTakeData,
-  } as const;
-  return tables[entityType] as unknown as {
+  return tableFor(entityType) as unknown as {
     get: (id: string) => Promise<(LocalRecord & Record<string, unknown>) | undefined>;
     put: (row: LocalRecord & Record<string, unknown>) => Promise<string>;
   };
@@ -360,6 +355,16 @@ export async function pull(productionId: string): Promise<void> {
 
   for (const change of changes) {
     if (!change.data) continue;
+
+    /**
+     * Tipo que este cliente não conhece é ignorado, e o cursor avança do mesmo jeito.
+     *
+     * É a mesma tolerância que o servidor já tinha no `pullChanges`, e faltava deste
+     * lado: sem ela, a primeira escrita de um departamento novo derrubava o `pull` de
+     * quem estava com a versão anterior — e o sintoma seria "parou de sincronizar", sem
+     * relação aparente com o departamento que nem aparece na tela dessa pessoa.
+     */
+    if (!SYNC_ENTITY_TYPES.includes(change.entityType)) continue;
 
     const table = tabela(change.entityType);
     const local = await table.get(change.entityId);

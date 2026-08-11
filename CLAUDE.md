@@ -25,7 +25,7 @@ npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-t
 npm run test:camera    # camera sheet structure: grouping, print line, take judgment (31)
 npm run test:db        # schema/triggers/enums against the real Neon (28) — needs DATABASE_URL
 npm run test:sala      # room rules against the real Neon (27) — needs DATABASE_URL
-npm run test:sync      # compare-and-set, idempotency, cursor (29) — needs DATABASE_URL
+npm run test:sync      # compare-and-set, idempotency, cursor, registry (45) — needs DATABASE_URL
 npm run test:import    # local-boletim import: idempotency, ownership (29) — needs DATABASE_URL
 ```
 

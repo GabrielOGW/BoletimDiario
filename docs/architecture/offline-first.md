@@ -87,16 +87,18 @@ nele significa perder o boletim de um dia de filmagem.
 Banco `bdc-platform`:
 
 ```ts
-// lib/offline/db.ts (Fase 4)
+// lib/offline/db.ts — versão 1 (Fase 4), 2 (Câmera) e 3 (Som)
 ── domínio (espelho parcial: só o que está fixado) ──
 shootingDays        id, productionId, date
 scenes              id, productionId, [number+block]
 setups              id, productionId, sceneId, shootingDayId, sortOrder
 takes               id, productionId, setupId, [setupId+number]
-cameraTakeData      id, productionId, takeId, [takeId+cameraUnitId]
-soundTakeData       id, productionId, takeId
-soundTakeTracks     id, productionId, takeId, [takeId+index]
-continuityTakeData  id, productionId, takeId
+cameraUnits         id, productionId, label                        ← v2
+cameraTakeData      id, productionId, takeId, [takeId+cameraUnitId] ← v2
+soundDayConfig      id, productionId, shootingDayId                 ← v3
+soundTakeData       id, productionId, takeId                        ← v3
+soundTakeTracks     id, productionId, takeId, [takeId+index]        ← v3
+continuityTakeData  id, productionId, takeId                        ← Fase 7
 continuityDetails   id, productionId, takeId, kind   ← props/figurino/cabelo/cenografia
 
 ── referência somente leitura, vinda do snapshot ──

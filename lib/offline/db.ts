@@ -118,6 +118,50 @@ export interface LocalCameraTakeData extends LocalRecord {
   notes?: string | null;
 }
 
+/** Configuração de som da diária — uma por `ShootingDay`. */
+export interface LocalSoundDayConfig extends LocalRecord {
+  shootingDayId: string;
+  sampleRate?: string | null;
+  bitDepth?: string | null;
+  frameRate?: string | null;
+  timecodeSource?: string | null;
+  tcJamAt?: string | null;
+  userBits?: string | null;
+  dropFrame?: boolean | null;
+  fileFormat?: string | null;
+  poly?: boolean | null;
+  media?: string | null;
+  roll?: string | null;
+  mediaCopies?: string | null;
+  mediaVerified?: boolean | null;
+  soundMixer?: string | null;
+  boomOperator?: string | null;
+}
+
+/** Uma linha por take — o som não é multicam. */
+export interface LocalSoundTakeData extends LocalRecord {
+  takeId: string;
+  status?: string | null;
+  ngReason?: string | null;
+  circled: boolean;
+  soundRoll?: string | null;
+  fileName?: string | null;
+  tcStart?: string | null;
+  tcEnd?: string | null;
+  durationSec?: number | null;
+  notes?: string | null;
+}
+
+/** Um registro por canal — sem o limite de quatro do caderno de papel. */
+export interface LocalSoundTakeTrack extends LocalRecord {
+  takeId: string;
+  index: number;
+  name?: string | null;
+  source?: string | null;
+  equipmentId?: string | null;
+  notes?: string | null;
+}
+
 export type OutboxStatus = 'PENDING' | 'SYNCING' | 'SYNCED' | 'FAILED';
 
 export interface OutboxEntry {
@@ -175,6 +219,9 @@ class PlatformDatabase extends Dexie {
   takes!: Table<LocalTake, string>;
   cameraUnits!: Table<LocalCameraUnit, string>;
   cameraTakeData!: Table<LocalCameraTakeData, string>;
+  soundDayConfig!: Table<LocalSoundDayConfig, string>;
+  soundTakeData!: Table<LocalSoundTakeData, string>;
+  soundTakeTracks!: Table<LocalSoundTakeTrack, string>;
   outbox!: Table<OutboxEntry, string>;
   syncConflicts!: Table<SyncConflict, string>;
   meta!: Table<MetaEntry, string>;
@@ -202,8 +249,42 @@ class PlatformDatabase extends Dexie {
       cameraUnits: 'id, productionId, label',
       cameraTakeData: 'id, productionId, takeId, [takeId+cameraUnitId]',
     });
+
+    // Versão 3: o módulo de Som (Fase 6). Mesma razão da versão 2 — tabela nova não
+    // obriga ninguém a reinstalar, e quem estiver com diária fixada não perde nada.
+    this.version(3).stores({
+      soundDayConfig: 'id, productionId, shootingDayId',
+      soundTakeData: 'id, productionId, takeId',
+      soundTakeTracks: 'id, productionId, takeId, [takeId+index]',
+    });
   }
 }
+
+/**
+ * Entidade sincronizável → tabela do Dexie.
+ *
+ * Existe aqui, e num lugar só, porque o repositório e o motor de sync precisavam da mesma
+ * tradução e a mantinham cada um por sua conta. Duas cópias significavam que acrescentar
+ * um departamento era editar dois mapas — e esquecer o segundo dá um sintoma cruel: o
+ * dado grava localmente, entra na fila, e o pull nunca o aplica de volta.
+ */
+export function tableFor(entityType: SyncEntityType): Table<AnyLocalRecord, string> {
+  const db = getDb();
+  const tables = {
+    scene: db.scenes,
+    setup: db.setups,
+    take: db.takes,
+    cameraUnit: db.cameraUnits,
+    cameraTakeData: db.cameraTakeData,
+    soundDayConfig: db.soundDayConfig,
+    soundTakeData: db.soundTakeData,
+    soundTakeTrack: db.soundTakeTracks,
+  } as const;
+
+  return tables[entityType] as unknown as Table<AnyLocalRecord, string>;
+}
+
+export type AnyLocalRecord = LocalRecord & Record<string, unknown>;
 
 /**
  * Instância única, criada só no navegador.

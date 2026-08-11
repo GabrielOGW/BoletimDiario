@@ -195,6 +195,28 @@ export async function loadSnapshot(input: {
        )
   `);
 
+  /**
+   * A configuração de som é **da diária**, não da produção: uma linha, e ela é o primeiro
+   * registro que o som toca no dia. Vem no snapshot para que tocar nele não peça sinal.
+   */
+  const soundDayConfig = await db.execute<Record<string, unknown>>(sql`
+    select ${entitySelect('soundDayConfig')} from sound_day_config
+     where production_id = ${input.productionId}
+       and shooting_day_id = ${input.shootingDayId}
+  `);
+
+  const soundTakeData = await db.execute<Record<string, unknown>>(sql`
+    select ${entitySelect('soundTakeData')} from sound_take_data
+     where production_id = ${input.productionId}
+       and take_id in (${takesDaDiaria(input)})
+  `);
+
+  const soundTakeTracks = await db.execute<Record<string, unknown>>(sql`
+    select ${entitySelect('soundTakeTrack')} from sound_take_tracks
+     where production_id = ${input.productionId}
+       and take_id in (${takesDaDiaria(input)})
+  `);
+
   const members = await db.execute<{
     id: string;
     userId: string;
@@ -221,6 +243,25 @@ export async function loadSnapshot(input: {
     takes: takes.rows,
     cameraUnits: cameraUnits.rows,
     cameraTakeData: cameraTakeData.rows,
+    soundDayConfig: soundDayConfig.rows,
+    soundTakeData: soundTakeData.rows,
+    soundTakeTracks: soundTakeTracks.rows,
     members: members.rows,
   };
+}
+
+/**
+ * Os takes da diária, como subconsulta.
+ *
+ * Escrita uma vez porque três departamentos fazem o mesmo recorte, e três cópias da mesma
+ * junção é onde uma delas um dia esquece o `production_id` — que é o eixo de toda
+ * autorização.
+ */
+function takesDaDiaria(input: { productionId: string; shootingDayId: string }) {
+  return sql`
+    select t.id from takes t
+      join setups s on s.id = t.setup_id
+     where s.production_id = ${input.productionId}
+       and s.shooting_day_id = ${input.shootingDayId}
+  `;
 }
