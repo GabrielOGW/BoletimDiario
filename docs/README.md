@@ -29,6 +29,7 @@ Onde um documento antigo conflitar com o plano v2, **o plano v2 vence**.
 | [decisions.md](decisions.md)                         | Registro de decisões (ADR-001 … ADR-028), imutável por reescrita                                        |
 | [risks.md](risks.md)                                 | Matriz de risco vigente, com status                                                                     |
 | [roadmap.md](roadmap.md)                             | Fases, ordem de implementação e critérios de conclusão                                                  |
+| [testes-manuais.md](testes-manuais.md)               | O que só dá para verificar à mão — sessão com senha, IndexedDB real, papel impresso                     |
 
 ### Arquitetura
 
@@ -59,10 +60,15 @@ Onde um documento antigo conflitar com o plano v2, **o plano v2 vence**.
 | **Fase 1** — Arquitetura                           | ✅ concluída                     |
 | **Fase 1.5** — Preparação (rodada 2)               | ✅ concluída                     |
 | **Fase 2** — Fundação servidor (Neon/Drizzle/Auth) | ✅ concluída (falta só o deploy) |
-| Fase 3 — Sala                                      | ⏳ próxima                       |
-| Fases 4–10                                         | 📋 planejadas                    |
+| **Fase 3** — Sala (produções, membros, diárias)    | ✅ concluída                     |
+| **Fase 4** — Superfície offline + sync             | ✅ concluída                     |
+| Fase 5 — Câmera na plataforma                      | ⏳ próxima                       |
+| Fases 6–10                                         | 📋 planejadas                    |
 
-O que já existe em **código** está em [`domain/platform/`](../domain/platform) — o modelo de
-domínio compartilhado, as regras de set (herança, incremento, reset de take) e o mapeador do
-`Boletim` v2 para o novo modelo. É código puro, sem dependências e sem I/O. Fora dele, a única
-alteração feita até aqui no aplicativo foi o reforço do fallback de [`utils/id.ts`](../utils/id.ts).
+O código da plataforma está em [`domain/platform/`](../domain/platform) (modelo compartilhado,
+regras de set e o mapeador do `Boletim` v2), [`lib/db/`](../lib/db) e [`lib/auth/`](../lib/auth)
+(schema, queries e guardas), [`app/(app)/`](<../app/(app)>) + `features/production/` (as telas
+da sala) e [`lib/offline/`](../lib/offline) + [`lib/sync/`](../lib/sync) + `app/api/sync/` (a
+superfície de diária e o motor de sincronização). O aplicativo de câmera segue intacto: fora do reforço do fallback de
+[`utils/id.ts`](../utils/id.ts), o que mudou nele foi o modo não controlado de `TextField` e
+`TextAreaField` — aditivo, para os formulários de Server Action.

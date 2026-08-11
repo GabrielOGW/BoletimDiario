@@ -7,8 +7,17 @@ import { cn } from '@/utils/cn';
 
 interface TextFieldProps {
   label: string;
-  value: string;
-  onChange: (value: string) => void;
+  /** Controlado (boletim). Omitido, o campo é do `<form>` — ver `name`/`defaultValue`. */
+  value?: string;
+  onChange?: (value: string) => void;
+  /**
+   * Modo não controlado, para os formulários que enviam direto a uma Server Action:
+   * o valor pertence ao `<form>`, e um `useState` por campo só faria o mesmo trabalho
+   * duas vezes. Sem `value`, o botão de limpar não aparece — ele precisa saber se há
+   * texto, e aqui não há como saber sem virar controlado de novo.
+   */
+  name?: string;
+  defaultValue?: string;
   placeholder?: string;
   type?: HTMLInputTypeAttribute;
   /** Sugestões para <datalist> sem travar a digitação. */
@@ -33,6 +42,8 @@ export function TextField({
   label,
   value,
   onChange,
+  name,
+  defaultValue,
   placeholder,
   type = 'text',
   options,
@@ -50,7 +61,11 @@ export function TextField({
   const listId = options ? `${id}-list` : undefined;
   const messageId = error || hint ? `${id}-message` : undefined;
   const showClear =
-    clearable && !disabled && !NATIVE_PICKER_TYPES.has(type) && value.length > 0;
+    clearable &&
+    !disabled &&
+    !NATIVE_PICKER_TYPES.has(type) &&
+    value !== undefined &&
+    value.length > 0;
 
   return (
     <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
@@ -65,6 +80,8 @@ export function TextField({
           id={id}
           type={type}
           value={value}
+          name={name}
+          defaultValue={defaultValue}
           list={listId}
           placeholder={placeholder}
           inputMode={inputMode}
@@ -74,7 +91,7 @@ export function TextField({
           disabled={disabled}
           aria-invalid={error ? true : undefined}
           aria-describedby={messageId}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => onChange?.(event.target.value)}
           className={cn(
             'h-12 w-full rounded-xl border border-line bg-surface px-3.5 text-base text-zinc-100',
             'transition placeholder:text-zinc-600',
@@ -89,7 +106,7 @@ export function TextField({
             type="button"
             tabIndex={-1}
             aria-label={`Limpar ${label}`}
-            onClick={() => onChange('')}
+            onClick={() => onChange?.('')}
             className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-zinc-500 transition hover:text-white"
           >
             <XIcon size={18} />

@@ -5,8 +5,11 @@ import { cn } from '@/utils/cn';
 
 interface TextAreaFieldProps {
   label: string;
-  value: string;
-  onChange: (value: string) => void;
+  /** Controlado (boletim). Omitido, o valor pertence ao `<form>` — ver `TextField`. */
+  value?: string;
+  onChange?: (value: string) => void;
+  name?: string;
+  defaultValue?: string;
   placeholder?: string;
   rows?: number;
   className?: string;
@@ -16,6 +19,8 @@ export function TextAreaField({
   label,
   value,
   onChange,
+  name,
+  defaultValue,
   placeholder,
   rows = 3,
   className,
@@ -32,9 +37,11 @@ export function TextAreaField({
       <textarea
         id={id}
         value={value}
+        name={name}
+        defaultValue={defaultValue}
         rows={rows}
         placeholder={placeholder}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => onChange?.(event.target.value)}
         className={cn(
           'w-full resize-y rounded-xl border border-line bg-surface px-3.5 py-3 text-base text-zinc-100',
           'transition placeholder:text-zinc-600',

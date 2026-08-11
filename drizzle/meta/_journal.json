@@ -22,6 +22,13 @@
       "when": 1786379312917,
       "tag": "0002_free_iron_lad",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786395073914,
+      "tag": "0003_fine_otto_octavius",
+      "breakpoints": true
     }
   ]
 }

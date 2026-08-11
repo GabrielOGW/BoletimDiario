@@ -40,5 +40,49 @@ export const joinProductionSchema = z.object({
   jobTitle: z.string().trim().max(80).optional(),
 });
 
+export const updateMemberSchema = z.object({
+  memberId: uuidSchema,
+  role: memberRoleSchema,
+  department: departmentSchema,
+  jobTitle: z.string().trim().max(80).optional(),
+});
+
+/**
+ * Campo opcional de texto vindo de `<form>`: o navegador manda `""`, o banco quer `null`.
+ * Sem isso, um campo em branco vira string vazia e a diária "tem" unidade "".
+ */
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((value) => value || null)
+    .nullable()
+    .default(null);
+
+/** `HH:MM` do `<input type="time">`. Vazio é ausência de horário, não erro. */
+const optionalTime = z
+  .string()
+  .trim()
+  .transform((value) => value || null)
+  .refine((value) => value === null || /^\d{2}:\d{2}$/.test(value), 'Horário inválido')
+  .nullable()
+  .default(null);
+
+export const shootingDaySchema = z.object({
+  /** Dia civil, nunca instante (R9) — por isso é string `YYYY-MM-DD` do início ao fim. */
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data da diária'),
+  dayNumber: optionalText(16),
+  unit: optionalText(80),
+  location: optionalText(160),
+  callTime: optionalTime,
+  wrapTime: optionalTime,
+  lunchStart: optionalTime,
+  lunchEnd: optionalTime,
+  notes: optionalText(2000),
+});
+
 export type CreateProductionInput = z.infer<typeof createProductionSchema>;
 export type JoinProductionInput = z.infer<typeof joinProductionSchema>;
+export type UpdateMemberInput = z.infer<typeof updateMemberSchema>;
+export type ShootingDayInput = z.infer<typeof shootingDaySchema>;

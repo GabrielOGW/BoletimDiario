@@ -12,6 +12,15 @@ const nextConfig = {
         ],
       },
       {
+        /**
+         * O manifesto do SW precisa da mesma regra: ele carrega por `importScripts`, e
+         * se ficar em cache o SW novo lê a versão antiga — exatamente o problema que
+         * gerá-lo no build resolve.
+         */
+        source: '/sw-manifest.js',
+        headers: [{ key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' }],
+      },
+      {
         source: '/manifest.webmanifest',
         headers: [
           { key: 'Content-Type', value: 'application/manifest+json; charset=utf-8' },

@@ -1,21 +1,17 @@
-/* Service Worker — Boletim Diário de Câmera
- * Offline-first: precache do app shell + estratégias em runtime.
+/* Service Worker — Boletim Audiovisual
+ * Offline: precache do app shell + estratégias em runtime.
+ *
+ * VERSION e APP_SHELL vêm de sw-manifest.js, gerado no build (scripts/build-sw.mjs).
+ * Um número de versão mantido à mão é esquecido justamente no deploy em que importa —
+ * e o sintoma é o app velho continuar sendo servido para sempre.
  */
-const VERSION = 'v1';
+importScripts('/sw-manifest.js');
+
+const VERSION = self.__SW_VERSION || 'dev';
 const STATIC_CACHE = `bdc-static-${VERSION}`;
 const RUNTIME_CACHE = `bdc-runtime-${VERSION}`;
 
-const APP_SHELL = [
-  '/',
-  '/novo',
-  '/editar',
-  '/visualizar',
-  '/offline',
-  '/manifest.webmanifest',
-  '/icons/icon.svg',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-];
+const APP_SHELL = self.__APP_SHELL || ['/', '/offline'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -23,7 +19,9 @@ self.addEventListener('install', (event) => {
       const cache = await caches.open(STATIC_CACHE);
       // allSettled: uma URL ausente não derruba toda a instalação.
       await Promise.allSettled(APP_SHELL.map((url) => cache.add(url)));
-      await self.skipWaiting();
+      // Sem `skipWaiting()` aqui: trocar de versão no meio de uma diária recarregaria a
+      // tela sob os dedos de quem está preenchendo. Quem decide é o usuário, pelo aviso
+      // de atualização — que manda a mensagem SKIP_WAITING lá embaixo.
     })(),
   );
 });
@@ -48,6 +46,10 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  // `/api/**` NUNCA entra em cache. Uma resposta de sync servida do cache é dado
+  // corrompido em silêncio: o cliente aplicaria mudanças velhas e avançaria o cursor.
+  if (url.pathname.startsWith('/api/')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(networkFirstNavigation(request));

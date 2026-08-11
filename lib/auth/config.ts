@@ -35,7 +35,53 @@ if (!secret) {
 export const auth = betterAuth({
   appName: 'Boletim Audiovisual',
   secret,
-  baseURL: process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL,
+  /**
+   * O último recurso é a URL do próprio deploy: em preview da Vercel o domínio muda a
+   * cada push, então fixá-lo numa variável significaria um link de redefinição de senha
+   * apontando para o deploy anterior. Em produção `BETTER_AUTH_URL` é explícita e ganha.
+   *
+   * Quando nada disso existe, a Better Auth deduz a base da própria requisição — e é por
+   * isso que a lista de origens confiáveis abaixo não depende desta linha.
+   */
+  baseURL:
+    process.env.BETTER_AUTH_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined),
+
+  /**
+   * Origens aceitas na verificação de CSRF.
+   *
+   * O padrão da biblioteca é confiar só na `baseURL`, e em preview da Vercel isso não
+   * basta: o domínio muda a cada push, e `VERCEL_URL` não chegou ao runtime deste projeto
+   * — o sintoma foi `403 INVALID_ORIGIN` no cadastro, com o `Origin` correto sendo
+   * recusado.
+   *
+   * A última regra é a que resolve, e ela **é** a propriedade que se quer de um teste de
+   * CSRF: em preview, aceite a origem que coincide com o host da própria requisição. Uma
+   * página em outro domínio manda `Origin: https://evil.com` com o `Host` do preview, e
+   * os dois não coincidem — continua sendo recusada. Em produção a regra nem é avaliada.
+   */
+  trustedOrigins: (request) => {
+    const origens = [
+      process.env.BETTER_AUTH_URL,
+      process.env.NEXT_PUBLIC_APP_URL,
+      process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`,
+      process.env.VERCEL_BRANCH_URL && `https://${process.env.VERCEL_BRANCH_URL}`,
+      process.env.VERCEL_PROJECT_PRODUCTION_URL &&
+        `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`,
+    ];
+
+    const host = request?.headers.get('host');
+    if (
+      process.env.VERCEL_ENV === 'preview' &&
+      host &&
+      /^[\w-]+\.vercel\.app$/i.test(host)
+    ) {
+      origens.push(`https://${host}`);
+    }
+
+    return origens;
+  },
 
   database: drizzleAdapter(db, {
     provider: 'pg',

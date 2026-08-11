@@ -529,3 +529,110 @@ recuperação nenhuma (ponto sem saída num aparelho novo); trocar senha por log
 
 **Reavaliar quando:** houver domínio próprio — aí o provedor entra e a verificação de e-mail
 volta a ser avaliada.
+
+---
+
+### ADR-029 · Julgamento e natureza do take são eixos separados
+
+`2026-08-10` · **Aceita** · revisa o enum de [ADR-010](#adr-010--status-compartilhado-e-status-por-departamento)
+
+Levantamento da prática de som e de continuidade mostrou que `TakeStatus` mistura duas coisas
+que não são a mesma:
+
+```
+RECORDED · CIRCLE · NG · PARTIAL   → JULGAMENTO: o take presta?
+WILD · ROOM_TONE · FALSE_START     → NATUREZA:  que tipo de take é este?
+```
+
+Um wild track pode ser circled. Um pick-up pode ser NG. Um take MOS tem julgamento de câmera e
+nenhum de som. Com um enum só, cada combinação dessas obriga a escolher qual informação perder
+— e a que se perde é sempre a que o outro departamento precisava.
+
+O levantamento também mostrou o que falta nos dois eixos:
+
+| Eixo           | Falta hoje                                                           |
+| -------------- | -------------------------------------------------------------------- |
+| **Julgamento** | `HOLD` — "bom, mas não perfeito", o terceiro veredito clássico       |
+| **Julgamento** | motivo do `NG`: na prática, "NG sem motivo" é anotação inútil na pós |
+| **Natureza**   | `MOS` (rodado sem som), `PLAYBACK`, `PICKUP` (PU), `SERIES` (SER)    |
+
+**Decisão:** `TakeStatus` fica sendo **só julgamento** (`RECORDED`, `CIRCLE`, `HOLD`, `NG`,
+`PARTIAL`) e ganha um eixo irmão `TakeKind` para a natureza (`SYNC`, `MOS`, `WILD`,
+`ROOM_TONE`, `PLAYBACK`, `PICKUP`, `SERIES`, `FALSE_START`). `NG` ganha um campo de motivo em
+texto livre, por departamento.
+
+**Consequência de UX, e ela é inegociável:** o toggle "Aprovado pelo diretor" do Boletim de
+Câmera **continua exatamente como está** — a mesma consequência que ADR-010 já fixava. A
+natureza do take é um seletor secundário, com `SYNC` por padrão; ninguém em set escolhe
+"SYNC" a cada tomada.
+
+**Custo:** dois valores novos no enum de julgamento, um enum novo, uma coluna nova por
+`*_take_data`. Nada disso quebra dado existente — `RECORDED` continua sendo o padrão e
+`WILD`/`ROOM_TONE`/`FALSE_START` migram de eixo com um `update` determinístico.
+
+**Quando entra:** Fase 6 (Som), que é quem primeiro precisa dos dois eixos ao mesmo tempo.
+Antes disso, nada muda.
+
+---
+
+### ADR-030 · O módulo de Câmera reproduz o boletim, tela por tela
+
+`2026-08-10` · **Aceita** · reforça [ADR-024](#adr-024--design-system-único-o-do-boletim-de-câmera) e a regra de não-regressão
+
+A superfície de diária da Fase 4 (`/p/[id]/diarias/[dayId]/takes`) apresenta `Cena → Setup →
+Take` diretamente, porque o objetivo dela era **provar o sync** com o menor consumidor
+possível. Vista por quem usa o Boletim de Câmera, ela parece o módulo de câmera — e não é.
+
+O feedback do proprietário foi direto: a área de câmera mudou demais.
+
+**Decisão:** o módulo de Câmera da Fase 5 reproduz o boletim atual **na estrutura de tela**,
+não só na lista de campos:
+
+- a hierarquia visível continua sendo **Cena → Bloco → Plano → Take**, com os mesmos cartões,
+  a mesma ordem de seções e os mesmos gestos (duplicar, mover, colapsar);
+- `Setup` continua sendo o nome do conceito **no modelo**; na tela de câmera, ele se chama
+  **Plano**, como sempre se chamou;
+- auto-save com debounce e "Salvando… / Salvo", sem botão salvar;
+- as seções Mídia/Suporte, Cenas do Dia, Horários, Equipe e Observações Gerais permanecem;
+- o toggle "Aprovado pelo diretor" permanece verde e no mesmo lugar.
+
+**Consequência:** a tela da Fase 4 é **provisória**. Ela não é o módulo de câmera, não deve
+ser divulgada como tal, e sai de cena quando a Fase 5 entrega o módulo real. Enquanto isso,
+Som e Continuidade a usam como base — para eles não há "como era antes" a preservar.
+
+**O que isso não é:** não é congelar o modelo. Herança de técnica/óptica por take (ADR-011),
+`TakeKind` (ADR-029) e os campos novos de [features/camera.md §3](features/camera.md#3-organização-dos-campos-10)
+continuam entrando. A regra é sobre **o que o usuário vê e os dedos fazem**, não sobre o que o
+banco guarda.
+
+---
+
+### ADR-031 · Departamento sem módulo entra para gestão, não para anotação
+
+`2026-08-10` · **Aceita** · complementa [ADR-016](#adr-016--fronteira-offline-explícita) e a matriz de [permissions.md §2](architecture/permissions.md#2-departamentos)
+
+`Department` tem onze valores; três têm módulo (`CAMERA`, `SOUND`, `CONTINUITY`). Um membro de
+Direção, Produção ou Elétrica entra na sala legitimamente — para criar diária, administrar
+equipe, acompanhar o dia — mas não tem **nada** para anotar.
+
+A matriz de permissões diz que dado compartilhado (`scenes`, `setups`, `takes`) é gravável por
+qualquer `MEMBER`+, independentemente do departamento. Levada ao pé da letra, ela abriria a
+tela de anotação para quem não tem o que anotar: um formulário vazio, num aplicativo que se
+propõe a ser mais rápido que um caderno.
+
+**Decisão:** a superfície de anotação é **somente leitura** para quem não tem nenhum
+departamento ativo, com o motivo dito na tela — _"cadastrado apenas para gestão; ainda não é
+possível fazer anotações do seu departamento no app"_. Vale para qualquer papel, `OWNER`
+inclusive.
+
+**Por que não abrir exceção para `ADMIN`/`OWNER`:** já existe o caminho certo para isso.
+`production_member_departments` permite acrescentar `CAMERA` a quem precisa corrigir dado de
+câmera — explícito, visível na tela de equipe, e reversível. Uma exceção por papel seria
+invisível e transformaria "sou dono" em "posso preencher o boletim dos outros".
+
+**O que isto não restringe:** leitura, que continua livre para todo membro, sempre — é a razão
+de a plataforma existir. Gestão da sala, diárias, equipamentos e relatórios também não são
+afetados.
+
+**Consequência quando um módulo novo nascer:** basta entrar em `ACTIVE_DEPARTMENTS`. A tela
+deixa de ser somente leitura para aquele departamento sem nenhuma outra mudança.

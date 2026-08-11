@@ -10,10 +10,15 @@ interface AppHeaderProps {
   right?: ReactNode;
 }
 
-/** Cabeçalho fixo no topo, com área de toque grande para voltar. */
+/**
+ * Cabeçalho fixo no topo, com área de toque grande para voltar.
+ *
+ * `no-print` no próprio componente: casca de aplicativo não vai para o papel, e cada tela
+ * que imprime ter de lembrar de embrulhá-lo é uma lembrança a menos que alguém tem.
+ */
 export function AppHeader({ title, subtitle, backHref, right }: AppHeaderProps) {
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-ink/85 pt-[env(safe-area-inset-top)] backdrop-blur supports-[backdrop-filter]:bg-ink/70">
+    <header className="no-print sticky top-0 z-30 border-b border-line bg-ink/85 pt-[env(safe-area-inset-top)] backdrop-blur supports-[backdrop-filter]:bg-ink/70">
       <PageContainer className="flex h-16 items-center gap-2">
         {backHref ? (
           <Link

@@ -665,3 +665,57 @@ export function createEmptySnapshot(production: Production): ProductionSnapshot 
     equipmentAssignments: [],
   };
 }
+
+// ============================================================
+// Herança sobre o formato plano do armazenamento
+// ============================================================
+
+/**
+ * O que **não** se herda de um take para o seguinte.
+ *
+ * Esta lista é a regra inteira, e o que está fora dela importa tanto quanto o que está
+ * dentro: herdar `approved` registraria uma aprovação que o diretor não deu, e herdar as
+ * notas repetiria "avião no take" num take em que não passou avião.
+ *
+ * Tudo o mais — câmera, cartão, roll, volume, lente, T-stop, ISO, FPS, LUT — **é**
+ * herdado, e é isso que faz o take novo nascer preenchido (§29). Campo técnico novo
+ * passa a ser herdado sozinho, sem ninguém lembrar de vir aqui.
+ */
+export const CAMERA_TAKE_RESET_FIELDS = [
+  'status',
+  'approved',
+  'notes',
+  'mediaNotes',
+  'deletedAt',
+] as const;
+
+/**
+ * Herança entre takes sobre o formato **plano** do armazenamento.
+ *
+ * `inheritCameraTakeData` opera sobre a entidade do modelo de referência, com `config`
+ * aninhado; o banco e o Dexie guardam os campos planos. Esta é a mesma regra na forma que
+ * o armazenamento usa — e continua sendo regra de domínio, testada, e não um handler de
+ * componente.
+ *
+ * §30 sai de graça: como o cartão vem do take anterior, trocá-lo uma vez faz o valor novo
+ * persistir para todos os seguintes, sem nenhum estado global.
+ */
+export function inheritCameraFlat(
+  previous: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+  const next: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(previous)) {
+    if ((CAMERA_TAKE_RESET_FIELDS as readonly string[]).includes(key)) continue;
+    if (key === 'id' || key === 'takeId' || key === 'version' || key === '_dirty')
+      continue;
+    if (key === 'updatedAt' || key === 'updatedBy' || key === 'createdAt') continue;
+    next[key] = value;
+  }
+
+  next.approved = false;
+  next.status = null;
+  next.fileName = incrementSuffix(String(previous.fileName ?? ''));
+
+  return next;
+}

@@ -25,6 +25,42 @@ export interface ProductionSummary {
   department: Department;
 }
 
+export interface ProductionDetail {
+  id: string;
+  name: string;
+  company: string | null;
+  director: string | null;
+  dop: string | null;
+  joinCode: string;
+  joinEnabled: boolean;
+}
+
+/**
+ * Dados da sala.
+ *
+ * Não checa pertencimento de propósito: quem chama já passou por `requireMember`, e
+ * duplicar a checagem aqui daria a falsa impressão de que ela é opcional lá.
+ */
+export async function getProduction(
+  productionId: string,
+): Promise<ProductionDetail | null> {
+  const [row] = await db
+    .select({
+      id: productions.id,
+      name: productions.name,
+      company: productions.company,
+      director: productions.director,
+      dop: productions.dop,
+      joinCode: productions.joinCode,
+      joinEnabled: productions.joinEnabled,
+    })
+    .from(productions)
+    .where(and(eq(productions.id, productionId), isNull(productions.deletedAt)))
+    .limit(1);
+
+  return row ?? null;
+}
+
 /** Produções de que o usuário participa, mais recentes primeiro. */
 export async function listProductionsForUser(
   userId: string,
@@ -121,6 +157,34 @@ async function allocateJoinCode(name: string): Promise<string> {
   }
 
   throw new Error('Não foi possível gerar um código de convite livre.');
+}
+
+/** Novo código; o anterior deixa de valer no mesmo instante. */
+export async function rotateJoinCode(input: {
+  productionId: string;
+  name: string;
+  userId: string;
+}): Promise<string> {
+  const joinCode = await allocateJoinCode(input.name);
+
+  await db
+    .update(productions)
+    .set({ joinCode, updatedBy: input.userId })
+    .where(eq(productions.id, input.productionId));
+
+  return joinCode;
+}
+
+/** Fecha ou reabre a sala sem trocar o código de quem já o tem anotado. */
+export async function setJoinEnabled(input: {
+  productionId: string;
+  enabled: boolean;
+  userId: string;
+}): Promise<void> {
+  await db
+    .update(productions)
+    .set({ joinEnabled: input.enabled, updatedBy: input.userId })
+    .where(eq(productions.id, input.productionId));
 }
 
 export type JoinResult =

@@ -81,6 +81,17 @@ Mapeamento departamento → tabelas graváveis:
 Um membro pode ter departamentos adicionais em `production_member_departments`; a checagem
 considera o conjunto.
 
+### Departamento sem módulo
+
+Dos onze departamentos, três têm módulo. Quem não tem nenhum departamento ativo — Direção,
+Produção, Elétrica, cliente — entra na sala **para gestão**: cria diária, administra equipe,
+lê tudo. A tela de anotação é somente leitura para ele, com o motivo dito na tela
+([ADR-031](../decisions.md#adr-031--departamento-sem-módulo-entra-para-gestão-não-para-anotação)).
+
+Vale para qualquer papel, `OWNER` inclusive: quem precisa mexer em dado de câmera acrescenta
+`CAMERA` aos próprios departamentos, o que é explícito e visível — não herda o direito por ser
+dono da produção.
+
 ---
 
 ## 3. Aplicação
@@ -93,6 +104,24 @@ considera o conjunto.
 requireMember(productionId, { minRole }); // sessão + pertencimento + papel
 requireDepartment(productionId, department); // + permissão de escrita no dept.
 ```
+
+### Onde mora cada regra (Fase 3)
+
+O guarda responde **"este papel é alto o suficiente?"**. Isso não cobre as regras
+_relacionais_ desta página — as que dependem do papel de **quem sofre a ação**:
+
+| Regra                                       | Onde vive                         |
+| ------------------------------------------- | --------------------------------- |
+| Papel mínimo para a operação                | `requireMember(..., { minRole })` |
+| `ADMIN` não altera nem remove o `OWNER` (¹) | `lib/db/queries/members.ts`       |
+| `ADMIN` não remove outro `ADMIN`            | `lib/db/queries/members.ts`       |
+| Promover a `OWNER` só por transferência     | `lib/db/queries/members.ts`       |
+| `OWNER` não sai sem transferir (²)          | `lib/db/queries/members.ts`       |
+
+Elas ficam **junto da escrita**, e não na tela, por um motivo prático: a mesma regra vale para
+a Server Action de hoje e para a rota de sync de amanhã. Devolvem
+`{ status: 'FORBIDDEN', reason }` em vez de lançar, porque não são erro de programação — são
+resposta legítima que a interface precisa mostrar. Cobertas por `npm run test:sala`.
 
 Ordem obrigatória em toda rota/action de escrita:
 

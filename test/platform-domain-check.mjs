@@ -7,6 +7,7 @@ import {
   createTake,
   emptyCameraConfig,
   generateJoinCode,
+  inheritCameraFlat,
   inheritCameraTakeData,
   inheritSoundTakeData,
   isDeleted,
@@ -172,6 +173,53 @@ ok('deriveId não confunde a junção das partes', deriveId('a', 'bc') !== deriv
 const seen = new Set();
 for (let i = 0; i < 20000; i += 1) seen.add(deriveId('take', `id_${i}`));
 ok('deriveId sem colisão em 20k ids', seen.size === 20000);
+
+// ---- Herança sobre o formato plano do armazenamento (Fase 5) ----
+const anterior = {
+  id: 'antigo',
+  takeId: 'take-1',
+  version: 7,
+  _dirty: 1,
+  updatedAt: '2026-08-10T12:00:00Z',
+  cameraUnitId: 'cam-a',
+  card: 'A012',
+  roll: '004',
+  lens: '35mm',
+  tStop: 'T2.8',
+  iso: '800',
+  fileName: 'A012C005_001',
+  approved: true,
+  status: 'CIRCLE',
+  notes: 'avião no take',
+  mediaNotes: 'cartão trocado',
+};
+const herdado = inheritCameraFlat(anterior);
+
+ok(
+  'a técnica inteira é herdada do take anterior',
+  herdado.card === 'A012' &&
+    herdado.roll === '004' &&
+    herdado.lens === '35mm' &&
+    herdado.tStop === 'T2.8' &&
+    herdado.iso === '800' &&
+    herdado.cameraUnitId === 'cam-a',
+);
+ok(
+  'aprovação, status e notas NÃO são herdados',
+  herdado.approved === false &&
+    herdado.status === null &&
+    herdado.notes === undefined &&
+    herdado.mediaNotes === undefined,
+);
+ok('o sufixo do nome do arquivo incrementa', herdado.fileName === 'A012C005_002');
+ok(
+  'identidade e controle de versão não vazam para o take novo',
+  herdado.id === undefined &&
+    herdado.takeId === undefined &&
+    herdado.version === undefined &&
+    herdado._dirty === undefined &&
+    herdado.updatedAt === undefined,
+);
 
 let failed = 0;
 for (const c of checks) {
