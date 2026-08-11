@@ -128,6 +128,17 @@ export function rotuloDoJulgamento(status: string | null | undefined): string | 
 }
 
 /**
+ * O tipo de captação, quando não é o padrão.
+ *
+ * `Normal` não é impresso: é o que quase todo plano é, e repeti-lo em cada linha só
+ * afastaria o olho do que muda — a mesma regra que o boletim já aplicava ao badge.
+ */
+export function rotuloDoTipo(kind: string | null | undefined): string | null {
+  const valor = (kind ?? '').trim();
+  return valor && valor !== 'Normal' ? valor : null;
+}
+
+/**
  * Assinatura técnica de um plano — planos consecutivos iguais são impressos como um só.
  *
  * `groupPlanos` do boletim atual, mesma intenção: uma diária de dez planos idênticos não
@@ -136,6 +147,7 @@ export function rotuloDoJulgamento(status: string | null | undefined): string | 
 export function assinaturaDoPlano(
   camera: string,
   dados: LocalCameraTakeData | undefined,
+  kind?: string | null,
 ): string {
-  return JSON.stringify([camera, partesTecnicas(dados)]);
+  return JSON.stringify([camera, rotuloDoTipo(kind), partesTecnicas(dados)]);
 }

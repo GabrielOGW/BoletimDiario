@@ -9,6 +9,7 @@ import {
   diferencasDoPlano,
   partesTecnicas,
   rotuloDoJulgamento,
+  rotuloDoTipo,
 } from '@/features/camera/estrutura.ts';
 
 const checks = [];
@@ -107,6 +108,24 @@ ok(
   'plano sem take agrupa com outro plano sem take',
   assinaturaDoPlano('A', undefined) === assinaturaDoPlano('A', undefined),
 );
+ok(
+  'tipo de captação diferente separa o grupo',
+  assinaturaDoPlano('A', plano, 'Insert') !== assinaturaDoPlano('A', plano, 'Drone'),
+);
+// "Normal" é o padrão: um plano marcado Normal e outro sem tipo são o mesmo plano.
+ok(
+  'Normal agrupa com plano sem tipo',
+  assinaturaDoPlano('A', plano, 'Normal') === assinaturaDoPlano('A', plano, null),
+);
+
+// ---- Tipo de captação no papel ----
+
+ok('tipo fora do padrão é impresso', rotuloDoTipo('Insert') === 'Insert');
+ok('Normal não vira marca', rotuloDoTipo('Normal') === null);
+ok('tipo vazio não vira marca', rotuloDoTipo('   ') === null);
+ok('sem tipo não vira marca', rotuloDoTipo(undefined) === null);
+// O boletim sempre aceitou tipo digitado; um seletor fechado viraria perda na importação.
+ok('tipo digitado à mão é preservado', rotuloDoTipo('Dolly de aproximação') === 'Dolly de aproximação');
 
 // ---- Julgamento da câmera no papel ----
 

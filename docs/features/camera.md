@@ -26,8 +26,9 @@ E, desde `2026-08-10`, a regra tem uma segunda metade
 > é a única porta. Ela nunca foi o boletim de ninguém.
 >
 > **Falta para fechar a fase:** só Mídia/Suporte, que depende do catálogo de equipamentos
-> da Fase 8. As quatro lacunas de paridade que sobraram estão listadas em §1, cada uma com
-> dono declarado.
+> da Fase 8. As lacunas de paridade que sobraram estão listadas em §1, cada uma com dono
+> declarado — e uma delas, a câmera do plano, é uma **decisão de modelo em aberto** (§7.1),
+> não um item de implementação.
 
 ---
 
@@ -55,43 +56,43 @@ que **precisa continuar funcionando** depois da migração:
 Campo do editor atual × campo do módulo na plataforma. É a lista que a Fase 5 pedia para
 conferir "item a item"; o que está `⚠️` tem justificativa e dono.
 
-| Editor atual                                                 | Módulo da plataforma                             |
-| ------------------------------------------------------------ | ------------------------------------------------ |
-| `Cena.numero`                                                | ✅ editável (renomeia todos os blocos da cena)   |
-| `Bloco.letra`                                                | ✅ editável                                      |
-| `Plano.numero`                                               | ✅ `setup.code`                                  |
-| `Plano.cameraId`                                             | ✅ seletor das câmeras cadastradas               |
-| `Plano.cameraNome` (texto livre)                             | ⚠️ só o seletor — ver "o que falta" abaixo       |
-| `Plano.tipo` (Normal, Série, Insert…)                        | ⚠️ **sem coluna no Postgres** — ver abaixo       |
-| `tecnica.*` (9 campos)                                       | ✅ todos, no cartão do Plano                     |
-| `optica.lentes`, `optica.filtros`                            | ✅                                               |
-| `optica.matteBox`                                            | ✅ caixa de seleção no cartão do Plano           |
-| `Plano.observacoes`                                          | ✅ "Observações do plano" (`setup.description`)  |
-| `Take.numero` · `cartao` · `clipSync` · `notaOperacional`    | ✅                                               |
-| `Take.aprovado`                                              | ✅ o mesmo toggle verde, um toque                |
-| `CameraCadastrada.{nomeId,modelo,operador,foco,claquetista}` | ✅ os cinco                                      |
-| Auto-save com debounce, sem botão salvar                     | ✅ 500 ms + flush no desmonte                    |
-| Cenas do Dia                                                 | ✅ derivado dos takes                            |
-| Horários · Equipe · Produção                                 | ✅ somente leitura, dado de sala (ADR-016)       |
-| Observações gerais                                           | ✅ `ShootingDay.notes`, editável na sala         |
-| PDF A4 com aprovados destacados                              | ✅ §6                                            |
-| Mídia/Suporte                                                | ⚠️ Fase 8 (depende do catálogo de equipamentos)  |
-| Autocomplete aprendido + presets                             | ⚠️ ainda não — ver abaixo                        |
-| Duplicar plano / cena / take                                 | ⚠️ ainda não — ver abaixo                        |
-| Backup JSON                                                  | — próprio do modo local; a plataforma sincroniza |
+| Editor atual                                                 | Módulo da plataforma                              |
+| ------------------------------------------------------------ | ------------------------------------------------- |
+| `Cena.numero`                                                | ✅ editável (renomeia todos os blocos da cena)    |
+| `Bloco.letra`                                                | ✅ editável                                       |
+| `Plano.numero`                                               | ✅ `setup.code`                                   |
+| `Plano.cameraId`                                             | ⚠️ seletor funciona, mas guardado em `setup.name` |
+| `Plano.cameraNome` (texto livre)                             | ⚠️ só o seletor — ver "o que falta" abaixo        |
+| `Plano.tipo` (Normal, Série, Insert…)                        | ✅ "Tipo / Captação", com badge (migration 0004)  |
+| `tecnica.*` (9 campos)                                       | ✅ todos, no cartão do Plano                      |
+| `optica.lentes`, `optica.filtros`                            | ✅                                                |
+| `optica.matteBox`                                            | ✅ caixa de seleção no cartão do Plano            |
+| `Plano.observacoes`                                          | ✅ "Observações do plano" (`setup.description`)   |
+| `Take.numero` · `cartao` · `clipSync` · `notaOperacional`    | ✅                                                |
+| `Take.aprovado`                                              | ✅ o mesmo toggle verde, um toque                 |
+| `CameraCadastrada.{nomeId,modelo,operador,foco,claquetista}` | ✅ os cinco                                       |
+| Auto-save com debounce, sem botão salvar                     | ✅ 500 ms + flush no desmonte                     |
+| Cenas do Dia                                                 | ✅ derivado dos takes                             |
+| Horários · Equipe · Produção                                 | ✅ somente leitura, dado de sala (ADR-016)        |
+| Observações gerais                                           | ✅ `ShootingDay.notes`, editável na sala          |
+| PDF A4 com aprovados destacados                              | ✅ §6                                             |
+| Mídia/Suporte                                                | ⚠️ Fase 8 (depende do catálogo de equipamentos)   |
+| Autocomplete aprendido + presets                             | ⚠️ ainda não — ver abaixo                         |
+| Duplicar plano / cena / take                                 | ⚠️ ainda não — ver abaixo                         |
+| Backup JSON                                                  | — próprio do modo local; a plataforma sincroniza  |
 
 ### O que falta, e por quê
 
-**`Plano.tipo` não tem coluna.** `Setup.kind` existe em
-[`domain/platform/types.ts`](../../domain/platform/types.ts) e o mapeador o preenche, mas a
-tabela `setups` não tem `kind` — então a importação o descarta em silêncio. É uma migration
-de uma coluna mais uma linha em `SYNC_ENTITIES`; entra por uma passagem da skill `banco`,
-não por um remendo na tela.
+**~~`Plano.tipo` não tem coluna.~~ Resolvido em `2026-08-11`** — migration `0004` acrescentou
+`setups.kind`, `SYNC_ENTITIES.setup` ganhou o campo, e o cartão do Plano tem "Tipo /
+Captação" com as mesmas sugestões do boletim (`Normal · Série · Insert · Pickup · Drone`),
+**texto livre**, porque um seletor fechado viraria perda de dado na importação. O tipo vira
+badge no cabeçalho do plano e sai na linha impressa — em ambos, `Normal` é omitido, porque
+um selo em todo plano não informa nada. Coberto por `test:import` e `test:camera`.
 
-**A câmera do plano mora em `setup.name`.** Documentado em `PlanoCard`, mas errado:
-`name` é "Master, Close João" semanticamente. O certo é `setups.camera_unit_id`. Mesma
-passagem de `banco`, e enquanto isso o vínculo real — o que importa para o dado — está em
-cada `CameraTakeData`.
+**A câmera do plano ainda mora em `setup.name`.** É a última lacuna, e ela **não é uma
+migration óbvia** — é uma decisão de modelo que eu não vou adivinhar. Ver
+[§7.1](#71-a-decisão-em-aberto-a-câmera-do-plano).
 
 **Autocomplete.** `lib/suggestions.ts` colhe valores dos boletins do LocalStorage; na
 plataforma a fonte é o Dexie da diária. É um módulo novo, não uma adaptação — e é uma
@@ -212,8 +213,8 @@ nem os vê. O rótulo fechado já mostra o roll, então o valor é conferível s
 Os demais itens de §3 não são campo de câmera: `2º AC` é `ProductionMember` na sala,
 `localização` é `ShootingDay.location` (e `Scene.location`), `observações para pós` são
 `vfx` e `mediaNotes`, e **fotografia de referência não existe**
-([ADR-022](../decisions.md#adr-022--sem-fotografias-na-v1)). Falta apenas `Plano.tipo`
-(`Setup.kind`), que não tem coluna — ver §1.
+([ADR-022](../decisions.md#adr-022--sem-fotografias-na-v1)). `Plano.tipo` (`Setup.kind`)
+ganhou coluna na migration `0004` e está no cartão do Plano — §1.
 
 ---
 
@@ -327,3 +328,36 @@ com a lista de rolls quando houver.
 4. Importar backup no formato antigo continua funcionando — passa por `normalizeBoletim` e
    depois pelo mapeador.
 5. Uso **sem conta** continua sendo um modo suportado, não uma versão degradada.
+
+---
+
+### 7.1 A decisão em aberto: a câmera do plano
+
+Hoje a câmera de um plano é guardada em `setup.name`. Está documentado no código e **está
+errado**: `name` é "Master, Close João" semanticamente, e um dia alguém vai preenchê-lo.
+
+A correção parece uma migration de uma coluna. Não é — porque as três saídas dizem coisas
+diferentes sobre o modelo, e escolher errado deixa uma coluna no schema para sempre.
+
+**(a) `setups.camera_unit_id`.** Direto, uma migration, uma linha no contrato. Mas põe um
+campo de **câmera** na `Setup`, que é a entidade **compartilhada** entre Câmera, Som e
+Continuidade — e contradiz o próprio motivo de `CameraTakeData` ser por _(take, câmera)_:
+um setup multicam tem duas câmeras, não uma.
+
+**(b) Uma tabela do departamento** (`camera_setup_defaults`). Honesta com a fronteira: o
+padrão de câmera do plano é assunto da Câmera. Custa uma entidade nova, uma linha em
+`SYNC_ENTITIES` e uma tabela que existe só para guardar um id.
+
+**(c) Nenhuma coluna — derivar.** A câmera do plano já é observável: é a dos
+`CameraTakeData` dos seus takes. `planoTecnica` já lê a técnica assim, e `getPlanoDraft` já
+cobre o plano sem takes. Custo zero de schema, e resolve o abuso de `name` de imediato. O
+preço: um plano criado com câmera escolhida **e nenhum take ainda** não mostra essa escolha
+em outro aparelho, porque o rascunho é local e não sincroniza.
+
+**Recomendação: (c)**, e reavaliar se a queixa aparecer em set. É a única que não acrescenta
+schema para um problema que ainda pode não existir, e é reversível — (a) e (b) continuam
+possíveis depois, com dado real para justificar qual.
+
+**Por que não foi decidido aqui:** a resposta depende de como o multicam é usado de verdade
+nas produções deste app — se plano é por câmera ou se um plano é rodado por duas ao mesmo
+tempo. Isso é conhecimento de set, não de código.

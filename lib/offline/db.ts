@@ -56,6 +56,8 @@ export interface LocalSetup extends LocalRecord {
   shootingDayId: string;
   code: string;
   name?: string | null;
+  /** Tipo de captação: Normal, Série, Insert, Pickup, Drone — o `Plano.tipo` do boletim. */
+  kind?: string | null;
   shotSize?: string | null;
   angle?: string | null;
   movement?: string | null;

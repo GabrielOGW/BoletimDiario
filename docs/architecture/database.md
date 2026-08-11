@@ -223,6 +223,10 @@ create table setups (
   shooting_day_id uuid references shooting_days(id),  -- em que diária foi rodado
   code            text not null,           -- "A", "B", "C" · ou "1", "2"
   name            text,                    -- "Master", "Close João"
+  -- Tipo de captação: Normal, Série, Insert, Pickup, Drone. `text` livre e não enum: é o
+  -- `Plano.tipo` do boletim, que sempre aceitou valor digitado ("Dolly de aproximação"),
+  -- e um enum transformaria isso em perda de dado na importação (migration 0004).
+  kind            text,
   shot_size       text,                    -- PA, PM, PP, CLOSE…
   angle           text,
   movement        text,                    -- fixo, travelling, grua, mão

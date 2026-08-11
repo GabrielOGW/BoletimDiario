@@ -252,6 +252,7 @@ async function insereConteudo(
       shootingDayId: setup.shootingDayId || null,
       code: setup.code,
       name: setup.name || null,
+      kind: setup.kind || null,
       description: setup.description || null,
       sortOrder: setup.sortOrder ?? 0,
       ...auditoria,

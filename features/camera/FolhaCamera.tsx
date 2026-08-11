@@ -17,6 +17,7 @@ import {
   diferencasDoPlano,
   partesTecnicas,
   rotuloDoJulgamento,
+  rotuloDoTipo,
 } from './estrutura';
 
 /**
@@ -129,7 +130,7 @@ export function FolhaCamera({
   };
 
   const assinatura = (setup: LocalSetup) =>
-    assinaturaDoPlano(cameraDoSetup(setup)?.label ?? '', dadosDoPlano(setup));
+    assinaturaDoPlano(cameraDoSetup(setup)?.label ?? '', dadosDoPlano(setup), setup.kind);
 
   const aprovados = dadosCamera.filter((dado) => dado.approved).length;
 
@@ -304,6 +305,7 @@ export function FolhaCamera({
                               const primeiro = grupo[0];
                               const partes = partesTecnicas(dadosDoPlano(primeiro));
                               const camera = cameraDoSetup(primeiro);
+                              const tipo = rotuloDoTipo(primeiro.kind);
                               const rotulo = grupo
                                 .map((setup) => `Plano ${setup.code.trim() || 'S/N'}`)
                                 .join(' · ');
@@ -316,10 +318,10 @@ export function FolhaCamera({
                                     <span className="font-bold text-zinc-900">
                                       {rotulo}
                                     </span>
-                                    {camera || partes.length > 0 ? (
+                                    {camera || tipo || partes.length > 0 ? (
                                       <span className="text-zinc-600">
                                         {' — '}
-                                        {[camera?.label, ...partes]
+                                        {[camera?.label, tipo, ...partes]
                                           .filter(Boolean)
                                           .join(' · ')}
                                       </span>
