@@ -160,9 +160,16 @@ de câmera. Ela é substituída pelo módulo real na Fase 5.
 
 ---
 
-## 📋 Fase 5 — Câmera na plataforma
+## ⏳ Fase 5 — Câmera na plataforma
 
 A fase mais sensível: migrar o módulo que está em uso. **Migração, não redesenho.**
+
+> **`2026-08-11`:** tudo entregue **menos Mídia/Suporte**, que depende do catálogo de
+> equipamentos da Fase 8 — não é dívida desta fase, é ordem de dependência. Quatro lacunas
+> de paridade ficaram com dono declarado em
+> [features/camera.md §1](features/camera.md#o-que-falta-e-por-quê): `Plano.tipo` e a
+> câmera do plano pedem uma passagem da skill `banco`; autocomplete e duplicação são
+> módulos novos, não adaptações.
 
 > **Reforçado em `2026-08-10`**, depois do teste da Fase 4 em set: a superfície mínima de
 > takes foi lida como "a área de câmera mudou". Ela não é o módulo de câmera e é provisória
