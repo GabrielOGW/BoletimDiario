@@ -12,7 +12,9 @@ import {
   ClapperboardIcon,
   FilmIcon,
   PlusIcon,
+  PrinterIcon,
   WifiOffIcon,
+  XIcon,
 } from '@/components/ui/icons';
 import {
   createCameraUnit,
@@ -23,8 +25,11 @@ import {
 import { isPinned, listScenes, listSetups, listTakes } from '@/lib/offline/repos/diaria';
 import { fetchAndPin, startSync, syncNow } from '@/lib/sync/engine';
 import { ConflictList } from '@/features/sync/ConflictList';
+import { cn } from '@/utils/cn';
 
 import { CenaCard } from './CenaCard';
+import { FolhaCamera, type CabecalhoImpressao } from './FolhaCamera';
+import { agrupaCenas } from './estrutura';
 
 /**
  * O Boletim de Câmera na plataforma.
@@ -43,16 +48,31 @@ export function CameraDiaria({
   shootingDayId,
   canEdit,
   cabecalho,
+  impressao,
 }: {
   productionId: string;
   shootingDayId: string;
   canEdit: boolean;
   /** Produção, horários e equipe, já resolvidos no servidor. Somente leitura. */
   cabecalho: React.ReactNode;
+  /** Os mesmos dados de sala, em texto puro, para a folha impressa. */
+  impressao: CabecalhoImpressao;
 }) {
   const [fixacao, setFixacao] = useState<'CARREGANDO' | 'PRONTA' | 'SEM_REDE'>(
     'CARREGANDO',
   );
+  const [folha, setFolha] = useState(false);
+
+  // Fechar com Esc: a folha é uma camada sobre a diária, e sair dela não pode custar
+  // procurar um botão com a mão ocupada.
+  useEffect(() => {
+    if (!folha) return;
+    const aoTeclar = (evento: KeyboardEvent) => {
+      if (evento.key === 'Escape') setFolha(false);
+    };
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, [folha]);
 
   useEffect(() => {
     const parar = startSync(productionId, 'DIARIA');
@@ -112,18 +132,10 @@ export function CameraDiaria({
   /**
    * Cena e Bloco são uma `Scene` só no modelo (ADR-002). Na tela eles voltam a ser dois
    * níveis, agrupados pelo número — é assim que a claquete fala e é assim que o boletim
-   * sempre mostrou.
+   * sempre mostrou. O agrupamento mora em `estrutura.ts` porque a folha impressa precisa
+   * ler a diária exatamente como esta tela lê.
    */
-  const porNumero = new Map<string, typeof cenas>();
-  for (const cena of cenas ?? []) {
-    const lista = porNumero.get(cena.number) ?? [];
-    lista.push(cena);
-    porNumero.set(cena.number, lista);
-  }
-
-  const numeros = [...porNumero.keys()].sort((a, b) =>
-    a.localeCompare(b, 'pt-BR', { numeric: true }),
-  );
+  const agrupadas = agrupaCenas(cenas ?? []);
 
   const takesDaCena = (sceneIds: string[]) =>
     (takes ?? []).filter((take) =>
@@ -136,75 +148,131 @@ export function CameraDiaria({
   const takesAprovados = (dadosCamera ?? []).filter((dado) => dado.approved).length;
 
   return (
-    <div className="flex flex-col gap-4">
-      <ConflictList productionId={productionId} />
+    <>
+      <div className={cn('flex flex-col gap-4', folha && 'no-print')}>
+        <ConflictList productionId={productionId} />
 
-      {cabecalho}
+        {cabecalho}
 
-      <CamerasSection
-        productionId={productionId}
-        cameras={cameras ?? []}
-        canEdit={canEdit}
-      />
+        <CamerasSection
+          productionId={productionId}
+          cameras={cameras ?? []}
+          canEdit={canEdit}
+        />
 
-      <SectionCard
-        title="Cenas"
-        icon={<ClapperboardIcon size={18} />}
-        action={canEdit ? <NovaCena productionId={productionId} /> : null}
-      >
-        {numeros.length === 0 ? (
-          <p className="text-sm text-zinc-500">
-            {canEdit
-              ? 'Nenhuma cena ainda. Crie a primeira para começar o boletim.'
-              : 'Nenhuma cena registrada nesta diária.'}
+        <SectionCard
+          title="Cenas"
+          icon={<ClapperboardIcon size={18} />}
+          action={canEdit ? <NovaCena productionId={productionId} /> : null}
+        >
+          {agrupadas.length === 0 ? (
+            <p className="text-sm text-zinc-500">
+              {canEdit
+                ? 'Nenhuma cena ainda. Crie a primeira para começar o boletim.'
+                : 'Nenhuma cena registrada nesta diária.'}
+            </p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {agrupadas.map((cena) => (
+                <CenaCard
+                  key={cena.numero}
+                  numero={cena.numero}
+                  blocos={cena.blocos}
+                  setups={(setups ?? []).filter((setup) =>
+                    cena.blocos.some((bloco) => bloco.id === setup.sceneId),
+                  )}
+                  takes={takesDaCena(cena.blocos.map((bloco) => bloco.id))}
+                  dadosCamera={dadosCamera ?? []}
+                  cameras={cameras ?? []}
+                  productionId={productionId}
+                  shootingDayId={shootingDayId}
+                  canEdit={canEdit}
+                />
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard title="Cenas do dia" icon={<FilmIcon size={18} />}>
+          <dl className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-zinc-500">Cenas</dt>
+              <dd className="text-lg font-semibold text-zinc-100">{agrupadas.length}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-zinc-500">Planos</dt>
+              <dd className="text-lg font-semibold text-zinc-100">
+                {(setups ?? []).length}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-zinc-500">Takes</dt>
+              <dd className="text-lg font-semibold text-zinc-100">{totalTakes}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-zinc-500">Aprovados</dt>
+              <dd className="text-lg font-semibold text-approved">{takesAprovados}</dd>
+            </div>
+          </dl>
+          <p className="mt-3 text-xs text-zinc-500">
+            Contados a partir dos takes — não há dois números divergentes na mesma tela.
           </p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {numeros.map((numero) => (
-              <CenaCard
-                key={numero}
-                numero={numero}
-                blocos={porNumero.get(numero) ?? []}
-                setups={(setups ?? []).filter((setup) =>
-                  (porNumero.get(numero) ?? []).some((cena) => cena.id === setup.sceneId),
-                )}
-                takes={takesDaCena((porNumero.get(numero) ?? []).map((cena) => cena.id))}
-                dadosCamera={dadosCamera ?? []}
-                cameras={cameras ?? []}
-                productionId={productionId}
-                shootingDayId={shootingDayId}
-                canEdit={canEdit}
-              />
-            ))}
-          </div>
-        )}
-      </SectionCard>
+        </SectionCard>
 
-      <SectionCard title="Cenas do dia" icon={<FilmIcon size={18} />}>
-        <dl className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-zinc-500">Cenas</dt>
-            <dd className="text-lg font-semibold text-zinc-100">{numeros.length}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-zinc-500">Planos</dt>
-            <dd className="text-lg font-semibold text-zinc-100">
-              {(setups ?? []).length}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-zinc-500">Takes</dt>
-            <dd className="text-lg font-semibold text-zinc-100">{totalTakes}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-zinc-500">Aprovados</dt>
-            <dd className="text-lg font-semibold text-approved">{takesAprovados}</dd>
-          </div>
-        </dl>
-        <p className="mt-3 text-xs text-zinc-500">
-          Contados a partir dos takes — não há dois números divergentes na mesma tela.
-        </p>
-      </SectionCard>
+        <Button
+          variant="secondary"
+          fullWidth
+          leftIcon={<PrinterIcon size={18} />}
+          onClick={() => setFolha(true)}
+        >
+          Ver boletim para impressão
+        </Button>
+      </div>
+
+      {folha ? (
+        <FolhaImpressa
+          onFechar={() => setFolha(false)}
+          cabecalho={impressao}
+          cenas={cenas ?? []}
+          setups={setups ?? []}
+          takes={takes ?? []}
+          dadosCamera={dadosCamera ?? []}
+          cameras={cameras ?? []}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * A folha em sobreposição, na **mesma rota** da diária.
+ *
+ * Não é uma página separada de propósito: navegar exigiria buscar o servidor, e o momento
+ * de fechar o boletim é exatamente o momento em que a locação não tem sinal. Aqui tudo
+ * que a folha precisa já está na tela — o cabeçalho veio com a página, o resto vem do
+ * banco local. Imprimir em modo avião funciona sem nenhum caminho especial.
+ */
+function FolhaImpressa({
+  onFechar,
+  ...dados
+}: React.ComponentProps<typeof FolhaCamera> & { onFechar: () => void }) {
+  return (
+    <div className="print-overlay fixed inset-0 z-40 overflow-y-auto bg-ink/95 px-3 py-4 backdrop-blur-sm">
+      <div className="no-print mx-auto mb-3 flex w-full max-w-[820px] items-center gap-2">
+        <Button variant="secondary" leftIcon={<XIcon size={16} />} onClick={onFechar}>
+          Fechar
+        </Button>
+        <span className="flex-1" />
+        <Button
+          variant="primary"
+          leftIcon={<PrinterIcon size={18} />}
+          onClick={() => window.print()}
+        >
+          Imprimir / PDF
+        </Button>
+      </div>
+
+      <FolhaCamera {...dados} />
     </div>
   );
 }

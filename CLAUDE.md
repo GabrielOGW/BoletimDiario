@@ -17,16 +17,17 @@ npm run lint           # ESLint (no-explicit-any and no-unused-vars are errors)
 npm run format         # Prettier --write
 npm run format:check
 npm run icons          # regenerate PWA PNG icons from public/icons/icon.svg
-npm test               # all three check suites below (161 assertions)
+npm test               # all four check suites below (190 assertions)
 npm run test:migration # a real v1 boletim through v2 normalization (22 assertions)
-npm run test:platform  # domain/platform set rules: inheritance, take numbering (56)
+npm run test:platform  # domain/platform set rules: inheritance, take numbering (60)
 npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-to-end (83)
+npm run test:camera    # camera sheet structure: scene/block grouping, print line (25)
 npm run test:db        # schema/triggers against the real Neon (20) — needs DATABASE_URL
 npm run test:sala      # room rules against the real Neon (27) — needs DATABASE_URL
 npm run test:sync      # compare-and-set, idempotency, cursor (25) — needs DATABASE_URL
 ```
 
-There is no unit/e2e test runner. All suites are plain `.mjs` files run directly through Node's experimental TS type-stripping with a custom loader (`test/alias-loader.mjs`, which resolves `@/`, extensionless relative imports and `index.ts` folders); ESLint ignores `test/**`. `test:db`, `test:sala` and `test:sync` need a real database and are **not** part of `npm test` — the day the main suite needs a network is the day it stops being run. `test:sala` and `test:sync` also need `--conditions=react-server`, because the query layer imports `server-only`, which fails by design outside the server. Because of type-stripping, code reachable from a test may not use `enum`, `namespace`, or parameter properties, and type-only imports must use `import type`. To test offline behavior: `npm run build && npm run start`, load the app once online, then go airplane mode and reload.
+There is no unit/e2e test runner. All suites are plain `.mjs` files run directly through Node's experimental TS type-stripping with a custom loader (this is why `features/camera/estrutura.ts` — the structure the screen and the printed sheet share — is a plain module with type-only imports: it is testable without React or Dexie) (`test/alias-loader.mjs`, which resolves `@/`, extensionless relative imports and `index.ts` folders); ESLint ignores `test/**`. `test:db`, `test:sala` and `test:sync` need a real database and are **not** part of `npm test` — the day the main suite needs a network is the day it stops being run. `test:sala` and `test:sync` also need `--conditions=react-server`, because the query layer imports `server-only`, which fails by design outside the server. Because of type-stripping, code reachable from a test may not use `enum`, `namespace`, or parameter properties, and type-only imports must use `import type`. To test offline behavior: `npm run build && npm run start`, load the app once online, then go airplane mode and reload.
 
 ## Architecture
 

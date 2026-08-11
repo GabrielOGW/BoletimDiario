@@ -14,16 +14,16 @@ E, desde `2026-08-10`, a regra tem uma segunda metade
 > gestos. `Setup` é o nome do conceito no modelo; na tela de câmera ele se chama **Plano**,
 > como sempre se chamou.
 
-> **Status (Fase 5, primeira metade): o módulo existe** em
-> `/p/[id]/diarias/[dayId]/camera`, com Cena → Bloco → Plano → Take, câmeras cadastradas,
-> técnica e óptica no cartão do Plano, cartão/clip-sync/nota no take e o toggle verde
-> intacto. Código em `features/camera/` e `lib/offline/repos/camera.ts`.
+> **Status (Fase 5): o módulo existe e imprime** em `/p/[id]/diarias/[dayId]/camera`, com
+> Cena → Bloco → Plano → Take, câmeras cadastradas, técnica e óptica no cartão do Plano,
+> cartão/clip-sync/nota no take, o toggle verde intacto e a folha A4. Código em
+> `features/camera/` e `lib/offline/repos/camera.ts`.
 >
 > A tela `/takes` continua existindo enquanto Som e Continuidade não têm módulo — para eles
 > é a única porta. Ela nunca foi o boletim de ninguém.
 >
-> **Falta para fechar a fase:** PDF/impressão, mover as rotas atuais para `/legado` e a
-> importação opcional dos boletins locais.
+> **Falta para fechar a fase:** mover as rotas atuais para `/legado` e a importação
+> opcional dos boletins locais.
 
 ---
 
@@ -173,6 +173,37 @@ técnica), destaque de aprovados, `break-inside: avoid` por plano, `thead` repet
 
 Acréscimos: CSV de câmera para a pós, e a coluna de som/continuidade no relatório consolidado
 (Fase 9).
+
+### Como ficou (Fase 5)
+
+[`features/camera/FolhaCamera.tsx`](../../features/camera/FolhaCamera.tsx) é a folha; ela
+reusa as mesmas classes de impressão do `globals.css` (`print-sheet`, `pdf-cena`,
+`pdf-plano`, `pdf-table`) que o boletim atual usa — a saída em papel é a mesma linguagem.
+
+Três decisões valem registro:
+
+**A folha abre na própria rota da diária, em sobreposição — não numa página separada.** Uma
+rota nova exigiria ir ao servidor buscar o cabeçalho, e o momento de fechar o boletim é
+exatamente o momento em que a locação não tem sinal. Como sobreposição, tudo que ela precisa
+já está na tela: o cabeçalho veio com a página, cena/plano/take vêm do banco local. Imprimir
+em modo avião funciona sem caminho especial. O botão "Ver boletim para impressão" fica no fim
+da diária, e a folha fecha por botão ou `Esc`.
+
+**A técnica impressa do Plano é a do seu primeiro take** — o valor com que o plano foi
+configurado. Quando um take diverge dele, a diferença sai **na linha daquele take**, em
+itálico ao lado da nota (`T4 · ISO 1600`). Sem isso, o dado que ADR-011 passou a permitir
+registrar — o foquista abrindo meio ponto no take 3 — existiria no banco e não apareceria no
+papel, que é o que sai do set. A comparação é contra o primeiro take e não contra o anterior:
+assim o take 4, que herdou o valor novo, também o mostra, em vez de parecer ter voltado atrás.
+
+**Cena → Bloco e a linha técnica moram em
+[`features/camera/estrutura.ts`](../../features/camera/estrutura.ts)**, lido pela tela _e_
+pela folha. Duplicar o agrupamento nos dois lugares acabaria em um PDF que mostra a diária
+diferente de como ela foi preenchida. Coberto por `npm run test:camera` (25 checks).
+
+O que a folha ainda não tem, por depender de outra fase: Mídia/Suporte (equipamentos,
+Fase 8) e o CSV para a pós (Fase 9). A seção "Cartões usados" já sai, derivada dos takes,
+com a lista de rolls quando houver.
 
 ---
 

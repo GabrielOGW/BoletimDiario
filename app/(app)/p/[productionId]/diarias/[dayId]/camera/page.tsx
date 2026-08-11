@@ -61,6 +61,33 @@ export default async function CameraPage({
           productionId={productionId}
           shootingDayId={dayId}
           canEdit={roleAtLeast(membership.role, 'MEMBER') && podeAnotar}
+          // Os mesmos dados da sala, em texto puro, para a folha impressa. Vão junto com
+          // a página porque a impressão acontece no fim da diária, quando a locação
+          // costuma estar sem sinal — buscá-los na hora seria não imprimir.
+          impressao={{
+            producao: {
+              name: producao.name,
+              company: producao.company,
+              director: producao.director,
+              dop: producao.dop,
+            },
+            diaria: {
+              date: diaria.date,
+              dayNumber: diaria.dayNumber,
+              callTime: diaria.callTime,
+              wrapTime: diaria.wrapTime,
+              lunchStart: diaria.lunchStart,
+              lunchEnd: diaria.lunchEnd,
+              location: diaria.location,
+              unit: diaria.unit,
+              notes: diaria.notes,
+            },
+            equipe: equipeCamera.map((membro) => ({
+              id: membro.id,
+              nome: membro.name,
+              funcao: membro.jobTitle ?? DEPARTMENT_LABEL[membro.department],
+            })),
+          }}
           cabecalho={
             <>
               {!podeAnotar ? (

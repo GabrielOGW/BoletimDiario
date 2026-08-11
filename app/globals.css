@@ -99,6 +99,17 @@ input[type='search']::-webkit-search-cancel-button {
     padding: 0 !important;
   }
 
+  /* A folha do módulo de câmera aparece em sobreposição sobre a diária. No papel ela é o
+     documento, não uma camada: `fixed` imprimiria só a primeira página. */
+  .print-overlay {
+    position: static !important;
+    inset: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+  }
+
   /* Garante a impressão das cores (badges aprovados, fundos de cabeçalho) */
   .print-sheet,
   .print-sheet * {

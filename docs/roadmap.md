@@ -180,7 +180,9 @@ A fase mais sensível: migrar o módulo que está em uso. **Migração, não red
 - [ ] Mídia/Suporte (depende de equipamentos, Fase 8)
 - [ ] Novos campos de [features/camera.md §3](features/camera.md#3-organização-dos-campos-10)
 - [ ] `TakeStatus` **preservando** o toggle "Aprovado pelo diretor"
-- [ ] PDF com a mesma qualidade de saída (comparação lado a lado)
+- [x] PDF com a mesma qualidade de saída — folha A4 em sobreposição na própria rota da
+      diária, com as mesmas classes de impressão e a diferença técnica por take
+      ([features/camera.md §6](features/camera.md#como-ficou-fase-5))
 - [ ] Rotas atuais movidas para `/legado`, ainda funcionando sem conta
 - [ ] Importação opcional dos boletins locais ([migrations/local-to-cloud.md](migrations/local-to-cloud.md))
 
