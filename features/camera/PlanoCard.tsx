@@ -44,6 +44,9 @@ const OPTICA: { field: string; label: string; placeholder?: string }[] = [
   { field: 'filter', label: 'Filtros', placeholder: 'ND 0.6' },
 ];
 
+/** O único campo técnico que não é texto — e o boletim sempre teve (`optica.matteBox`). */
+const MATTE_BOX = 'matteBox';
+
 /**
  * O cartão de Plano.
  *
@@ -87,7 +90,7 @@ export function PlanoCard({
     (dado) => dado.approved && takes.some((take) => take.id === dado.takeId),
   ).length;
 
-  async function alteraTecnica(field: string, valorNovo: string) {
+  async function alteraTecnica(field: string, valorNovo: string | boolean) {
     await patchPlanoTecnica({
       setupId: setup.id,
       cameraUnitId,
@@ -194,9 +197,32 @@ export function PlanoCard({
             ))}
           </div>
 
+          <label className="flex min-h-[44px] items-center gap-3 text-sm text-zinc-200">
+            <input
+              type="checkbox"
+              checked={Boolean(tecnica[MATTE_BOX])}
+              disabled={!canEdit}
+              onChange={(evento) => void alteraTecnica(MATTE_BOX, evento.target.checked)}
+              className="h-5 w-5 shrink-0 accent-brand"
+            />
+            Matte Box
+          </label>
+
+          <TextField
+            label="Observações do plano"
+            value={setup.description ?? ''}
+            disabled={!canEdit}
+            placeholder="Câmera na mão, contra do ator"
+            onChange={(valor) =>
+              void patchEntity('setup', setup.id, { description: valor || null }).then(
+                syncNow,
+              )
+            }
+          />
+
           <p className="text-xs leading-relaxed text-zinc-500">
-            Mudar um campo aqui acompanha os takes que ainda tinham o valor anterior. Um
-            take ajustado individualmente não é alterado.
+            Mudar um campo técnico aqui acompanha os takes que ainda tinham o valor
+            anterior. Um take ajustado individualmente não é alterado.
           </p>
 
           <div className="flex flex-col gap-2">

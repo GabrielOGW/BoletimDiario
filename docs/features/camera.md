@@ -19,11 +19,15 @@ E, desde `2026-08-10`, a regra tem uma segunda metade
 > cartão/clip-sync/nota no take, o toggle verde intacto e a folha A4. Código em
 > `features/camera/` e `lib/offline/repos/camera.ts`.
 >
+> As rotas do boletim local mudaram para `/legado` (ADR-032) e a importação opcional está
+> em `/legado/importar`.
+>
 > A tela `/takes` continua existindo enquanto Som e Continuidade não têm módulo — para eles
 > é a única porta. Ela nunca foi o boletim de ninguém.
 >
-> **Falta para fechar a fase:** mover as rotas atuais para `/legado` e a importação
-> opcional dos boletins locais.
+> **Falta para fechar a fase:** `TakeStatus` ao lado do toggle verde (§4) e os campos novos
+> de §3. As quatro lacunas de paridade que sobraram estão listadas em §1, cada uma com
+> dono. Mídia/Suporte depende da Fase 8.
 
 ---
 
@@ -45,6 +49,57 @@ que **precisa continuar funcionando** depois da migração:
 - Exportar PDF / imprimir em A4 com takes aprovados destacados
 - Backup: exportar e importar JSON
 - PWA instalável, offline completo, boletim demo no primeiro acesso
+
+### Conferência campo a campo — `2026-08-11`
+
+Campo do editor atual × campo do módulo na plataforma. É a lista que a Fase 5 pedia para
+conferir "item a item"; o que está `⚠️` tem justificativa e dono.
+
+| Editor atual                                                 | Módulo da plataforma                             |
+| ------------------------------------------------------------ | ------------------------------------------------ |
+| `Cena.numero`                                                | ✅ editável (renomeia todos os blocos da cena)   |
+| `Bloco.letra`                                                | ✅ editável                                      |
+| `Plano.numero`                                               | ✅ `setup.code`                                  |
+| `Plano.cameraId`                                             | ✅ seletor das câmeras cadastradas               |
+| `Plano.cameraNome` (texto livre)                             | ⚠️ só o seletor — ver "o que falta" abaixo       |
+| `Plano.tipo` (Normal, Série, Insert…)                        | ⚠️ **sem coluna no Postgres** — ver abaixo       |
+| `tecnica.*` (9 campos)                                       | ✅ todos, no cartão do Plano                     |
+| `optica.lentes`, `optica.filtros`                            | ✅                                               |
+| `optica.matteBox`                                            | ✅ caixa de seleção no cartão do Plano           |
+| `Plano.observacoes`                                          | ✅ "Observações do plano" (`setup.description`)  |
+| `Take.numero` · `cartao` · `clipSync` · `notaOperacional`    | ✅                                               |
+| `Take.aprovado`                                              | ✅ o mesmo toggle verde, um toque                |
+| `CameraCadastrada.{nomeId,modelo,operador,foco,claquetista}` | ✅ os cinco                                      |
+| Auto-save com debounce, sem botão salvar                     | ✅ 500 ms + flush no desmonte                    |
+| Cenas do Dia                                                 | ✅ derivado dos takes                            |
+| Horários · Equipe · Produção                                 | ✅ somente leitura, dado de sala (ADR-016)       |
+| Observações gerais                                           | ✅ `ShootingDay.notes`, editável na sala         |
+| PDF A4 com aprovados destacados                              | ✅ §6                                            |
+| Mídia/Suporte                                                | ⚠️ Fase 8 (depende do catálogo de equipamentos)  |
+| Autocomplete aprendido + presets                             | ⚠️ ainda não — ver abaixo                        |
+| Duplicar plano / cena / take                                 | ⚠️ ainda não — ver abaixo                        |
+| Backup JSON                                                  | — próprio do modo local; a plataforma sincroniza |
+
+### O que falta, e por quê
+
+**`Plano.tipo` não tem coluna.** `Setup.kind` existe em
+[`domain/platform/types.ts`](../../domain/platform/types.ts) e o mapeador o preenche, mas a
+tabela `setups` não tem `kind` — então a importação o descarta em silêncio. É uma migration
+de uma coluna mais uma linha em `SYNC_ENTITIES`; entra por uma passagem da skill `banco`,
+não por um remendo na tela.
+
+**A câmera do plano mora em `setup.name`.** Documentado em `PlanoCard`, mas errado:
+`name` é "Master, Close João" semanticamente. O certo é `setups.camera_unit_id`. Mesma
+passagem de `banco`, e enquanto isso o vínculo real — o que importa para o dado — está em
+cada `CameraTakeData`.
+
+**Autocomplete.** `lib/suggestions.ts` colhe valores dos boletins do LocalStorage; na
+plataforma a fonte é o Dexie da diária. É um módulo novo, não uma adaptação — e é uma
+funcionalidade de **velocidade em set**, então não pode entrar meia-boca.
+
+**Duplicar plano/cena/take.** `lib/factory.ts` faz isso regenerando ids; na plataforma os
+ids são derivados de chave natural (ADR-019), então duplicar significa escolher a chave
+natural do clone. É uma decisão de domínio, não de UI.
 
 ---
 

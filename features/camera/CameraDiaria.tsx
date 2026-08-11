@@ -22,6 +22,7 @@ import {
   listCameraUnits,
   patchCameraUnit,
 } from '@/lib/offline/repos/camera';
+import type { LocalCameraUnit } from '@/lib/offline/db';
 import { isPinned, listScenes, listSetups, listTakes } from '@/lib/offline/repos/diaria';
 import { fetchAndPin, startSync, syncNow } from '@/lib/sync/engine';
 import { ConflictList } from '@/features/sync/ConflictList';
@@ -277,14 +278,20 @@ function FolhaImpressa({
   );
 }
 
-/** Câmeras cadastradas da produção, com seleção rápida por plano — como no boletim. */
+/**
+ * Câmeras cadastradas da produção, com seleção rápida por plano — como no boletim.
+ *
+ * Os quatro campos são os mesmos de `CameraCadastrada` do boletim (nome/id, modelo,
+ * operador, foco, claquetista). Eles saem impressos no cabeçalho da folha, e um campo
+ * que imprime e não tem onde ser preenchido é meio caminho.
+ */
 function CamerasSection({
   productionId,
   cameras,
   canEdit,
 }: {
   productionId: string;
-  cameras: { id: string; label: string; model?: string | null }[];
+  cameras: LocalCameraUnit[];
   canEdit: boolean;
 }) {
   const [etiqueta, setEtiqueta] = useState('');
@@ -301,22 +308,54 @@ function CamerasSection({
           : cameras.map((camera) => camera.label).join(' · ')
       }
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
         {cameras.map((camera) => (
-          <div key={camera.id} className="flex items-center gap-3">
-            <span className="w-10 shrink-0 text-center text-base font-semibold text-brand">
-              {camera.label}
-            </span>
-            <TextField
-              label="Modelo"
-              className="flex-1"
-              value={camera.model ?? ''}
-              disabled={!canEdit}
-              onChange={(valor) =>
-                void patchCameraUnit(camera.id, { model: valor }).then(syncNow)
-              }
-              placeholder="ARRI Alexa 35"
-            />
+          <div
+            key={camera.id}
+            className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-3"
+          >
+            <div className="flex items-center gap-3">
+              <span className="w-10 shrink-0 text-center text-base font-semibold text-brand">
+                {camera.label}
+              </span>
+              <TextField
+                label="Modelo"
+                className="flex-1"
+                value={camera.model ?? ''}
+                disabled={!canEdit}
+                onChange={(valor) =>
+                  void patchCameraUnit(camera.id, { model: valor }).then(syncNow)
+                }
+                placeholder="ARRI Alexa 35"
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <TextField
+                label="Operador(a)"
+                value={camera.operator ?? ''}
+                disabled={!canEdit}
+                onChange={(valor) =>
+                  void patchCameraUnit(camera.id, { operator: valor }).then(syncNow)
+                }
+              />
+              <TextField
+                label="Foco"
+                value={camera.focusPuller ?? ''}
+                disabled={!canEdit}
+                onChange={(valor) =>
+                  void patchCameraUnit(camera.id, { focusPuller: valor }).then(syncNow)
+                }
+              />
+              <TextField
+                label="Claquetista"
+                value={camera.clapper ?? ''}
+                disabled={!canEdit}
+                onChange={(valor) =>
+                  void patchCameraUnit(camera.id, { clapper: valor }).then(syncNow)
+                }
+              />
+            </div>
           </div>
         ))}
 
