@@ -1,8 +1,13 @@
 /** Opções de `<select>` derivadas dos enums — em um lugar só, para não divergirem. */
 
-import { ACTIVE_DEPARTMENTS, DEPARTMENTS, MEMBER_ROLES } from '@/domain/platform/enums';
+import {
+  ACTIVE_DEPARTMENTS,
+  DEPARTMENTS,
+  EQUIPMENT_CATEGORIES,
+  MEMBER_ROLES,
+} from '@/domain/platform/enums';
 
-import { DEPARTMENT_LABEL, ROLE_LABEL } from './labels';
+import { CATEGORY_LABEL, DEPARTMENT_LABEL, ROLE_LABEL } from './labels';
 
 /**
  * Primeiro os três departamentos com módulo, depois o resto. Quem é de câmera não
@@ -20,3 +25,8 @@ export const DEPARTMENT_OPTIONS = [
 export const ROLE_OPTIONS = MEMBER_ROLES.filter((role) => role !== 'OWNER').map(
   (value) => ({ value, label: ROLE_LABEL[value] }),
 );
+
+export const CATEGORY_OPTIONS = EQUIPMENT_CATEGORIES.map((value) => ({
+  value,
+  label: CATEGORY_LABEL[value],
+}));

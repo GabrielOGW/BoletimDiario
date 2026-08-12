@@ -11,10 +11,15 @@ import { requireMember } from '@/lib/auth/guards';
 import { uuidSchema } from '@/lib/contracts';
 import { listMembers } from '@/lib/db/queries/members';
 import { getProduction } from '@/lib/db/queries/productions';
+import { listAssignments } from '@/lib/db/queries/equipment';
 import { getShootingDay } from '@/lib/db/queries/shooting-days';
 import { ContinuidadeDiaria } from '@/features/continuity/ContinuidadeDiaria';
 import { SyncIndicator } from '@/features/sync/SyncIndicator';
-import { DEPARTMENT_LABEL, formatDiaria } from '@/features/production/labels';
+import {
+  DEPARTMENT_LABEL,
+  descreveEquipamento,
+  formatDiaria,
+} from '@/features/production/labels';
 
 export const metadata: Metadata = { title: 'Boletim de Continuidade' };
 
@@ -34,10 +39,11 @@ export default async function ContinuidadePage({
   if (!uuidSchema.safeParse(dayId).success) notFound();
 
   const membership = await requireMember(productionId);
-  const [producao, diaria, membros] = await Promise.all([
+  const [producao, diaria, membros, equipamentos] = await Promise.all([
     getProduction(productionId),
     getShootingDay({ productionId, dayId }),
     listMembers(productionId),
+    listAssignments({ productionId, shootingDayId: dayId }),
   ]);
 
   if (!producao || !diaria) notFound();
@@ -84,6 +90,11 @@ export default async function ContinuidadePage({
               unit: diaria.unit,
               notes: diaria.notes,
             },
+            equipamentos: equipamentos.map((linha) => ({
+              id: linha.id,
+              departamento: linha.department,
+              descricao: descreveEquipamento(linha),
+            })),
             equipe: equipeContinuidade.map((membro) => ({
               id: membro.id,
               nome: membro.name,

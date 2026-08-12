@@ -67,6 +67,11 @@ export function FolhaSom({ cabecalho, config, linhas }: FolhaSomProps) {
   const { producao, diaria, equipe } = cabecalho;
   const resumo = resumoDoDia(linhas);
 
+  /** Só o equipamento de Som: o boom não interessa ao cabeçalho da câmera, nem o contrário. */
+  const equipamentos = (cabecalho.equipamentos ?? []).filter(
+    (item) => item.departamento === 'SOUND',
+  );
+
   const titulo = producao.name.trim() || 'Sem título';
 
   const almoco =
@@ -139,6 +144,16 @@ export function FolhaSom({ cabecalho, config, linhas }: FolhaSomProps) {
           <Info label="Cópias" value={config?.mediaCopies ?? ''} />
           <Info label="Cópias conferidas" value={config?.mediaVerified ? 'Sim' : 'Não'} />
         </dl>
+
+        {/* Os modelos do dia impressos no cabeçalho — a lacuna que o levantamento de
+            `2026-08-10` marcou como pendente até o catálogo existir (sound.md §5). O
+            sound report é cadeia de custódia: "gravado como" inclui com quê. */}
+        {equipamentos.length > 0 ? (
+          <p className="mt-2 text-[11px] text-zinc-600">
+            <span className="font-semibold text-zinc-500">Equipamento: </span>
+            {equipamentos.map((item) => item.descricao).join(' · ')}
+          </p>
+        ) : null}
 
         {resumo.rolls.length > 0 ? (
           <p className="mt-2 text-[11px] text-zinc-600">

@@ -14,7 +14,9 @@ import {
 import { roleAtLeast } from '@/domain/platform/enums';
 import { requireMember } from '@/lib/auth/guards';
 import { uuidSchema } from '@/lib/contracts';
+import { listAssignments, listEquipment } from '@/lib/db/queries/equipment';
 import { getShootingDay } from '@/lib/db/queries/shooting-days';
+import { EquipmentDoDia } from '@/features/production/EquipmentDoDia';
 import { DiariaForm } from '@/features/production/DiariaForm';
 import { formatDiaria } from '@/features/production/labels';
 
@@ -31,6 +33,11 @@ export default async function DiariaPage({
   const membership = await requireMember(productionId);
   const diaria = await getShootingDay({ productionId, dayId });
   if (!diaria) notFound();
+
+  const [catalogo, alocados] = await Promise.all([
+    listEquipment(productionId),
+    listAssignments({ productionId, shootingDayId: dayId }),
+  ]);
 
   const canManage = roleAtLeast(membership.role, 'ADMIN');
   const titulo = diaria.dayNumber
@@ -109,6 +116,14 @@ export default async function DiariaPage({
             </span>
           </span>
         </Link>
+
+        <EquipmentDoDia
+          productionId={productionId}
+          shootingDayId={dayId}
+          catalogo={catalogo}
+          alocados={alocados}
+          canManage={roleAtLeast(membership.role, 'MEMBER')}
+        />
 
         {canManage ? (
           <DiariaForm productionId={productionId} diaria={diaria} />

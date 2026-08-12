@@ -122,6 +122,44 @@ CÂMERA hoje                     SOM hoje
 Visível a todos os departamentos — é a resposta direta ao objetivo de um departamento saber o
 que os outros estão usando.
 
+### Como ficou — Fase 8, `2026-08-12`
+
+Duas telas, ambas **fora da fronteira offline** (ADR-016), porque cadastrar e alocar são
+preparação — feitas sentadas, com sinal:
+
+- **`/p/[id]/equipamentos`** — o catálogo da produção, agrupado por departamento.
+  [`EquipmentList`](../../features/production/EquipmentList.tsx), formulário não controlado
+  de Server Action, como todo formulário da sala.
+- **Painel na diária** — [`EquipmentDoDia`](../../features/production/EquipmentDoDia.tsx),
+  dentro de `/p/[id]/diarias/[dayId]`. Alocar escolhe do catálogo; o **departamento vem do
+  equipamento**, não do formulário, senão a continuísta acabaria procurando o boom na lista
+  da câmera.
+
+**Qualquer `MEMBER`+ cadastra e aloca**, de qualquer departamento (permissions.md §3). Quem
+chega com o kit não é sempre quem administra a sala, e um catálogo que só o `ADMIN` preenche
+nasce vazio — que é o mesmo que não existir.
+
+**Remover é exclusão lógica** (ADR-015): `sound_take_tracks` e `camera_units` apontam para o
+equipamento, e um boletim de três meses atrás não pode passar a dizer que o take foi gravado
+com nada.
+
+### Como o equipamento chega ao boletim impresso
+
+Esta era a última pendência declarada da Fase 6 — o cabeçalho do sound report precisava
+imprimir os modelos do dia, e o catálogo ainda não existia.
+
+O caminho é o **mesmo** de produção, horários e equipe: o Server Component da rota do módulo
+resolve a alocação e a passa em `impressao`. A folha continua sem `fetch` e sem consulta —
+tudo chega por props (ADR-016). Como o Service Worker guarda a navegação já renderizada, o
+cabeçalho sai impresso em locação sem sinal, tão atual quanto a última vez que a tela foi
+aberta com rede. **A fronteira offline não mudou**: nenhum dado de servidor passou a ser
+exigido durante a diária.
+
+Cada folha imprime só o equipamento **do seu departamento** — o boom não interessa ao
+cabeçalho da câmera, nem o contrário.
+
+Verificado por `npm run test:sala` (38 checks, 11 novos) contra o Neon real.
+
 ## 5. Busca e filtros (§35, §36)
 
 Busca **global dentro da produção**, cruzando módulos:

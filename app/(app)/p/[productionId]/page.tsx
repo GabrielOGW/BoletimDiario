@@ -6,14 +6,20 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { SectionCard } from '@/components/layout/SectionCard';
 import { Badge } from '@/components/ui/Badge';
-import { CalendarIcon, UsersIcon } from '@/components/ui/icons';
+import { CalendarIcon, PackageIcon, UsersIcon } from '@/components/ui/icons';
 import { roleAtLeast } from '@/domain/platform/enums';
 import { requireMember } from '@/lib/auth/guards';
+import { listEquipment } from '@/lib/db/queries/equipment';
 import { listMembers } from '@/lib/db/queries/members';
 import { getProduction } from '@/lib/db/queries/productions';
 import { listShootingDays } from '@/lib/db/queries/shooting-days';
 import { JoinCodePanel } from '@/features/production/JoinCodePanel';
-import { DEPARTMENT_LABEL, ROLE_LABEL, formatDiaria } from '@/features/production/labels';
+import {
+  DEPARTMENT_LABEL,
+  ROLE_LABEL,
+  descreveEquipamento,
+  formatDiaria,
+} from '@/features/production/labels';
 
 export const metadata: Metadata = { title: 'Sala' };
 
@@ -34,9 +40,10 @@ export default async function SalaPage({
   const producao = await getProduction(productionId);
   if (!producao) notFound();
 
-  const [diarias, membros] = await Promise.all([
+  const [diarias, membros, equipamentos] = await Promise.all([
     listShootingDays(productionId),
     listMembers(productionId),
+    listEquipment(productionId),
   ]);
 
   const proxima = diarias[0];
@@ -123,10 +130,41 @@ export default async function SalaPage({
           </ul>
         </SectionCard>
 
+        <SectionCard
+          title={`Kit · ${equipamentos.length}`}
+          icon={<PackageIcon size={18} />}
+          action={
+            <Link
+              href={`/p/${productionId}/equipamentos`}
+              className="text-xs font-medium text-brand underline underline-offset-2"
+            >
+              Gerenciar
+            </Link>
+          }
+        >
+          {equipamentos.length === 0 ? (
+            <p className="text-sm text-zinc-500">
+              Nenhum equipamento cadastrado. O catálogo é preenchido uma vez e alocado por
+              diária — é dele que sai o modelo impresso no cabeçalho dos boletins.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {equipamentos.slice(0, 6).map((item) => (
+                <li key={item.id} className="flex items-center justify-between gap-3">
+                  <span className="min-w-0 truncate text-[15px] text-zinc-100">
+                    {descreveEquipamento(item)}
+                  </span>
+                  <Badge>{DEPARTMENT_LABEL[item.department]}</Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </SectionCard>
+
         <p className="px-1 text-xs leading-relaxed text-zinc-600">
-          Câmera, Som e Continuidade aparecem aqui quando os módulos entrarem — a sala já
-          é a fonte compartilhada da diária, e nada dela precisa de sincronização para
-          existir.
+          Câmera, Som e Continuidade anotam a diária nos módulos; a sala é a fonte
+          compartilhada — produção, equipe, horários e kit — e nada dela precisa de
+          sincronização para existir.
         </p>
       </PageContainer>
     </>

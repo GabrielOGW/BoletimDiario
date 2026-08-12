@@ -13,6 +13,8 @@
  * de query, junto da escrita.
  */
 
+import { randomUUID } from 'node:crypto';
+
 import { notFound, redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 
@@ -24,7 +26,9 @@ import {
 } from '@/lib/auth/guards';
 import { requireUser } from '@/lib/auth/session';
 import {
+  assignmentSchema,
   createProductionSchema,
+  equipmentSchema,
   joinProductionSchema,
   shootingDaySchema,
   updateMemberSchema,
@@ -43,6 +47,14 @@ import {
   transferOwnership,
   updateMember,
 } from '@/lib/db/queries/members';
+import {
+  assignEquipment,
+  createEquipment,
+  deleteEquipment,
+  listEquipment,
+  unassignEquipment,
+  updateEquipment,
+} from '@/lib/db/queries/equipment';
 import {
   createShootingDay,
   deleteShootingDay,
@@ -380,4 +392,152 @@ export async function excluirDiariaAction(
 
   revalidatePath(`/p/${productionId}/diarias`);
   redirect(`/p/${productionId}/diarias`);
+}
+
+// ---- Equipamentos ----
+//
+// Equipamento é dado **compartilhado** (permissions.md §3): qualquer `MEMBER`+ escreve,
+// independentemente do departamento. Quem chega com o kit não é sempre quem administra a
+// sala, e travar o cadastro em `ADMIN` faria o catálogo nascer vazio — que é o mesmo que
+// não existir.
+
+async function membro(productionId: string): Promise<Membership> {
+  return requireMember(productionId, { minRole: 'MEMBER' });
+}
+
+function lerEquipamento(form: FormData) {
+  return equipmentSchema.safeParse({
+    department: texto(form, 'department'),
+    category: texto(form, 'category'),
+    manufacturer: texto(form, 'manufacturer'),
+    model: texto(form, 'model'),
+    serialNumber: texto(form, 'serialNumber'),
+    nickname: texto(form, 'nickname'),
+    notes: texto(form, 'notes'),
+  });
+}
+
+export async function salvarEquipamentoAction(
+  _prev: ActionState,
+  form: FormData,
+): Promise<ActionState> {
+  const productionId = texto(form, 'productionId');
+  const equipmentId = texto(form, 'equipmentId');
+
+  const parsed = lerEquipamento(form);
+  if (!parsed.success) return { error: primeiroErro(parsed.error.issues) };
+
+  try {
+    const membership = await membro(productionId);
+
+    if (equipmentId) {
+      const id = uuidSchema.safeParse(equipmentId);
+      if (!id.success) return { error: 'Equipamento inválido.' };
+
+      await updateEquipment({
+        id: id.data,
+        productionId,
+        values: parsed.data,
+        actorId: membership.user.id,
+      });
+    } else {
+      await createEquipment({
+        // Aleatório, não derivado: nada aqui é criado offline, e derivar de
+        // fabricante+modelo faria dois microfones idênticos sem número de série virarem
+        // um registro só — o contrário do que um catálogo precisa.
+        id: randomUUID(),
+        productionId,
+        ...parsed.data,
+        actorId: membership.user.id,
+      });
+    }
+  } catch (error) {
+    return falha(error);
+  }
+
+  revalidatePath(`/p/${productionId}/equipamentos`);
+  redirect(`/p/${productionId}/equipamentos`);
+}
+
+export async function excluirEquipamentoAction(
+  _prev: ActionState,
+  form: FormData,
+): Promise<ActionState> {
+  const productionId = texto(form, 'productionId');
+  const id = uuidSchema.safeParse(texto(form, 'equipmentId'));
+  if (!id.success) return { error: 'Equipamento inválido.' };
+
+  try {
+    const membership = await membro(productionId);
+    await deleteEquipment({ id: id.data, productionId, actorId: membership.user.id });
+  } catch (error) {
+    return falha(error);
+  }
+
+  revalidatePath(`/p/${productionId}/equipamentos`);
+  redirect(`/p/${productionId}/equipamentos`);
+}
+
+/**
+ * Aloca um equipamento na diária — "o que estamos usando hoje" (§23).
+ *
+ * O departamento vem do **equipamento**, não do formulário: quem aloca um microfone está
+ * alocando um equipamento de som, e deixar isso à escolha só criaria a chance de a
+ * continuísta procurar o boom na lista da câmera.
+ */
+export async function alocarEquipamentoAction(
+  _prev: ActionState,
+  form: FormData,
+): Promise<ActionState> {
+  const productionId = texto(form, 'productionId');
+
+  const parsed = assignmentSchema.safeParse({
+    equipmentId: texto(form, 'equipmentId'),
+    shootingDayId: texto(form, 'shootingDayId'),
+    label: texto(form, 'label'),
+  });
+  if (!parsed.success) return { error: primeiroErro(parsed.error.issues) };
+
+  try {
+    const membership = await membro(productionId);
+
+    const catalogo = await listEquipment(productionId);
+    const item = catalogo.find((linha) => linha.id === parsed.data.equipmentId);
+    if (!item) return { error: 'Equipamento não encontrado nesta produção.' };
+
+    await assignEquipment({
+      id: randomUUID(),
+      productionId,
+      equipmentId: item.id,
+      shootingDayId: parsed.data.shootingDayId,
+      department: item.department,
+      label: parsed.data.label,
+      actorId: membership.user.id,
+    });
+  } catch (error) {
+    return falha(error);
+  }
+
+  revalidatePath(`/p/${productionId}/diarias/${parsed.data.shootingDayId}`);
+  return {};
+}
+
+export async function desalocarEquipamentoAction(
+  _prev: ActionState,
+  form: FormData,
+): Promise<ActionState> {
+  const productionId = texto(form, 'productionId');
+  const dayId = texto(form, 'shootingDayId');
+  const id = uuidSchema.safeParse(texto(form, 'assignmentId'));
+  if (!id.success) return { error: 'Alocação inválida.' };
+
+  try {
+    const membership = await membro(productionId);
+    await unassignEquipment({ id: id.data, productionId, actorId: membership.user.id });
+  } catch (error) {
+    return falha(error);
+  }
+
+  revalidatePath(`/p/${productionId}/diarias/${dayId}`);
+  return {};
 }

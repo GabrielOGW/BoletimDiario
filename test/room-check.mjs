@@ -35,6 +35,14 @@ const { listMembers, updateMember, removeMember, leaveProduction, transferOwners
 const { createShootingDay, listShootingDays, deleteShootingDay } = await import(
   '@/lib/db/queries/shooting-days'
 );
+const {
+  assignEquipment,
+  createEquipment,
+  deleteEquipment,
+  listAssignments,
+  listEquipment,
+} = await import('@/lib/db/queries/equipment');
+const { descreveEquipamento } = await import('@/features/production/labels');
 
 let passed = 0;
 let failed = 0;
@@ -281,6 +289,98 @@ async function run() {
     select deleted_at from shooting_days where id = ${idDia}
   `;
   check('o registro excluído continua no banco', apagada?.deleted_at !== null);
+
+  // ---- Equipamentos e "o que estamos usando hoje" (Fase 8) ----
+
+  const microfone = randomUUID();
+  await createEquipment({
+    id: microfone,
+    productionId,
+    department: 'SOUND',
+    category: 'MICROPHONE',
+    manufacturer: 'Sennheiser',
+    model: 'MKH 416',
+    serialNumber: '416-0421',
+    actorId: membro.id,
+  });
+
+  const corpo = randomUUID();
+  await createEquipment({
+    id: corpo,
+    productionId,
+    department: 'CAMERA',
+    category: 'CAMERA',
+    model: 'Alexa 35',
+    nickname: 'A CAM',
+    actorId: membro.id,
+  });
+
+  const catalogo = await listEquipment(productionId);
+  check('o catálogo lista o que foi cadastrado', catalogo.length === 2);
+  // Equipamento é dado compartilhado: quem chega com o kit não é sempre quem administra a
+  // sala, e um catálogo que só o ADMIN preenche nasce vazio (permissions.md §3).
+  check(
+    'MEMBER cadastra equipamento de qualquer departamento',
+    catalogo.some((item) => item.department === 'SOUND') &&
+      catalogo.some((item) => item.department === 'CAMERA'),
+  );
+
+  check(
+    'a descrição impressa junta apelido, modelo e série',
+    descreveEquipamento(catalogo.find((item) => item.id === microfone)) ===
+      'Sennheiser MKH 416 · s/n 416-0421',
+  );
+  check(
+    'o apelido vem na frente quando existe',
+    descreveEquipamento(catalogo.find((item) => item.id === corpo)) ===
+      'A CAM · Alexa 35',
+  );
+
+  await assignEquipment({
+    id: randomUUID(),
+    productionId,
+    equipmentId: microfone,
+    shootingDayId: outraUnidade,
+    // O departamento vem do equipamento, não de quem aloca.
+    department: 'SOUND',
+    label: 'Boom principal',
+    actorId: membro.id,
+  });
+
+  const doDia = await listAssignments({ productionId, shootingDayId: outraUnidade });
+  check('a alocação aparece na diária', doDia.length === 1);
+  check(
+    'a alocação resolve o equipamento junto',
+    doDia[0].model === 'MKH 416' && doDia[0].label === 'Boom principal',
+  );
+  // É a consulta que responde "hoje o som está com MKH 416" para a continuísta.
+  check('a alocação carrega o departamento do equipamento', doDia[0].department === 'SOUND');
+
+  const outroDia = await createShootingDay({
+    productionId,
+    data: { ...dia, date: '2026-09-02', unit: null },
+    userId: membro.id,
+  });
+  check(
+    'a alocação não vaza para outra diária',
+    (await listAssignments({ productionId, shootingDayId: outroDia })).length === 0,
+  );
+
+  // Exclusão lógica: o boletim de três meses atrás não pode passar a dizer que o take foi
+  // gravado com nada (ADR-015).
+  await deleteEquipment({ id: microfone, productionId, actorId: membro.id });
+  check(
+    'equipamento removido sai do catálogo',
+    (await listEquipment(productionId)).length === 1,
+  );
+  const [linhaApagada] = await sql`
+    select deleted_at from equipment where id = ${microfone}
+  `;
+  check('equipamento removido continua no banco', linhaApagada?.deleted_at !== null);
+  check(
+    'a alocação de equipamento removido some da diária',
+    (await listAssignments({ productionId, shootingDayId: outraUnidade })).length === 0,
+  );
 }
 
 async function papel(userId) {
