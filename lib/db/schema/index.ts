@@ -16,4 +16,5 @@ export * from './equipment';
 export * from './camera';
 export * from './sound';
 export * from './continuity';
+export * from './reports';
 export * from './sync';

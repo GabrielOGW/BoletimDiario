@@ -406,6 +406,39 @@ create table continuity_set_dressing (   -- element, position, state, notes
 );
 ```
 
+### 4.3.1 Relatório de Progresso da Diária (migration `0007`)
+
+O balanço do dia que a produção consome — o documento que o levantamento de `2026-08-10`
+descobriu faltando por inteiro ([continuity.md §7](../features/continuity.md#7-o-que-a-prática-exige--levantamento)).
+
+**Só o que exige mão humana tem coluna** ([ADR-034](../decisions.md#adr-034--o-relatório-de-progresso-guarda-só-o-que-exige-mão-humana)).
+Cenas rodadas, setups, takes, cartões e rolls são derivados dos registros do dia; guardá-los
+aqui daria dois números para o mesmo fato, e o guardado seria sempre o mais velho.
+
+```sql
+create table daily_progress_report (
+  id                uuid primary key,          -- derivado da diária (ADR-019)
+  production_id     uuid not null references productions(id) on delete cascade,
+  shooting_day_id   uuid not null references shooting_days(id) on delete cascade,
+  first_take_at     time,        -- ninguém preenche takes.started_at em set; isto sim
+  pages_shot        text,        -- "2 4/8" — a soma vive no domínio, pura
+  estimated_minutes text,        -- "3:20"
+  scenes_covered    text,        -- "24, 25A, 31" — cobertura em lista, não em tabela
+  scenes_partial    text,
+  scenes_skipped    text,
+  scenes_added      text,
+  notes             text,
+  signed_by         text,
+  <audit>,
+  unique (shooting_day_id)       -- uma diária tem um balanço, não dois
+);
+```
+
+**Páginas em oitavos não têm coluna.** `scenes.page` continua texto livre ("2 4/8"), e a
+conversão é [`domain/platform/paginas.ts`](../../domain/platform/paginas.ts) — puro e testado.
+Um inteiro guardado ao lado do texto seria cache do dado ao lado do próprio dado, e a soma
+acontece no wrap, dentro da fronteira offline, sobre algumas dezenas de cenas (ADR-034).
+
 ### 4.4 Equipamentos
 
 ```sql
@@ -479,9 +512,15 @@ Três decisões dentro deles:
 - **Soft delete vira `DELETE` no log**, detectado pela transição `deleted_at` null → não-null.
   Registrá-lo como `UPDATE` faria os outros dispositivos nunca saberem que o registro sumiu.
 
-Aplicados em laço sobre uma lista de 18 tabelas. Ficam de fora, de propósito: `users` (não
+Aplicados em laço sobre uma lista de **19** tabelas — 18 da `0001` mais
+`daily_progress_report`, ligada à mão na `0007`. Ficam de fora, de propósito: `users` (não
 pertence a produção), `production_member_departments` (tabela de ligação, sincroniza com o
 membro) e o próprio `sync_log`.
+
+> Tabela de domínio nova **precisa** dos dois triggers na mesma migration que a cria. Sem
+> `write_sync_log`, o registro grava localmente, entra na fila, sobe para o servidor e nunca
+> volta para os outros dispositivos — e o sintoma é cruel, porque funciona perfeitamente no
+> aparelho de quem escreveu. `npm run test:db` conta os triggers justamente por isso.
 
 > **Rodada 2:** o `sync_log` **não** guarda a lista de chaves alteradas por operação. A versão
 > anterior precisava disso para detectar sobreposição de campos; com o delta `{ de, para }` do

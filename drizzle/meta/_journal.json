@@ -50,6 +50,13 @@
       "when": 1786481566620,
       "tag": "0006_fase6_natureza_sai_do_som",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786501195438,
+      "tag": "0007_fase7_relatorio_progresso",
+      "breakpoints": true
     }
   ]
 }

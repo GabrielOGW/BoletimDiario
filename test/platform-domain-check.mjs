@@ -26,6 +26,11 @@ import {
   TAKE_STATUSES,
 } from '@/domain/platform/enums.ts';
 import { deriveId, deriveJoinCode } from '@/domain/platform/derive-id.ts';
+import {
+  oitavosEmPagina,
+  paginaEmOitavos,
+  somaPaginas,
+} from '@/domain/platform/paginas.ts';
 
 const NOW = '2026-08-10T12:00:00.000Z';
 const ctx = { actorId: 'user_1', now: NOW };
@@ -264,6 +269,41 @@ ok(
     herdado._dirty === undefined &&
     herdado.updatedAt === undefined,
 );
+
+// ---- Páginas em oitavos (Fase 7, ADR-034) ----
+//
+// É a convenção do setor: uma página vale 8/8, e a cobertura do dia se mede em frações
+// dela. O Relatório de Progresso soma isto no fim da diária, offline.
+
+ok('página inteira vira oito oitavos', paginaEmOitavos('3') === 24);
+ok('fração pura é lida', paginaEmOitavos('5/8') === 5);
+ok('mista é lida', paginaEmOitavos('2 4/8') === 20);
+ok('outra fração de denominador diferente também soma', paginaEmOitavos('1 1/2') === 12);
+ok('espaço em volta não atrapalha', paginaEmOitavos('  2 4/8  ') === 20);
+ok('decimal com vírgula é aceito, que é como se digita em pt-BR', paginaEmOitavos('2,5') === 20);
+ok('vazio não é zero', paginaEmOitavos('') === null);
+ok('nulo não é zero', paginaEmOitavos(null) === null);
+// Zero silencioso viraria um total errado com cara de certo — o pior resultado possível
+// num relatório que a produção lê no fim do dia.
+ok('texto que não dá para somar devolve null, não zero', paginaEmOitavos('meia página') === null);
+ok('denominador zero não vira infinito', paginaEmOitavos('1/0') === null);
+
+ok('vinte oitavos voltam como 2 4/8', oitavosEmPagina(20) === '2 4/8');
+ok('cinco oitavos voltam como fração', oitavosEmPagina(5) === '5/8');
+ok('múltiplo de oito volta inteiro', oitavosEmPagina(16) === '2');
+ok('zero volta zero', oitavosEmPagina(0) === '0');
+ok('ida e volta preserva o valor', oitavosEmPagina(paginaEmOitavos('3 7/8')) === '3 7/8');
+
+const soma = somaPaginas(['2 4/8', '5/8', '', null, '1']);
+ok('a soma ignora vazio e nulo', soma.somados === 3);
+ok('a soma bate em oitavos', soma.oitavos === 33);
+ok('a soma sai formatada', soma.formatado === '4 1/8');
+ok('sem valor somável o total é zero', somaPaginas([]).formatado === '0');
+
+const parcial = somaPaginas(['2 4/8', 'meia', 'um terço']);
+// Errar para menos em silêncio é pior que admitir: o relatório mostra o que não somou.
+ok('o que não soma é devolvido, não descartado', parcial.naoSomados.length === 2);
+ok('o que soma continua somando', parcial.formatado === '2 4/8');
 
 let failed = 0;
 for (const c of checks) {
