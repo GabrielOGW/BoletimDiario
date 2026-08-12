@@ -162,6 +162,84 @@ export interface LocalSoundTakeTrack extends LocalRecord {
   notes?: string | null;
 }
 
+/** Continuidade de ação — uma linha por take. Tudo texto livre, de propósito. */
+export interface LocalContinuityTakeData extends LocalRecord {
+  takeId: string;
+  status?: string | null;
+  ngReason?: string | null;
+  /** O "circled" da continuísta. */
+  selected: boolean;
+  durationSec?: number | null;
+  startPosition?: string | null;
+  endPosition?: string | null;
+  action?: string | null;
+  movement?: string | null;
+  direction?: string | null;
+  entrancesExits?: string | null;
+  eyeline?: string | null;
+  objectInteraction?: string | null;
+  characterInteraction?: string | null;
+  dialogueChanges?: string | null;
+  improvisation?: string | null;
+  scriptDeviation?: string | null;
+  notes?: string | null;
+}
+
+/**
+ * O escopo flexível das quatro coleções de estado: cena, setup **ou** take.
+ *
+ * Um figurino vale para a cena inteira; um copo pela metade vale para um take. Forçar
+ * tudo ao mesmo nível obrigaria a repetir o figurino em cada take, ou a perder a precisão
+ * do copo.
+ */
+export interface LocalContinuityScope extends LocalRecord {
+  sceneId?: string | null;
+  setupId?: string | null;
+  takeId?: string | null;
+  notes?: string | null;
+}
+
+export interface LocalContinuityProp extends LocalContinuityScope {
+  name?: string | null;
+  position?: string | null;
+  state?: string | null;
+  quantity?: string | null;
+  interaction?: string | null;
+}
+
+export interface LocalContinuityWardrobe extends LocalContinuityScope {
+  character?: string | null;
+  outfit?: string | null;
+  accessories?: string | null;
+  state?: string | null;
+}
+
+export interface LocalContinuityHairMakeup extends LocalContinuityScope {
+  character?: string | null;
+  state?: string | null;
+  changes?: string | null;
+}
+
+export interface LocalContinuitySetDressing extends LocalContinuityScope {
+  element?: string | null;
+  position?: string | null;
+  state?: string | null;
+}
+
+/** Relatório de Progresso da Diária — só o que exige mão humana (ADR-034). */
+export interface LocalDailyProgressReport extends LocalRecord {
+  shootingDayId: string;
+  firstTakeAt?: string | null;
+  pagesShot?: string | null;
+  estimatedMinutes?: string | null;
+  scenesCovered?: string | null;
+  scenesPartial?: string | null;
+  scenesSkipped?: string | null;
+  scenesAdded?: string | null;
+  notes?: string | null;
+  signedBy?: string | null;
+}
+
 export type OutboxStatus = 'PENDING' | 'SYNCING' | 'SYNCED' | 'FAILED';
 
 export interface OutboxEntry {
@@ -222,6 +300,12 @@ class PlatformDatabase extends Dexie {
   soundDayConfig!: Table<LocalSoundDayConfig, string>;
   soundTakeData!: Table<LocalSoundTakeData, string>;
   soundTakeTracks!: Table<LocalSoundTakeTrack, string>;
+  continuityTakeData!: Table<LocalContinuityTakeData, string>;
+  continuityProps!: Table<LocalContinuityProp, string>;
+  continuityWardrobe!: Table<LocalContinuityWardrobe, string>;
+  continuityHairMakeup!: Table<LocalContinuityHairMakeup, string>;
+  continuitySetDressing!: Table<LocalContinuitySetDressing, string>;
+  dailyProgressReport!: Table<LocalDailyProgressReport, string>;
   outbox!: Table<OutboxEntry, string>;
   syncConflicts!: Table<SyncConflict, string>;
   meta!: Table<MetaEntry, string>;
@@ -257,6 +341,19 @@ class PlatformDatabase extends Dexie {
       soundTakeData: 'id, productionId, takeId',
       soundTakeTracks: 'id, productionId, takeId, [takeId+index]',
     });
+
+    // Versão 4: o módulo de Continuidade (Fase 7). As quatro coleções de estado são
+    // indexadas pelos **três** níveis de escopo, e não só por um: a tela pergunta "o que
+    // vale para esta cena", "o que mudou neste setup" e "o que é deste take" o tempo
+    // todo, e sem os três índices cada pergunta viraria varredura da coleção inteira.
+    this.version(4).stores({
+      continuityTakeData: 'id, productionId, takeId',
+      continuityProps: 'id, productionId, sceneId, setupId, takeId',
+      continuityWardrobe: 'id, productionId, sceneId, setupId, takeId',
+      continuityHairMakeup: 'id, productionId, sceneId, setupId, takeId',
+      continuitySetDressing: 'id, productionId, sceneId, setupId, takeId',
+      dailyProgressReport: 'id, productionId, shootingDayId',
+    });
   }
 }
 
@@ -279,6 +376,12 @@ export function tableFor(entityType: SyncEntityType): Table<AnyLocalRecord, stri
     soundDayConfig: db.soundDayConfig,
     soundTakeData: db.soundTakeData,
     soundTakeTrack: db.soundTakeTracks,
+    continuityTakeData: db.continuityTakeData,
+    continuityProp: db.continuityProps,
+    continuityWardrobe: db.continuityWardrobe,
+    continuityHairMakeup: db.continuityHairMakeup,
+    continuitySetDressing: db.continuitySetDressing,
+    dailyProgressReport: db.dailyProgressReport,
   } as const;
 
   return tables[entityType] as unknown as Table<AnyLocalRecord, string>;

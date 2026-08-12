@@ -69,6 +69,12 @@ export async function pinShootingDay(snapshot: SnapshotResponse): Promise<void> 
       db.soundDayConfig,
       db.soundTakeData,
       db.soundTakeTracks,
+      db.continuityTakeData,
+      db.continuityProps,
+      db.continuityWardrobe,
+      db.continuityHairMakeup,
+      db.continuitySetDressing,
+      db.dailyProgressReport,
       db.refs,
       db.meta,
     ],
@@ -91,6 +97,36 @@ export async function pinShootingDay(snapshot: SnapshotResponse): Promise<void> 
       await mergeRemote(
         'soundTakeTrack',
         snapshot.soundTakeTracks,
+        snapshot.productionId,
+      );
+      await mergeRemote(
+        'continuityTakeData',
+        snapshot.continuityTakeData,
+        snapshot.productionId,
+      );
+      await mergeRemote(
+        'continuityProp',
+        snapshot.continuityProps,
+        snapshot.productionId,
+      );
+      await mergeRemote(
+        'continuityWardrobe',
+        snapshot.continuityWardrobe,
+        snapshot.productionId,
+      );
+      await mergeRemote(
+        'continuityHairMakeup',
+        snapshot.continuityHairMakeup,
+        snapshot.productionId,
+      );
+      await mergeRemote(
+        'continuitySetDressing',
+        snapshot.continuitySetDressing,
+        snapshot.productionId,
+      );
+      await mergeRemote(
+        'dailyProgressReport',
+        snapshot.dailyProgressReport,
         snapshot.productionId,
       );
 

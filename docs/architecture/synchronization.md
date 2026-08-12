@@ -30,14 +30,22 @@ O escopo do que sincroniza é a **superfície de diária** — ver
 > compare-and-set vive em [`lib/db/queries/sync.ts`](../../lib/db/queries/sync.ts); a fila,
 > o cursor e a cadência em [`lib/sync/engine.ts`](../../lib/sync/engine.ts).
 >
-> **Câmera entrou na Fase 5** (`cameraUnit`, `cameraTakeData`) e **Som na Fase 6**
-> (`soundDayConfig`, `soundTakeData`, `soundTakeTrack`) — cada um como uma entrada em
-> `SYNC_ENTITIES` e uma tabela no Dexie, sem caminho de código novo. A tradução entidade →
-> tabela local vive num lugar só (`tableFor`, em `lib/offline/db.ts`): eram duas cópias, e
-> esquecer a segunda dava um sintoma cruel — o dado grava, entra na fila, e o pull nunca o
-> aplica de volta.
+> **Câmera entrou na Fase 5** (`cameraUnit`, `cameraTakeData`), **Som na Fase 6**
+> (`soundDayConfig`, `soundTakeData`, `soundTakeTrack`) e **Continuidade na Fase 7**
+> (`continuityTakeData`, as quatro coleções de estado e `dailyProgressReport`) — cada um
+> como uma entrada em `SYNC_ENTITIES` e uma tabela no Dexie, sem caminho de código novo. A
+> tradução entidade → tabela local vive num lugar só (`tableFor`, em `lib/offline/db.ts`):
+> eram duas cópias, e esquecer a segunda dava um sintoma cruel — o dado grava, entra na
+> fila, e o pull nunca o aplica de volta.
 >
-> **Três limites conscientes**, todos verificados por `npm run test:sync` (45 checks):
+> **A Continuidade trouxe o primeiro recorte de snapshot que não é a diária.** As quatro
+> coleções de estado vêm por **cena da produção**, não pelas cenas do dia: o valor da
+> continuidade é atravessar dias — "no take de ontem o copo estava pela metade, e hoje
+> rodamos o contracampo". Recortar pela diária entregaria uma continuísta sem a memória do
+> que ela mesma anotou. São linhas de texto, e o volume acompanha o número de cenas, não o
+> de takes.
+>
+> **Três limites conscientes**, todos verificados por `npm run test:sync` (67 checks):
 >
 > 1. `atualPor` no conflito é quem escreveu por último no **registro**, não no campo —
 >    `updated_by` é uma coluna só. Autoria por campo dobraria a escrita para melhorar um
@@ -72,11 +80,12 @@ GET  /api/sync/pull     ?productionId=…&since=<seq>&limit=500
 
 ### Versões
 
-| Nº  | Quando | O que mudou                                          |
-| --- | ------ | ---------------------------------------------------- |
-| 1   | Fase 4 | Cena, setup e take                                   |
-| 2   | Fase 5 | `cameraUnit` e `cameraTakeData`                      |
-| 3   | Fase 6 | `soundDayConfig`, `soundTakeData` e `soundTakeTrack` |
+| Nº  | Quando | O que mudou                                                |
+| --- | ------ | ---------------------------------------------------------- |
+| 1   | Fase 4 | Cena, setup e take                                         |
+| 2   | Fase 5 | `cameraUnit` e `cameraTakeData`                            |
+| 3   | Fase 6 | `soundDayConfig`, `soundTakeData` e `soundTakeTrack`       |
+| 3   | Fase 7 | Continuidade e relatório de progresso — **sem incremento** |
 
 **Campo novo não incrementa; entidade nova incrementava.** Um campo que o cliente antigo
 não conhece é simplesmente ignorado por `rowFromWire`, que itera a lista **do cliente** —
@@ -87,6 +96,12 @@ do tipo que chegou e não achava.
 Desde a Fase 6 o motor **ignora tipo desconhecido e avança o cursor**, que é a mesma
 tolerância que o servidor já tinha no `pullChanges`. Com ela, o próximo departamento entra
 sem incrementar nada. O `3` cobre quem foi instalado antes de a tolerância existir.
+
+**A Fase 7 é a prova disso**: seis entidades novas — a continuidade de ação, as quatro
+coleções de estado e o relatório de progresso — entraram com o protocolo parado em `3`. Um
+cliente da Fase 6 que receba uma mudança de continuidade a ignora e segue com o cursor
+andando; ele não mostra o que não conhece, mas continua sincronizando câmera e som
+normalmente, que é exatamente o comportamento desejado.
 
 Guardas de toda rota, na ordem — implementados em
 [`app/api/sync/guard.ts`](../../app/api/sync/guard.ts):

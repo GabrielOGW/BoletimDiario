@@ -96,9 +96,11 @@ async function run() {
   );
 
   check(
-    'o registro cobre o compartilhado, a câmera e o som',
+    'o registro cobre o compartilhado e os três departamentos',
     Object.keys(SYNC_ENTITIES).join(',') ===
-      'scene,setup,take,cameraUnit,cameraTakeData,soundDayConfig,soundTakeData,soundTakeTrack',
+      'scene,setup,take,cameraUnit,cameraTakeData,soundDayConfig,soundTakeData,' +
+        'soundTakeTrack,continuityTakeData,continuityProp,continuityWardrobe,' +
+        'continuityHairMakeup,continuitySetDressing,dailyProgressReport',
   );
 
   // Toda tabela do registro tem de existir de verdade: um nome errado aqui não quebra
@@ -483,6 +485,104 @@ async function run() {
   check(
     'o snapshot traz os membros e o cursor da produção',
     snapshot.members.length === 2 && snapshot.cursor > 0,
+  );
+
+  // ---- Fase 7: continuidade no protocolo ----
+
+  const continuidadeId = deriveId('continuityTakeData', takeId);
+  const anotacao = await push([
+    op('continuityTakeData', continuidadeId, 'CREATE', {
+      takeId: { de: null, para: takeId },
+      selected: { de: null, para: true },
+      action: { de: null, para: 'João entra pela esquerda' },
+    }),
+  ]);
+  check('a continuidade de ação entra pelo push', anotacao[0].status === 'APPLIED');
+
+  // Câmera e Continuidade no mesmo take não conflitam: são tabelas diferentes. É a
+  // modelagem eliminando o conflito antes de qualquer estratégia de resolução.
+  const eyeline = await push([
+    op('continuityTakeData', continuidadeId, 'UPDATE', {
+      eyeline: { de: null, para: 'Olha para fora do quadro, à direita' },
+    }),
+  ]);
+  check('campo de continuidade faz merge sem conflito', eyeline[0].status === 'APPLIED');
+
+  const propId = deriveId('continuityProp', sceneId, '', '', 'copo');
+  const propCriada = await push([
+    op('continuityProp', propId, 'CREATE', {
+      sceneId: { de: null, para: sceneId },
+      name: { de: null, para: 'Copo' },
+      state: { de: null, para: '50% cheio' },
+    }),
+  ]);
+  check('item de estado preso à cena entra pelo push', propCriada[0].status === 'APPLIED');
+
+  // Duas pessoas anotando "Copo" na mesma cena, cada uma sem rede, convergem para o mesmo
+  // registro — é o id derivado da chave natural fazendo colisão virar convergência.
+  const mesmaProp = await push(
+    [
+      op('continuityProp', deriveId('continuityProp', sceneId, '', '', 'copo'), 'CREATE', {
+        sceneId: { de: null, para: sceneId },
+        name: { de: null, para: 'Copo' },
+      }),
+    ],
+    bruno.id,
+  );
+  const [{ total: quantosCopos }] = await sql`
+    select count(*)::int as total from continuity_props
+     where production_id = ${productionId} and scene_id = ${sceneId}
+  `;
+  check(
+    'dois dispositivos anotando o mesmo objeto criam um item só',
+    quantosCopos === 1 && mesmaProp[0].status !== 'CONFLICT',
+  );
+
+  const relatorioId = deriveId('dailyProgressReport', shootingDayId);
+  const relatorio = await push([
+    op('dailyProgressReport', relatorioId, 'CREATE', {
+      shootingDayId: { de: null, para: shootingDayId },
+      pagesShot: { de: null, para: '2 4/8' },
+    }),
+  ]);
+  check('o relatório de progresso entra pelo push', relatorio[0].status === 'APPLIED');
+
+  const comContinuidade = await loadSnapshot({ productionId, shootingDayId });
+  check(
+    'o snapshot traz a continuidade de ação da diária',
+    comContinuidade.continuityTakeData.length === 1 &&
+      comContinuidade.continuityTakeData[0].action === 'João entra pela esquerda',
+  );
+  // O valor da continuidade é atravessar dias: o item preso à cena precisa chegar mesmo
+  // quando a cena for rodada de novo em outra diária.
+  check(
+    'o snapshot traz os itens de estado presos à cena',
+    comContinuidade.continuityProps.length === 1 &&
+      comContinuidade.continuityProps[0].state === '50% cheio',
+  );
+  check(
+    'o snapshot traz o relatório de progresso da diária',
+    comContinuidade.dailyProgressReport.length === 1 &&
+      comContinuidade.dailyProgressReport[0].pagesShot === '2 4/8',
+  );
+
+  const outroDia = randomUUID();
+  await sql`
+    insert into shooting_days (id, production_id, date, created_by, updated_by)
+    values (${outroDia}, ${productionId}, '2026-08-12', ${alice.id}, ${alice.id})
+  `;
+  const snapshotDeOutroDia = await loadSnapshot({
+    productionId,
+    shootingDayId: outroDia,
+  });
+  check(
+    'a cena rodada em outro dia traz o estado anotado antes',
+    snapshotDeOutroDia.continuityProps.length === 1,
+  );
+  // O balanço é de **uma** diária: o do dia 10 não pode aparecer no dia 12.
+  check(
+    'o relatório de progresso não vaza para outra diária',
+    snapshotDeOutroDia.dailyProgressReport.length === 0,
   );
 }
 
