@@ -220,9 +220,35 @@ nada — e o boletim impresso sai igual ou melhor.
 
 ---
 
-## ⏳ Fase 6 — Som · 📋 Fase 7 — Continuidade
+## ✅ Fase 6 — Som · 📋 Fase 7 — Continuidade
 
-> **Fase 6 começou pelo banco (`2026-08-11`)**, que é a pré-condição declarada. Migrations
+> **Fase 6 fechada em `2026-08-11`**, nas três passagens declaradas: `banco`, `sync` e
+> `modulo`. Falta só a integração com equipamentos — os modelos impressos no cabeçalho do
+> relatório —, que depende do catálogo da Fase 8 e está marcada como tal em
+> [features/sound.md §7](features/sound.md#estado-em-2026-08-11). Não é dívida desta fase: o
+> dado ainda não existe para ser impresso.
+>
+> **O módulo** é `features/sound/`, na rota `/p/[id]/diarias/[dayId]/som`, com o formato do
+> Boletim de Câmera (ADR-024): fixação da diária, cartões colapsáveis, auto-save sem botão
+> salvar, folha A4 em sobreposição na própria rota. O julgamento do take custa **um toque**;
+> roll, arquivo e canais chegam herdados. Natureza (MOS, wild, playback, PU, série, false
+> start) escreve no take **compartilhado**, então a Câmera lê sem ninguém avisar.
+>
+> O layout de canais é herdado **do take anterior**, e não de um template na diária
+> ([ADR-033](decisions.md#adr-033--o-layout-de-tracks-é-herdado-do-take-anterior-não-guardado-na-diária)):
+> uma lista dentro de um registro não teria merge por campo, e um template retroativo deixaria
+> "corrigir" às 18h o que o relatório afirma sobre um take das 9h.
+>
+> Sound report em **PDF** e **CSV** (colunas espelhando iXML, escape de `;` para o Excel em
+> pt-BR, download por `Blob` — sem servidor, porque o fim da diária é quando falta sinal). Tela,
+> folha e CSV leem a mesma função. Verificado por `npm run test:som` (63 checks).
+>
+> **Efeito colateral bom:** `agrupaCenas`, o campo com debounce e a fileira de chips saíram de
+> dentro do módulo de Câmera e viraram `features/diaria/cenas.ts`,
+> `components/ui/DebouncedTextField.tsx` e `components/ui/OptionChips.tsx` — a Continuidade
+> encontra a Fase 7 com metade da tela já construída.
+
+> **A passagem pelo banco (`2026-08-11`)** era a pré-condição declarada. Migrations
 > `0005` e `0006` implementam [ADR-029](decisions.md#adr-029--julgamento-e-natureza-do-take-são-eixos-separados):
 > `TakeStatus` fica sendo só julgamento (e ganha `HOLD`), a natureza vira `takes.kind` no
 > take **compartilhado**, `ng_reason` entra nos três departamentos, e a custódia do áudio
@@ -236,10 +262,9 @@ nada — e o boletim impresso sai igual ou melhor.
 > repositório da fronteira é `lib/offline/repos/som.ts`. Protocolo em **3**, e o motor
 > passou a ignorar tipo desconhecido — com isso o próximo departamento entra sem
 > incrementar nada.
->
-> Falta o `modulo` (`features/sound/`) — a tela.
 
-Independentes entre si; podem correr em paralelo depois da Fase 5.
+A **Continuidade** é independente do Som e pode correr em paralelo — a Fase 6 deixou pronta a
+parte que as duas dividem.
 
 > **Levantamento de `2026-08-10`** contra a prática real do setor — as lacunas concretas estão
 > em [features/sound.md §5](features/sound.md#5-o-que-a-prática-exige--levantamento) e
@@ -247,10 +272,10 @@ Independentes entre si; podem correr em paralelo depois da Fase 5.
 > As duas mais importantes: **MOS** (hoje não há como dizer que o take existe e o som não) e o
 > **Relatório de Progresso da Diária**, um entregável diário que o modelo não contemplava.
 
-**Som:** configuração de som da diária · tracks dinâmicas com herança entre takes · status
-rápidos e natureza do take (wild, room tone, MOS, playback, PU, série, false start) · motivo
-de NG · timecode com jam e user bits · equipamentos · sound report em PDF e **CSV** com colunas
-espelhando iXML.
+**Som (entregue):** configuração de som da diária · tracks dinâmicas com herança entre takes ·
+status rápidos e natureza do take (wild, room tone, MOS, playback, PU, série, false start) ·
+motivo de NG · timecode com jam e user bits · sound report em PDF e **CSV** com colunas
+espelhando iXML. Equipamentos ficaram para a Fase 8, junto com o catálogo.
 
 **Continuidade:** metadados de cena · setup (tamanho, ângulo, movimento, eyeline) · continuidade
 de ação no take · três vereditos (print/hold/NG com motivo) · props, figurino, cabelo/maquiagem,

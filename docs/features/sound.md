@@ -43,13 +43,14 @@ departamentos — é isso que permite a continuísta ver "hoje o som está com M
 
 ### Take (`sound_take_data`, um por `Take`)
 
-| Campo                                            | Nota                                         |
-| ------------------------------------------------ | -------------------------------------------- |
-| `sound_roll`, `file_name`                        | herdados/auto-incrementados do take anterior |
-| `tc_start`, `tc_end`, `duration_sec`             | timecode fim é opcional                      |
-| `status` (`TakeStatus`), `circled`               | **independente** do status da Câmera         |
-| `wild`, `room_tone`, `wild_lines`, `false_start` | flags booleanas                              |
-| `notes`                                          | "avião durante o take"                       |
+| Campo                                | Nota                                                                                                   |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `sound_roll`, `file_name`            | herdados/auto-incrementados do take anterior                                                           |
+| `tc_start`, `tc_end`, `duration_sec` | timecode fim é opcional                                                                                |
+| `status` (`TakeStatus`), `circled`   | **independente** do status da Câmera                                                                   |
+| `ng_reason`                          | "NG" sem motivo é anotação inútil na pós                                                               |
+| `notes`                              | "avião durante o take"                                                                                 |
+| ~~`wild`, `room_tone`, …~~           | **saíram na migration 0006**: viraram `takes.kind`, do take compartilhado ([ADR-029](../decisions.md)) |
 
 ### Tracks (`sound_take_tracks`, N por take)
 
@@ -63,9 +64,16 @@ Track 3 — Maria — DPA 4060
 Track 4 — Plant Mic
 ```
 
-O layout de tracks é configurado **uma vez na diária** e herdado por todo take novo; a edição
-por take só é necessária quando algo muda (personagem sai de cena, lav cai). Esse é o ponto
-onde o módulo ganha ou perde o usuário: redigitar quatro tracks a cada take é inaceitável.
+O layout de tracks é digitado **uma vez** e herdado por todo take novo; a edição por take só é
+necessária quando algo muda (personagem sai de cena, lav cai). Esse é o ponto onde o módulo
+ganha ou perde o usuário: redigitar quatro tracks a cada take é inaceitável.
+
+> **Como ficou (`2026-08-11`):** a herança vem **do take anterior**, e não de um template
+> guardado na diária ([ADR-033](../decisions.md#adr-033--o-layout-de-tracks-é-herdado-do-take-anterior-não-guardado-na-diária)).
+> `ensureSoundTracks` copia índice, nome e fonte do último take que teve canais — o anterior do
+> mesmo plano, ou o último do dia. As `notes` não são herdadas: "lav estalando" é daquele take.
+> O efeito para quem usa é o descrito acima; o que muda é que cada take guarda o que ele
+> realmente teve, e mudar o canal 3 agora não reescreve o take de uma hora atrás.
 
 ---
 
@@ -92,6 +100,47 @@ onde o módulo ganha ou perde o usuário: redigitar quatro tracks a cada take é
 - Nada nessa tela espera rede.
 
 Os rótulos das ações rápidas são constantes hoje e ficam configuráveis por produção depois.
+
+### Como ficou — Fase 6, `2026-08-11`
+
+A tela é [`features/sound/`](../../features/sound), na rota
+`/p/[id]/diarias/[dayId]/som`, e reproduz o formato do módulo de Câmera (ADR-024): mesma
+fixação de diária, mesmos cartões colapsáveis, mesmo auto-save de 500 ms sem botão salvar,
+mesma folha A4 em sobreposição na própria rota.
+
+O cartão do take, de cima para baixo:
+
+| Onde                  | O quê                                                       | Toques |
+| --------------------- | ----------------------------------------------------------- | ------ |
+| Fileira de julgamento | OK · Circle · Hold · NG · Parcial (`TakeStatus`)            | **1**  |
+| Motivo do NG          | aparece só quando o julgamento é NG                         | —      |
+| Natureza (dobrada)    | MOS, Wild, Room tone, Playback, Pick-up, Série, False start | 2      |
+| Sound roll e arquivo  | herdados e auto-incrementados                               | 0      |
+| Timecode (dobrado)    | TC início e TC fim                                          | 2      |
+| Canais (dobrado)      | herdados do take anterior; o resumo aparece dobrado         | 2      |
+| Observações           | texto livre                                                 | —      |
+
+**O take normal custa um toque**, que é o critério de conclusão do módulo. Tudo que é dobrado
+mostra o conteúdo no próprio rótulo — "1 Boom · 2 João", "MOS", "14:32:10:12" — então quem não
+precisa abrir também não precisa adivinhar.
+
+Três decisões que valem registro:
+
+- **A linha de som nasce no primeiro toque**, não ao abrir a diária. O take costuma ser criado
+  pela Câmera; materializar dados de som para todo take de todo dia encheria a fila de sync de
+  registros vazios.
+- **`circled` acompanha o status** em vez de ser um segundo controle — são o mesmo fato dito
+  duas vezes no modelo, e divergirem daria um relatório em que o take é `CIRCLE` numa coluna e
+  "não" na outra. O julgamento do Som continua **independente** do da Câmera (ADR-010): nada
+  aqui toca em `take.status`.
+- **A natureza escreve no take compartilhado** (`take.kind`, ADR-029). Marcar MOS no Som é o
+  mesmo fato que a Câmera e a Continuidade leem, sem ninguém avisar ninguém.
+
+Wild tracks e room tones que não pertencem a plano nenhum vão para um setup `WILD` da cena
+(§1), criado por um botão no bloco; o take nasce com `kind = WILD`.
+
+O jam de timecode é **um toque** ("Jam agora", grava o instante), porque ninguém vai digitar a
+hora no momento em que ela acontece.
 
 ---
 
@@ -171,11 +220,44 @@ ambiguidade dessas é exatamente o que a plataforma existe para eliminar.
   take, colunas de tracks expandidas, cabeçalho estável entre diárias.
 
   As colunas espelham os campos de iXML que a pós já espera, com os nomes em pt-BR na
-  interface e estáveis no arquivo: `projeto`, `cena`, `take`, `roll`, `arquivo`, `tc_inicio`,
-  `tc_fim`, `circled`, `natureza`, `nota`, `track_1..N`. Espelhar o padrão não é purismo — é o
-  que faz o arquivo abrir do outro lado sem alguém renomear coluna à mão.
+  interface e estáveis no arquivo. Espelhar o padrão não é purismo — é o que faz o arquivo
+  abrir do outro lado sem alguém renomear coluna à mão.
 
 - Entra no relatório consolidado da diária (Fase 9), relacionado por cena/setup/take.
+
+### Como ficou — Fase 6, `2026-08-11`
+
+Os três — tela, folha e CSV — leem a **mesma** função,
+[`linhasDoRelatorio()`](../../features/sound/estrutura.ts). Três leituras seriam três verdades
+sobre o mesmo dia, e a que a pós receberia seria justamente a menos olhada.
+
+**PDF:** [`FolhaSom.tsx`](../../features/sound/FolhaSom.tsx), com as mesmas classes de impressão
+do `globals.css`. O cabeçalho traz mixer, boom, sample rate, bit depth, frame rate, formato,
+fonte de TC, **hora do jam**, user bits, drop frame, mídia, cópias e "cópias conferidas" — a
+custódia impressa, que é o que o sound report existe para responder. O corpo é uma tabela plana,
+uma linha por take. _Os modelos de equipamento no cabeçalho continuam pendentes: dependem do
+catálogo da Fase 8._
+
+**CSV:** [`csv.ts`](../../features/sound/csv.ts). Colunas na ordem:
+
+```
+projeto, data, cena, bloco, plano, take, roll, arquivo, tc_inicio, tc_fim,
+duracao_seg, circled, natureza, julgamento, motivo_ng, nota, track_1..N
+```
+
+- **Mínimo de quatro colunas de track**, expandindo até o maior índice do dia. A pós monta o
+  template dela uma vez, e uma diária que usou três canais não pode deslocar as colunas de quem
+  espera quatro. Acima disso o cabeçalho cresce — o limite de 4 é do caderno, não do domínio.
+- Aspas por RFC 4180, e **`;` também é protegido**: o Excel em pt-BR o trata como separador ao
+  reabrir o arquivo, e uma nota como "avião; helicóptero" quebraria a linha no computador de
+  quem recebe. Linhas em `\r\n`, arquivo com BOM.
+- O take normal sai como `Sync`, não em branco: célula vazia lê-se como "ninguém preencheu".
+- **Todo take entra, inclusive o MOS** — é a linha que o editor abre o arquivo para achar.
+- O download é `Blob` + `createObjectURL`, sem passar pelo servidor: o fim da diária é
+  exatamente quando a locação está sem sinal.
+
+Verificado por `npm run test:som` (63 checks), que cobre ordenação, MOS, herança na leitura,
+resumo do dia, escape e expansão de colunas.
 
 ---
 
@@ -187,6 +269,24 @@ equipamentos, PDF e CSV.
 
 Não entra: captura automática de timecode por hardware, import de metadados de arquivo BWF,
 reconciliação automática com o arquivo do recorder.
+
+### Estado em `2026-08-11`
+
+| Item                                            | Estado                                                               |
+| ----------------------------------------------- | -------------------------------------------------------------------- |
+| Banco (`0005`/`0006`) e ADR-029                 | ✅                                                                   |
+| Sync: `soundDayConfig`, `soundTakeData`, tracks | ✅ protocolo 3, Dexie v3, snapshot                                   |
+| Configuração da diária                          | ✅ [`ConfiguracaoSom.tsx`](../../features/sound/ConfiguracaoSom.tsx) |
+| Tracks dinâmicas com herança                    | ✅ ADR-033                                                           |
+| Status rápidos, natureza, MOS, motivo de NG     | ✅ um toque para o julgamento                                        |
+| Timecode com jam e user bits                    | ✅                                                                   |
+| PDF e CSV                                       | ✅                                                                   |
+| **Equipamentos no cabeçalho do relatório**      | ⛔ depende do catálogo da **Fase 8**                                 |
+
+O único item do escopo que não entrou é a integração com equipamentos — os modelos de recorder,
+mixer e microfones impressos no cabeçalho. Não é dívida desta fase: `equipment` e
+`equipment_assignments` são da Fase 8, e o dado ainda não existe para ser impresso. O que
+depende dele está marcado no lugar certo, e não simulado aqui.
 
 **Fontes do levantamento:** [Sound report (Wikipedia)](https://en.wikipedia.org/wiki/Sound_report) ·
 [iXML (Wikipedia)](https://en.wikipedia.org/wiki/IXML) ·

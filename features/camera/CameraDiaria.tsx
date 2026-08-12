@@ -25,6 +25,7 @@ import {
 import type { LocalCameraUnit } from '@/lib/offline/db';
 import { isPinned, listScenes, listSetups, listTakes } from '@/lib/offline/repos/diaria';
 import { fetchAndPin, startSync, syncNow } from '@/lib/sync/engine';
+import { NovaCena } from '@/features/diaria/NovaCena';
 import { ConflictList } from '@/features/sync/ConflictList';
 import { cn } from '@/utils/cn';
 
@@ -395,50 +396,5 @@ function CamerasSection({
         ) : null}
       </div>
     </SectionCard>
-  );
-}
-
-function NovaCena({ productionId }: { productionId: string }) {
-  const [numero, setNumero] = useState('');
-  const [aberto, setAberto] = useState(false);
-
-  if (!aberto) {
-    return (
-      <Button
-        size="sm"
-        variant="primary"
-        leftIcon={<PlusIcon size={15} />}
-        onClick={() => setAberto(true)}
-      >
-        Cena
-      </Button>
-    );
-  }
-
-  return (
-    <div className="flex items-end gap-2">
-      <TextField
-        label="Nº"
-        className="w-24"
-        value={numero}
-        onChange={setNumero}
-        placeholder="24"
-      />
-      <Button
-        size="sm"
-        variant="primary"
-        disabled={!numero.trim()}
-        onClick={async () => {
-          const { createScene } = await import('@/lib/offline/repos/diaria');
-          // Bloco A por padrão, como `createCena` sempre fez no boletim.
-          await createScene({ productionId, number: numero.trim(), block: 'A' });
-          setNumero('');
-          setAberto(false);
-          syncNow();
-        }}
-      >
-        Criar
-      </Button>
-    </div>
   );
 }

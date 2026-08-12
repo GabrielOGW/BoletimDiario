@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
 import { Badge } from '@/components/ui/Badge';
 import { CheckCircleIcon, ChevronDownIcon, TrashIcon } from '@/components/ui/icons';
-import { TextField } from '@/components/ui/TextField';
+import { DebouncedTextField } from '@/components/ui/DebouncedTextField';
 import { IconButton } from '@/components/ui/IconButton';
+import { OptionChips, type OptionChip } from '@/components/ui/OptionChips';
 import type { LocalCameraTakeData, LocalTake } from '@/lib/offline/db';
 import { ensureCameraTakeData, patchCameraTakeData } from '@/lib/offline/repos/camera';
 import { patchEntity, softDelete } from '@/lib/offline/repos/diaria';
@@ -77,7 +78,7 @@ export function TakeRow({
 
   /** O julgamento **da câmera**, separado da aprovação do diretor (ADR-010). */
   async function alteraJulgamento(valor: string | null) {
-    await altera({ status: dados?.status === valor ? null : valor });
+    await altera({ status: valor });
   }
 
   return (
@@ -102,14 +103,14 @@ export function TakeRow({
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <CampoComDebounce
+        <DebouncedTextField
           label="Cartão"
           value={dados?.card ?? ''}
           disabled={!canEdit}
           placeholder="A012"
           onCommit={(valor) => void altera({ card: valor || null })}
         />
-        <CampoComDebounce
+        <DebouncedTextField
           label="Clip / Sync"
           value={dados?.fileName ?? ''}
           disabled={!canEdit}
@@ -119,7 +120,7 @@ export function TakeRow({
       </div>
 
       <div className="mt-3">
-        <CampoComDebounce
+        <DebouncedTextField
           label="Nota operacional"
           value={dados?.notes ?? ''}
           disabled={!canEdit}
@@ -155,38 +156,29 @@ export function TakeRow({
       {/* O julgamento da câmera, ao lado e menor — nunca no lugar do toggle (ADR-010,
           ADR-029). É opcional: o take normal não precisa de nenhum toque aqui. */}
       {canEdit ? (
-        <div className="mt-2 flex items-center gap-2">
-          <span className="text-xs text-zinc-500">Câmera:</span>
-          {JULGAMENTOS.map((julgamento) => (
-            <button
-              key={julgamento.valor}
-              type="button"
-              aria-pressed={dados?.status === julgamento.valor}
-              onClick={() => void alteraJulgamento(julgamento.valor)}
-              className={cn(
-                'min-h-[32px] rounded-lg border px-2.5 text-xs font-medium transition',
-                dados?.status === julgamento.valor
-                  ? 'border-brand/60 bg-brand-soft text-zinc-100'
-                  : 'border-line bg-surface-raised text-zinc-400 hover:bg-surface-hover',
-              )}
-            >
-              {julgamento.rotulo}
-            </button>
-          ))}
-        </div>
+        <OptionChips
+          label="Câmera"
+          showLabel
+          size="sm"
+          className="mt-2"
+          options={JULGAMENTOS}
+          value={dados?.status ?? null}
+          onChange={(valor) => void alteraJulgamento(valor)}
+        />
       ) : null}
     </div>
   );
 }
 
 /**
- * Só o eixo de **julgamento**, e só os valores que sobrevivem a ADR-029.
+ * Só o eixo de **julgamento** (ADR-029).
  *
- * `WILD`, `ROOM_TONE` e `FALSE_START` mudam de eixo na Fase 6, quando `TakeKind` nasce —
- * pô-los aqui agora seria construir uma fileira para desmanchar daqui a uma fase. Tocar
- * de novo no mesmo botão limpa: em set, desfazer não pode custar um menu.
+ * `WILD`, `ROOM_TONE` e `FALSE_START` mudaram de eixo na Fase 6 e viraram `Take.kind`:
+ * quem os marca é o cartão de natureza, no módulo de Som, e o valor vale para os três
+ * departamentos. Tocar de novo no mesmo botão limpa — em set, desfazer não pode custar um
+ * menu, e isso agora é comportamento do `OptionChips`.
  */
-const JULGAMENTOS: { valor: string; rotulo: string }[] = [
+const JULGAMENTOS: OptionChip[] = [
   { valor: 'NG', rotulo: 'NG' },
   { valor: 'PARTIAL', rotulo: 'Parcial' },
 ];
@@ -226,14 +218,14 @@ function MidiaDoTake({
       {aberto ? (
         <div className="mt-2 flex flex-col gap-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            <CampoComDebounce
+            <DebouncedTextField
               label="Roll"
               value={dados?.roll ?? ''}
               disabled={!canEdit}
               placeholder="R01"
               onCommit={(valor) => void onAltera({ roll: valor || null })}
             />
-            <CampoComDebounce
+            <DebouncedTextField
               label="Volume"
               value={dados?.volume ?? ''}
               disabled={!canEdit}
@@ -241,7 +233,7 @@ function MidiaDoTake({
               onCommit={(valor) => void onAltera({ volume: valor || null })}
             />
           </div>
-          <CampoComDebounce
+          <DebouncedTextField
             label="Observações de mídia"
             value={dados?.mediaNotes ?? ''}
             disabled={!canEdit}
@@ -251,63 +243,5 @@ function MidiaDoTake({
         </div>
       ) : null}
     </div>
-  );
-}
-
-/**
- * Campo de texto com auto-save de 500 ms e flush no desmonte.
- *
- * É o contrato do `useBoletim`, e é ele que faz o app não ter botão salvar — o
- * comportamento validado em set. A coalescência da fila de sync cuida de o debounce não
- * virar uma dezena de operações.
- */
-function CampoComDebounce({
-  label,
-  value,
-  placeholder,
-  disabled,
-  onCommit,
-}: {
-  label: string;
-  value: string;
-  placeholder?: string;
-  disabled?: boolean;
-  onCommit: (valor: string) => void;
-}) {
-  const [local, setLocal] = useState(value);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendente = useRef<string | null>(null);
-
-  // Valor de fora (pull, outro dispositivo) só entra quando não há edição pendente:
-  // sobrescrever o que o dedo está digitando é a pior coisa que uma tela de set faz.
-  useEffect(() => {
-    if (pendente.current === null) setLocal(value);
-  }, [value]);
-
-  useEffect(() => {
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-      if (pendente.current !== null) onCommit(pendente.current);
-    };
-    // O flush no desmonte precisa do valor mais recente, e não de um efeito por tecla.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <TextField
-      label={label}
-      value={local}
-      placeholder={placeholder}
-      disabled={disabled}
-      onChange={(valor) => {
-        setLocal(valor);
-        pendente.current = valor;
-        if (timer.current) clearTimeout(timer.current);
-        timer.current = setTimeout(() => {
-          onCommit(valor);
-          pendente.current = null;
-        }, 500);
-      }}
-    />
   );
 }
