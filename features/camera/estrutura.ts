@@ -6,42 +6,15 @@
  * lugares significaria, mais cedo ou mais tarde, um PDF que mostra a diária diferente do
  * que a tela mostrou — e o PDF é o que sai do set.
  *
- * Não é domínio compartilhado: nada aqui vale para Som ou Continuidade. É apresentação
- * do módulo de Câmera, e por isso mora em `features/camera/`.
+ * O que é apresentação **do módulo de Câmera** mora aqui: a linha técnica, as diferenças
+ * por take, a assinatura de agrupamento. O agrupamento Cena → Bloco saiu na Fase 6 para
+ * `features/diaria/cenas.ts` — ele é das entidades compartilhadas, não deste módulo, e o
+ * Som lê as mesmas cenas. Continua reexportado daqui para quem já o importava.
  */
 
-import type { LocalCameraTakeData, LocalScene } from '@/lib/offline/db';
+import type { LocalCameraTakeData } from '@/lib/offline/db';
 
-export interface CenaAgrupada {
-  numero: string;
-  /** Os blocos daquele número — no modelo, uma `Scene` por letra (ADR-002). */
-  blocos: LocalScene[];
-}
-
-/**
- * Cena e Bloco são uma `Scene` só no modelo; na tela e no papel voltam a ser dois níveis.
- *
- * É assim que a claquete fala, e mudar o vocabulário do set para agradar ao modelo seria
- * a regressão que ADR-030 proíbe.
- */
-export function agrupaCenas(cenas: LocalScene[]): CenaAgrupada[] {
-  const porNumero = new Map<string, LocalScene[]>();
-
-  for (const cena of cenas) {
-    const lista = porNumero.get(cena.number) ?? [];
-    lista.push(cena);
-    porNumero.set(cena.number, lista);
-  }
-
-  return [...porNumero.keys()]
-    .sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }))
-    .map((numero) => ({
-      numero,
-      blocos: [...(porNumero.get(numero) ?? [])].sort((a, b) =>
-        (a.block ?? '').localeCompare(b.block ?? ''),
-      ),
-    }));
-}
+export { agrupaCenas, type CenaAgrupada } from '@/features/diaria/cenas';
 
 type CampoTecnico = {
   field: keyof LocalCameraTakeData;

@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { SectionCard } from '@/components/layout/SectionCard';
-import { CalendarIcon, ClapperboardIcon } from '@/components/ui/icons';
+import { CalendarIcon, ClapperboardIcon, MicIcon } from '@/components/ui/icons';
 import { roleAtLeast } from '@/domain/platform/enums';
 import { requireMember } from '@/lib/auth/guards';
 import { uuidSchema } from '@/lib/contracts';
@@ -56,9 +56,24 @@ export default async function DiariaPage({
           </span>
         </Link>
 
+        <Link
+          href={`/p/${productionId}/diarias/${dayId}/som`}
+          className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-brand/30 bg-brand-soft px-4 py-3 transition hover:brightness-110"
+        >
+          <MicIcon size={20} className="text-brand" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold text-zinc-100">
+              Boletim de Som
+            </span>
+            <span className="block text-xs text-zinc-400">
+              Os mesmos takes da Câmera — julgamento, natureza, canais e timecode
+            </span>
+          </span>
+        </Link>
+
         {/*
-          A superfície mínima da Fase 4 continua acessível enquanto Som e Continuidade não
-          têm módulo: para eles é a única porta. Rótulo modesto de propósito — ela não é o
+          A superfície mínima da Fase 4 continua acessível enquanto a Continuidade não tem
+          módulo: para ela é a única porta. Rótulo modesto de propósito — ela não é o
           boletim de ninguém (ADR-030).
         */}
         <Link
@@ -70,7 +85,7 @@ export default async function DiariaPage({
               Base compartilhada · Cena · Setup · Take
             </span>
             <span className="block text-xs text-zinc-500">
-              Enquanto Som e Continuidade não têm módulo próprio
+              Enquanto a Continuidade não tem módulo próprio
             </span>
           </span>
         </Link>

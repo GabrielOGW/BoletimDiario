@@ -677,3 +677,44 @@ qual é a diária ativa antes de haver como saber.
 **Consequência para a importação:** a tela de importação dos boletins locais
 ([local-to-cloud.md](migrations/local-to-cloud.md)) nasce em `/legado`, ao lado dos boletins que
 ela importa, e não na sala — quem tem o que importar está aqui.
+
+---
+
+### ADR-033 · O layout de tracks é herdado do take anterior, não guardado na diária
+
+`2026-08-11` · **Aceita** · fecha um item da [Fase 6](roadmap.md#-fase-6--som--fase-7--continuidade) · revisita [features/sound.md §2](features/sound.md#2-dados) · complementa [ADR-019](#adr-019--ids-determinísticos-por-chave-natural)
+
+[sound.md §2](features/sound.md#2-dados) dizia que o layout de tracks é "configurado uma vez na
+diária e herdado por todo take novo", e `SoundDayConfig.trackTemplate` existia no modelo de
+domínio para guardá-lo. Na hora de implementar o módulo, esse campo não tem coluna no Postgres,
+não está no registro de sync e não está no Dexie — a herança precisava nascer de algum lugar.
+
+Havia duas saídas: criar `sound_day_config.track_template` (jsonb) ou herdar do take anterior.
+
+**Decisão: herdar do take anterior.** `ensureSoundTracks` copia índice, nome e fonte do último
+take que teve canais — o anterior do mesmo plano, ou o último do dia na ordem de leitura. As
+`notes` não são herdadas: "lav estalando" é daquele take.
+
+**Por que não a coluna jsonb**, que era o caminho aparentemente mais direto:
+
+1. **Seria uma segunda verdade sobre o mesmo dado.** As tracks já existem como linhas, com id
+   derivado de `(take, índice)`. Um template paralelo obrigaria a decidir, a cada leitura, qual
+   dos dois manda — e a resposta seria diferente para o take de ontem e o de agora.
+2. **Lista dentro de registro não tem merge por campo.** É exatamente o motivo pelo qual as
+   tracks são tabela e não array ([contracts/sync.ts](../lib/contracts/sync.ts)): duas pessoas
+   mexendo em canais diferentes do mesmo take conflitariam sem motivo. Um `track_template` jsonb
+   reintroduziria esse conflito no nível da diária, que é pior — todo mundo edita a diária.
+3. **Custódia.** Um template retroativo permitiria "corrigir" o layout às 18h e mudar o que o
+   relatório afirma sobre um take gravado às 9h. O sound report é cadeia de custódia: cada take
+   tem de guardar o que ele **realmente teve**.
+4. Herdando, o layout se propaga sozinho e o dia continua tendo um layout — só que ele é um
+   fato observado, não uma declaração à parte.
+
+**Consequência prática:** o mixer digita os canais **uma vez**, no primeiro take, e nunca mais.
+Trocar o canal 3 no take 7 vale do 7 em diante. É o mesmo contrato de herança do roll e do nome
+de arquivo (§30), aplicado ao layout — um mecanismo, não dois.
+
+**O que fica pendente:** `SoundDayConfig.trackTemplate` e `tracksFromTemplate()` continuam em
+`domain/platform/` sem persistência. Não são usados pelo módulo e devem ser removidos, ou ganhar
+persistência, quando a Fase 8 ligar o Som ao catálogo de equipamentos — a decisão de mexer em
+`domain/platform/` não é do módulo.
