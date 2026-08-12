@@ -181,6 +181,78 @@ Não entra: **fotografias** (ADR-022), import de roteiro (PDF/Final Draft), line
 marcação de cobertura por linha de diálogo, timing automático. São o passo seguinte natural e
 nenhum bloqueia o uso.
 
+### Como ficou — Fase 7, `2026-08-11`
+
+A tela é [`features/continuity/`](../../features/continuity), na rota
+`/p/[id]/diarias/[dayId]/continuidade`, com o formato dos outros dois módulos (ADR-024):
+fixação da diária, cartões colapsáveis, auto-save de 500 ms sem botão salvar, folha A4 em
+sobreposição na própria rota.
+
+**O cartão do take**, de cima para baixo:
+
+| Onde                    | O quê                                                      | Toques |
+| ----------------------- | ---------------------------------------------------------- | ------ |
+| Cabeçalho técnico       | lente, T-stop, roll e arquivo — **lidos** de Câmera e Som  | 0      |
+| Fileira de veredito     | Print · Hold · NG                                          | **1**  |
+| Motivo do NG            | aparece só quando o veredito é NG                          | —      |
+| Duração e observações   | `00:42` e texto livre, sempre visíveis                     | —      |
+| Mais campos (dobrado)   | os catorze campos de ação, **com os preenchidos à mostra** | 2      |
+| Estado do set (dobrado) | o que a cena anotou, herdado; e o que mudou neste take     | 2      |
+
+"Mostra apenas o que já tem valor" (§3) não é economia de pixel: é o que faz o cartão do take
+7 lembrar sozinho o que foi anotado no take 6 sem obrigar ninguém a abrir nada.
+
+**Metadados da cena.** São preenchidos aqui e consumidos pelos outros módulos (§1). Como uma
+cena com blocos A/B/C são três `Scene` que compartilham o número (ADR-002), a edição
+**propaga para todos os blocos** — é a interface resolvendo a duplicação que o modelo aceitou.
+Sem isso, corrigir a página da cena 24 deixaria 24B com a página antiga, e o relatório somaria
+as duas versões. `characters` fica de fora: é lista ordenada, e lista ordenada não tem merge
+por campo.
+
+**Estado do set com herança de exibição.** Os itens da cena aparecem no take **sem virar linha
+nova**, exatamente como §4 pede. Quando o estado muda — o copo que estava cheio e agora está
+pela metade — um toque em "mudou aqui" cria o registro próprio, com escopo de take. Copiar o
+figurino da cena para cada take encheria o banco de repetição e, pior, faria corrigir o
+figurino significar corrigi-lo em quarenta lugares.
+
+**O julgamento é independente** do da Câmera e do Som (ADR-010): nada aqui toca em
+`take.status`. `selected` acompanha o print pelo mesmo motivo do `circled` no Som — são o
+mesmo fato dito duas vezes no modelo.
+
+### O Relatório de Progresso, como ficou
+
+A divisão da tela **é** a decisão de modelagem
+([ADR-034](../decisions.md#adr-034--o-relatório-de-progresso-guarda-só-o-que-exige-mão-humana)):
+
+| Metade       | O quê                                                                                                        |
+| ------------ | ------------------------------------------------------------------------------------------------------------ |
+| **Contado**  | cenas, planos, takes, prints, páginas do roteiro, material cronometrado, cartões, rolls                      |
+| **Digitado** | hora do 1º take, páginas rodadas, minutagem estimada, as quatro listas de cobertura, observações, assinatura |
+
+Hoje esse relatório é montado à mão no fim do dia, somando números de três cadernos. Aqui a
+metade de cima já está pronta antes de alguém abrir a tela — cartões vêm da Câmera e rolls do
+Som porque os três departamentos apontam para o mesmo `take_id`.
+
+Duas sutilezas que o teste guarda:
+
+- **A página da cena não é contada duas vezes.** "24A" e "24B" são duas `Scene` com a mesma
+  página de roteiro; somar as duas mostraria o dia com o dobro da cobertura, justo no número
+  que a produção usa para saber se está atrasada.
+- **Página ilegível não vira zero.** "meia página" é devolvido como "não somado" e o total sai
+  com a ressalva. Errar para menos em silêncio, num número lido no fim do dia, é o defeito que
+  ninguém descobre.
+
+A cobertura (cobertas · parciais · puladas · acrescentadas) é a única parte que a plataforma
+não sabe sozinha: só quem estava em set sabe que a cena 31 ficou pela metade. O que aparece em
+cinza é sugestão do que foi rodado, e não é o que vai impresso.
+
+**Impressão:** dois documentos na mesma sobreposição — o boletim de continuidade (por cena,
+com prints destacados e notas de ação) vai para a montagem; o relatório de progresso vai para
+a produção. O botão troca entre eles sem fechar a camada: no wrap, quem imprime um costuma
+imprimir o outro em seguida.
+
+Verificado por `npm run test:continuidade` (45 checks).
+
 **Fontes do levantamento:** [Script supervisor (Wikipedia)](https://en.wikipedia.org/wiki/Script_supervisor) ·
 [Script Supervisor Report Explained — SetHero](https://sethero.com/blog/script-supervisor-report-explained/) ·
 [Ultimate Guide to Script Supervisors — StudioBinder](https://www.studiobinder.com/blog/script-supervisor-forms-template/) ·

@@ -5,7 +5,12 @@ import { notFound } from 'next/navigation';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { SectionCard } from '@/components/layout/SectionCard';
-import { CalendarIcon, ClapperboardIcon, MicIcon } from '@/components/ui/icons';
+import {
+  CalendarIcon,
+  ClapperboardIcon,
+  FileTextIcon,
+  MicIcon,
+} from '@/components/ui/icons';
 import { roleAtLeast } from '@/domain/platform/enums';
 import { requireMember } from '@/lib/auth/guards';
 import { uuidSchema } from '@/lib/contracts';
@@ -71,10 +76,25 @@ export default async function DiariaPage({
           </span>
         </Link>
 
+        <Link
+          href={`/p/${productionId}/diarias/${dayId}/continuidade`}
+          className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-brand/30 bg-brand-soft px-4 py-3 transition hover:brightness-110"
+        >
+          <FileTextIcon size={20} className="text-brand" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold text-zinc-100">
+              Boletim de Continuidade
+            </span>
+            <span className="block text-xs text-zinc-400">
+              Ação, estado do set e o relatório de progresso do dia
+            </span>
+          </span>
+        </Link>
+
         {/*
-          A superfície mínima da Fase 4 continua acessível enquanto a Continuidade não tem
-          módulo: para ela é a única porta. Rótulo modesto de propósito — ela não é o
-          boletim de ninguém (ADR-030).
+          A superfície mínima da Fase 4 continua acessível: ela é a prova do sync e a porta
+          de quem não tem módulo — Direção, Produção, Elétrica. Rótulo modesto de propósito
+          — ela não é o boletim de ninguém (ADR-030).
         */}
         <Link
           href={`/p/${productionId}/diarias/${dayId}/takes`}
@@ -85,7 +105,7 @@ export default async function DiariaPage({
               Base compartilhada · Cena · Setup · Take
             </span>
             <span className="block text-xs text-zinc-500">
-              Enquanto a Continuidade não tem módulo próprio
+              A prova do sync, sem os campos de nenhum departamento
             </span>
           </span>
         </Link>

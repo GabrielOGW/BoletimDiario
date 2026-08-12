@@ -220,7 +220,7 @@ nada — e o boletim impresso sai igual ou melhor.
 
 ---
 
-## ✅ Fase 6 — Som · 📋 Fase 7 — Continuidade
+## ✅ Fase 6 — Som · ✅ Fase 7 — Continuidade
 
 > **Fase 6 fechada em `2026-08-11`**, nas três passagens declaradas: `banco`, `sync` e
 > `modulo`. Falta só a integração com equipamentos — os modelos impressos no cabeçalho do
@@ -263,8 +263,28 @@ nada — e o boletim impresso sai igual ou melhor.
 > passou a ignorar tipo desconhecido — com isso o próximo departamento entra sem
 > incrementar nada.
 
-A **Continuidade** é independente do Som e pode correr em paralelo — a Fase 6 deixou pronta a
-parte que as duas dividem.
+> **Fase 7 fechada em `2026-08-11`**, nas três passagens. O `banco` foi curto porque o
+> schema de continuidade existe desde a Fase 2 — o que faltava era o **Relatório de
+> Progresso da Diária** (migration `0007`) e a soma de páginas em oitavos, ambos decididos
+> em [ADR-034](decisions.md#adr-034--o-relatório-de-progresso-guarda-só-o-que-exige-mão-humana):
+> só o que exige mão humana tem coluna, e os oitavos são função pura, não coluna.
+>
+> **`sync`:** seis entidades novas — a continuidade de ação, as quatro coleções de estado e
+> o relatório — com o protocolo **parado em 3**. É a primeira prova da tolerância que a
+> Fase 6 criou: um cliente antigo ignora o que não conhece e continua sincronizando o
+> resto. Primeiro recorte de snapshot que **não** é a diária: as coleções de estado vêm por
+> cena da produção, porque o valor da continuidade é atravessar dias.
+>
+> **`modulo`:** o cartão do take custa **um toque** no veredito (print · hold · NG) e mostra
+> lente, T-stop e roll **lidos** de Câmera e Som — a continuísta não redigita, e redigitar é
+> onde o erro acontece. Os metadados da cena são preenchidos aqui e propagam para todos os
+> blocos. O estado do set tem herança de exibição: o item da cena aparece no take sem virar
+> linha, e só vira registro próprio quando muda.
+>
+> **O Relatório de Progresso existe.** Metade dele já vem contada — cenas, planos, takes,
+> prints, páginas, cartões e rolls saem dos registros dos três departamentos. Verificado por
+> `npm run test:continuidade` (45 checks), incluindo a armadilha de somar a mesma página de
+> roteiro duas vezes porque a cena tem dois blocos.
 
 > **Levantamento de `2026-08-10`** contra a prática real do setor — as lacunas concretas estão
 > em [features/sound.md §5](features/sound.md#5-o-que-a-prática-exige--levantamento) e
@@ -277,10 +297,10 @@ status rápidos e natureza do take (wild, room tone, MOS, playback, PU, série, 
 motivo de NG · timecode com jam e user bits · sound report em PDF e **CSV** com colunas
 espelhando iXML. Equipamentos ficaram para a Fase 8, junto com o catálogo.
 
-**Continuidade:** metadados de cena · setup (tamanho, ângulo, movimento, eyeline) · continuidade
-de ação no take · três vereditos (print/hold/NG com motivo) · props, figurino, cabelo/maquiagem,
-cenografia · PDF · **Relatório de Progresso da Diária** (contagens, páginas em oitavos,
-minutagem, cobertura, cartões e rolls do dia).
+**Continuidade (entregue):** metadados de cena · setup (tamanho, ângulo, movimento, eyeline) ·
+continuidade de ação no take · três vereditos (print/hold/NG com motivo) · props, figurino,
+cabelo/maquiagem, cenografia · PDF · **Relatório de Progresso da Diária** (contagens, páginas
+em oitavos, minutagem, cobertura, cartões e rolls do dia).
 **Sem fotografias** ([ADR-022](decisions.md#adr-022--sem-fotografias-na-v1)).
 
 ## 📋 Fase 8 — Integração
