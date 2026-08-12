@@ -424,6 +424,44 @@ export interface ContinuitySetDressing extends Audited, ContinuityScope {
   notes: string;
 }
 
+/**
+ * Relatório de Progresso da Diária — um por `ShootingDay`.
+ *
+ * O entregável que a produção consome todo dia e que o modelo não contemplava
+ * ([features/continuity.md §7](../../docs/features/continuity.md#7-o-que-a-prática-exige--levantamento)).
+ * Não é um relatório de takes: é o **balanço do dia**.
+ *
+ * Só o que **exige mão humana** mora aqui. Cenas rodadas, setups, takes, cartões e rolls
+ * são derivados dos registros que já existem, e guardá-los de novo criaria dois números
+ * para o mesmo fato — com o guardado sempre um pouco mais velho que o verdadeiro
+ * (ADR-034).
+ */
+export interface DailyProgressReport extends Audited {
+  id: EntityId;
+  productionId: EntityId;
+  shootingDayId: EntityId;
+  /** Hora do primeiro take. Ninguém preenche `Take.startedAt` em set; isto sim. */
+  firstTakeAt: string;
+  /** Páginas rodadas, na convenção do setor: "2 4/8". Cobertura parcial só ela sabe. */
+  pagesShot: string;
+  /** Minutagem estimada do material do dia: "3:20". */
+  estimatedMinutes: string;
+  /**
+   * Cobertura, em lista de números de cena — "24, 25A, 31".
+   *
+   * Texto, e não uma tabela cena×diária: é assim que o formulário de papel funciona, é
+   * o que sai impresso, e uma tabela obrigaria a continuísta a marcar cena por cena
+   * justamente na hora do wrap.
+   */
+  scenesCovered: string;
+  scenesPartial: string;
+  scenesSkipped: string;
+  scenesAdded: string;
+  notes: string;
+  /** Quem assina. Livre: quem preenche nem sempre é quem assina. */
+  signedBy: string;
+}
+
 // ============================================================
 // Equipamentos
 // ============================================================
@@ -510,6 +548,7 @@ export interface ProductionSnapshot {
   continuityWardrobe: ContinuityWardrobe[];
   continuityHairMakeup: ContinuityHairMakeup[];
   continuitySetDressing: ContinuitySetDressing[];
+  dailyProgressReports: DailyProgressReport[];
   equipment: Equipment[];
   equipmentAssignments: EquipmentAssignment[];
 }

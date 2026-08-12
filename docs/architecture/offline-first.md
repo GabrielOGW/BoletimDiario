@@ -87,19 +87,23 @@ nele significa perder o boletim de um dia de filmagem.
 Banco `bdc-platform`:
 
 ```ts
-// lib/offline/db.ts — versão 1 (Fase 4), 2 (Câmera) e 3 (Som)
+// lib/offline/db.ts — v1 (Fase 4), v2 (Câmera), v3 (Som), v4 (Continuidade)
 ── domínio (espelho parcial: só o que está fixado) ──
-shootingDays        id, productionId, date
-scenes              id, productionId, [number+block]
-setups              id, productionId, sceneId, shootingDayId, sortOrder
-takes               id, productionId, setupId, [setupId+number]
-cameraUnits         id, productionId, label                        ← v2
-cameraTakeData      id, productionId, takeId, [takeId+cameraUnitId] ← v2
-soundDayConfig      id, productionId, shootingDayId                 ← v3
-soundTakeData       id, productionId, takeId                        ← v3
-soundTakeTracks     id, productionId, takeId, [takeId+index]        ← v3
-continuityTakeData  id, productionId, takeId                        ← Fase 7
-continuityDetails   id, productionId, takeId, kind   ← props/figurino/cabelo/cenografia
+shootingDays          id, productionId, date
+scenes                id, productionId, [number+block]
+setups                id, productionId, sceneId, shootingDayId, sortOrder
+takes                 id, productionId, setupId, [setupId+number]
+cameraUnits           id, productionId, label                        ← v2
+cameraTakeData        id, productionId, takeId, [takeId+cameraUnitId] ← v2
+soundDayConfig        id, productionId, shootingDayId                 ← v3
+soundTakeData         id, productionId, takeId                        ← v3
+soundTakeTracks       id, productionId, takeId, [takeId+index]        ← v3
+continuityTakeData    id, productionId, takeId                        ← v4
+continuityProps       id, productionId, sceneId, setupId, takeId      ← v4
+continuityWardrobe    id, productionId, sceneId, setupId, takeId      ← v4
+continuityHairMakeup  id, productionId, sceneId, setupId, takeId      ← v4
+continuitySetDressing id, productionId, sceneId, setupId, takeId      ← v4
+dailyProgressReport   id, productionId, shootingDayId                 ← v4
 
 ── referência somente leitura, vinda do snapshot ──
 refs                key                              ← cameraUnits, equipamento, membros
@@ -117,6 +121,11 @@ Regras:
   [ADR-019](../decisions.md#adr-019--ids-determinísticos-por-chave-natural). Não existe id
   temporário nem remapeamento na sincronização, que é a fonte clássica de referência quebrada.
 - Toda entidade guarda `version`, `updatedAt`, `updatedBy`, `deletedAt` e `_dirty`.
+- As quatro coleções de estado da Continuidade são indexadas pelos **três** níveis de escopo
+  (cena, setup, take), e não por um só: um figurino vale para a cena inteira e um copo pela
+  metade vale para um take, então a tela pergunta pelos três o tempo todo. Com um índice só,
+  duas dessas perguntas viram varredura da coleção inteira — na produção grande, que é
+  justamente onde a continuidade tem mais itens.
 - Soft delete local também, pelo mesmo motivo do servidor: um delete precisa ser propagável.
 - **Não existe tabela de blobs.** Não há fotos na v1.
 

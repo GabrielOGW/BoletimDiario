@@ -96,13 +96,13 @@ async function run() {
     select count(distinct trigger_name)::int as n from information_schema.triggers
     where trigger_schema = 'public' and trigger_name like '%_sync_log'
   `;
-  check('18 tabelas de domínio escrevem no sync_log', syncTriggers.n === 18);
+  check('19 tabelas de domínio escrevem no sync_log', syncTriggers.n === 19);
 
   const [touchTriggers] = await sql`
     select count(distinct trigger_name)::int as n from information_schema.triggers
     where trigger_schema = 'public' and trigger_name like '%_touch'
   `;
-  check('18 tabelas de domínio incrementam version', touchTriggers.n === 18);
+  check('19 tabelas de domínio incrementam version', touchTriggers.n === 19);
 
   // ---- Comportamento ----
 
@@ -279,6 +279,80 @@ async function verificaEixos() {
        and column_name in ('tc_jam_at', 'user_bits', 'media_copies', 'media_verified')
   `;
   check('a custódia do áudio tem as quatro colunas', custodia.total === 4);
+
+  // ---- Fase 7: Relatório de Progresso da Diária ----
+
+  const [humanos] = await sql`
+    select count(*)::int as total from information_schema.columns
+     where table_name = 'daily_progress_report'
+       and column_name in ('first_take_at', 'pages_shot', 'estimated_minutes',
+                           'scenes_covered', 'scenes_partial', 'scenes_skipped',
+                           'scenes_added', 'notes', 'signed_by')
+  `;
+  check('o relatório de progresso tem os nove campos de mão humana', humanos.total === 9);
+
+  // O que é derivável não tem coluna (ADR-034): dois números para o mesmo fato acabam
+  // divergindo, e o guardado é sempre o mais velho dos dois.
+  const [derivados] = await sql`
+    select count(*)::int as total from information_schema.columns
+     where table_name = 'daily_progress_report'
+       and column_name in ('take_count', 'setup_count', 'scene_count', 'cards', 'rolls')
+  `;
+  check('o que é derivado não virou coluna', derivados.total === 0);
+
+  const progressoId = randomUUID();
+  await sql`
+    insert into daily_progress_report (id, production_id, shooting_day_id, pages_shot, created_by)
+    values (${progressoId}, ${ids.production}, ${ids.day}, '2 4/8', ${ids.user})
+  `;
+
+  const [logCriacao] = await sql`
+    select count(*)::int as total from sync_log
+     where entity_type = 'daily_progress_report' and entity_id = ${progressoId}
+       and operation = 'CREATE'
+  `;
+  check('a criação do relatório entra no sync_log', logCriacao.total === 1);
+
+  await sql`
+    update daily_progress_report set notes = 'Choveu depois do almoço'
+     where id = ${progressoId}
+  `;
+
+  const [versao] = await sql`
+    select version from daily_progress_report where id = ${progressoId}
+  `;
+  check('o relatório incrementa version no update', versao.version === 2);
+
+  const [logUpdate] = await sql`
+    select count(*)::int as total from sync_log
+     where entity_type = 'daily_progress_report' and entity_id = ${progressoId}
+       and operation = 'UPDATE'
+  `;
+  check('o update do relatório entra no sync_log', logUpdate.total === 1);
+
+  // Uma diária tem um balanço, não dois: a chave natural é o que faz duas pessoas
+  // abrindo o relatório ao mesmo tempo convergirem em vez de criarem dois.
+  let recusouSegundo = false;
+  try {
+    await sql`
+      insert into daily_progress_report (id, production_id, shooting_day_id, created_by)
+      values (${randomUUID()}, ${ids.production}, ${ids.day}, ${ids.user})
+    `;
+  } catch {
+    recusouSegundo = true;
+  }
+  check('o banco recusa dois relatórios para a mesma diária', recusouSegundo);
+
+  await sql`
+    update daily_progress_report set deleted_at = now() where id = ${progressoId}
+  `;
+
+  const [logDelete] = await sql`
+    select count(*)::int as total from sync_log
+     where entity_type = 'daily_progress_report' and entity_id = ${progressoId}
+       and operation = 'DELETE'
+  `;
+  check('o soft delete do relatório vira DELETE no log', logDelete.total === 1);
 }
 
 try {

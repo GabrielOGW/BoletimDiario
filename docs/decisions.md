@@ -718,3 +718,56 @@ de arquivo (§30), aplicado ao layout — um mecanismo, não dois.
 `domain/platform/` sem persistência. Não são usados pelo módulo e devem ser removidos, ou ganhar
 persistência, quando a Fase 8 ligar o Som ao catálogo de equipamentos — a decisão de mexer em
 `domain/platform/` não é do módulo.
+
+---
+
+### ADR-034 · O Relatório de Progresso guarda só o que exige mão humana
+
+`2026-08-11` · **Aceita** · abre a [Fase 7](roadmap.md#-fase-6--som--fase-7--continuidade) · implementa [features/continuity.md §7](features/continuity.md#7-o-que-a-prática-exige--levantamento) · revisita a frase "guardar o total em oitavos como inteiro" do mesmo §7
+
+O levantamento de `2026-08-10` descobriu que faltava um documento inteiro: o **Relatório de
+Progresso da Diária**, que a produção consome todo dia e que o modelo não contemplava em lugar
+nenhum. Ele não é um relatório de takes — é o balanço do dia: horários, contagens, páginas em
+oitavos, cobertura, mídia e observações.
+
+Ao implementá-lo aparecem duas perguntas que o §7 deixou em aberto.
+
+#### 1. O que tem coluna
+
+**Decisão: só o que exige mão humana.** `daily_progress_report` guarda `first_take_at`,
+`pages_shot`, `estimated_minutes`, as quatro listas de cobertura, `notes` e `signed_by`. Uma
+linha por diária, id derivado da diária (ADR-019).
+
+Cenas rodadas, setups, takes, cartões e rolls **não têm coluna**: saem dos registros que já
+existem. Guardá-los criaria dois números para o mesmo fato — e o guardado estaria sempre um
+pouco mais velho que o verdadeiro, porque a diária continua sendo preenchida depois de alguém
+abrir o relatório. Um relatório que discorda da diária que o gerou é pior que nenhum relatório.
+
+**A cobertura é texto**, em lista de números de cena ("24, 25A, 31"), e não uma tabela
+cena×diária. É assim que o formulário de papel funciona, é o que sai impresso, e uma tabela
+obrigaria a continuísta a marcar cena por cena exatamente na hora do wrap — o pior momento do
+dia para pedir precisão de banco de dados. Se a busca por "que dias cobriram a cena 24" virar
+necessidade real, a tabela nasce então, alimentada por este texto.
+
+#### 2. Páginas em oitavos: função, não coluna
+
+O §7 dizia que `scenes.page`, sendo texto livre, "precisa aceitar `2 4/8` e guardar o total em
+oitavos como inteiro". **Fica só a primeira metade.** A conversão é
+[`domain/platform/paginas.ts`](../domain/platform/paginas.ts) — pura, testada, sem coluna nova.
+
+Guardar o inteiro ao lado do texto é manter um cache do dado ao lado do próprio dado, e cache
+do que está na linha de cima envelhece calado: bastaria uma escrita por um caminho que
+esquecesse de recalcular — a importação de boletins, uma migration, um cliente de versão
+anterior — para o total passar a mentir sem nenhum sintoma. O parser precisa existir de todo
+jeito para preencher a coluna; a coluna é que não precisa existir.
+
+O que a coluna compraria seria agregação em SQL, e não é onde a soma acontece: o relatório é
+fechado no wrap, **dentro da fronteira offline** (ADR-016), somando algumas dezenas de cenas no
+próprio aparelho. Uma soma que precisasse do servidor seria uma soma que não acontece em
+locação.
+
+**Consequência que vale mais que a economia de coluna:** `paginaEmOitavos` devolve `null` — e
+não `0` — para o que não dá para somar, e `somaPaginas` devolve os valores recusados. O
+relatório mostra "2 4/8 (+1 sem soma: 'meia')" em vez de fingir um total completo. Errar para
+menos em silêncio, num número que a produção lê no fim do dia, é o defeito que ninguém
+descobre.

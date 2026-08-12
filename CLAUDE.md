@@ -18,15 +18,16 @@ npm run format         # Prettier --write
 npm run format:check
 npm run icons          # regenerate PWA PNG icons from public/icons/icon.svg
 npm run check:env      # what the build needs before it starts (runs on prebuild)
-npm test               # all five check suites below (280 assertions)
+npm test               # all six check suites below (346 assertions)
 npm run test:migration # a real v1 boletim through v2 normalization (22 assertions)
-npm run test:platform  # domain/platform set rules: inheritance, take axes, numbering (70)
+npm run test:platform  # domain/platform set rules: inheritance, take axes, page eighths (91)
 npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-to-end (87)
 npm run test:camera    # camera sheet structure: grouping, print line, take judgment (38)
 npm run test:som       # sound report: ordering, MOS, day summary, CSV escaping (63)
-npm run test:db        # schema/triggers/enums against the real Neon (28) — needs DATABASE_URL
+npm run test:continuidade # verdicts, action fields, progress-report counts (45)
+npm run test:db        # schema/triggers/enums against the real Neon (35) — needs DATABASE_URL
 npm run test:sala      # room rules against the real Neon (27) — needs DATABASE_URL
-npm run test:sync      # compare-and-set, idempotency, cursor, registry (45) — needs DATABASE_URL
+npm run test:sync      # compare-and-set, idempotency, cursor, registry (67) — needs DATABASE_URL
 npm run test:import    # local-boletim import: idempotency, ownership (29) — needs DATABASE_URL
 ```
 
@@ -156,25 +157,31 @@ one is **one line in `SYNC_ENTITIES`**, not a new code path.
 - Anything that changes the boundary, the delta format or the protocol number is escalated,
   not decided inside a skill.
 
-### The department modules (Camera, Phase 5 · Sound, Phase 6 — both done)
+### The department modules (Camera 5 · Sound 6 · Continuity 7 — all done)
 
-`features/camera/` (`/p/[id]/diarias/[dayId]/camera`) and `features/sound/`
-(`…/som`) are the same shape: pin the day, live-query Dexie, collapsible cards, 500 ms
+`features/camera/` (`/p/[id]/diarias/[dayId]/camera`), `features/sound/` (`…/som`) and
+`features/continuity/` (`…/continuidade`) are the same shape: pin the day, live-query Dexie, collapsible cards, 500 ms
 auto-save with no save button, an A4 sheet overlaid **on the same route** (navigating would
 need the network, and the sheet is printed when the location has no signal).
 
-- What the two departments **share** lives outside both: `features/diaria/cenas.ts`
+- What the three departments **share** lives outside all of them: `features/diaria/cenas.ts`
   (`agrupaCenas` — Cena → Bloco is `Scene`, ADR-002), `features/diaria/NovaCena.tsx`,
   `components/ui/DebouncedTextField.tsx` (the auto-save contract) and
-  `components/ui/OptionChips.tsx` (one-tap judgment row). Continuity inherits all of it —
-  copy any of them into a third module and the same day starts rendering differently per
-  department.
-- `features/sound/estrutura.ts` is the **single read** of the day: screen, sheet and CSV all
-  call `linhasDoRelatorio()`. Three readings would be three truths about one day.
+  `components/ui/OptionChips.tsx` (one-tap judgment row). Copy any of them into a module and
+  the same day starts rendering differently per department.
+- Each module's `estrutura.ts` is the **single read** of the day: screen, sheet, CSV and the
+  progress report all go through it. Three readings would be three truths about one day.
 - Sound writes `take.kind` (the shared take, ADR-029) and its own `sound_take_data.status`
   — never `take.status`, which is the camera's per-department judgment (ADR-010).
 - Track layout is inherited from the previous take, not stored as a day template
   ([ADR-033](docs/decisions.md)).
+- Continuity owns the **scene metadata** (page, story day, INT/EXT) and propagates an edit to
+  every block of that number — they are one scene in the script (ADR-002). Its take card
+  _reads_ lens, T-stop and roll from Camera and Sound: same `take_id`, never retyped.
+- The **Daily Progress Report** stores only what needs a human; counts are derived at read
+  time ([ADR-034](docs/decisions.md)). Page eighths are a pure function
+  (`domain/platform/paginas.ts`), not a column — and one page per scene _number_, or a scene
+  with blocks A/B doubles the day's coverage.
 
 ### `domain/platform/` — the shared domain model (Phase 1, done)
 

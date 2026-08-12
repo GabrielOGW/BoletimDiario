@@ -213,6 +213,127 @@ export const SYNC_ENTITIES = {
       deletedAt: 'instant',
     },
   },
+
+  /**
+   * Continuidade de ação, uma linha por take (Fase 7).
+   *
+   * Dezoito campos, todos texto livre: tentar estruturar "João entra pela esquerda" em
+   * enums seria mais lento que escrever, e é assim que a ferramenta é abandonada. Como
+   * cada um é um campo independente, o compare-and-set já dá o comportamento certo — duas
+   * pessoas anotando ação e eyeline do mesmo take fazem merge sem conflito.
+   */
+  continuityTakeData: {
+    table: 'continuity_take_data',
+    fields: {
+      takeId: 'text',
+      status: 'text',
+      ngReason: 'text',
+      selected: 'bool',
+      durationSec: 'int',
+      startPosition: 'text',
+      endPosition: 'text',
+      action: 'text',
+      movement: 'text',
+      direction: 'text',
+      entrancesExits: 'text',
+      eyeline: 'text',
+      objectInteraction: 'text',
+      characterInteraction: 'text',
+      dialogueChanges: 'text',
+      improvisation: 'text',
+      scriptDeviation: 'text',
+      notes: 'text',
+      deletedAt: 'instant',
+    },
+  },
+
+  /**
+   * As quatro coleções de estado do set — props, figurino, cabelo/maquiagem, cenografia.
+   *
+   * Mesma forma, escopo flexível: cada item se prende a **cena, setup ou take**, e é isso
+   * que permite um figurino valer para a cena inteira e um copo pela metade valer para um
+   * take. Os três campos de escopo sincronizam como qualquer outro, então mover um item de
+   * nível é uma mudança de campo, não um registro novo.
+   */
+  continuityProp: {
+    table: 'continuity_props',
+    fields: {
+      sceneId: 'text',
+      setupId: 'text',
+      takeId: 'text',
+      name: 'text',
+      position: 'text',
+      state: 'text',
+      quantity: 'text',
+      interaction: 'text',
+      notes: 'text',
+      deletedAt: 'instant',
+    },
+  },
+  continuityWardrobe: {
+    table: 'continuity_wardrobe',
+    fields: {
+      sceneId: 'text',
+      setupId: 'text',
+      takeId: 'text',
+      character: 'text',
+      outfit: 'text',
+      accessories: 'text',
+      state: 'text',
+      notes: 'text',
+      deletedAt: 'instant',
+    },
+  },
+  continuityHairMakeup: {
+    table: 'continuity_hair_makeup',
+    fields: {
+      sceneId: 'text',
+      setupId: 'text',
+      takeId: 'text',
+      character: 'text',
+      state: 'text',
+      changes: 'text',
+      notes: 'text',
+      deletedAt: 'instant',
+    },
+  },
+  continuitySetDressing: {
+    table: 'continuity_set_dressing',
+    fields: {
+      sceneId: 'text',
+      setupId: 'text',
+      takeId: 'text',
+      element: 'text',
+      position: 'text',
+      state: 'text',
+      notes: 'text',
+      deletedAt: 'instant',
+    },
+  },
+
+  /**
+   * Relatório de Progresso da Diária — um por `ShootingDay` (ADR-034).
+   *
+   * Entra na fronteira pelo mesmo motivo da configuração de som: é **preenchimento de
+   * diária**, fechado no wrap, e o wrap acontece na locação. Só os campos de mão humana
+   * estão aqui; contagens são derivadas no cliente, e por isso não têm o que sincronizar.
+   */
+  dailyProgressReport: {
+    table: 'daily_progress_report',
+    fields: {
+      shootingDayId: 'text',
+      firstTakeAt: 'text',
+      pagesShot: 'text',
+      estimatedMinutes: 'text',
+      scenesCovered: 'text',
+      scenesPartial: 'text',
+      scenesSkipped: 'text',
+      scenesAdded: 'text',
+      notes: 'text',
+      signedBy: 'text',
+      deletedAt: 'instant',
+    },
+  },
 } as const satisfies Record<string, { table: string; fields: Record<string, FieldKind> }>;
 
 export type SyncEntityType = keyof typeof SYNC_ENTITIES;
@@ -380,6 +501,19 @@ export interface SnapshotResponse {
   soundDayConfig: Record<string, unknown>[];
   soundTakeData: Record<string, unknown>[];
   soundTakeTracks: Record<string, unknown>[];
+  continuityTakeData: Record<string, unknown>[];
+  /**
+   * As quatro coleções de estado do set.
+   *
+   * Vêm por **cena da produção**, e não só pelas cenas do dia: o valor da continuidade é
+   * justamente atravessar dias — "no take de ontem o copo estava pela metade". Um recorte
+   * pela diária entregaria uma continuísta sem a continuidade.
+   */
+  continuityProps: Record<string, unknown>[];
+  continuityWardrobe: Record<string, unknown>[];
+  continuityHairMakeup: Record<string, unknown>[];
+  continuitySetDressing: Record<string, unknown>[];
+  dailyProgressReport: Record<string, unknown>[];
   /** Referência somente leitura: quem é quem na sala, para exibir autoria de conflito. */
   members: { id: string; userId: string; name: string; department: string }[];
 }

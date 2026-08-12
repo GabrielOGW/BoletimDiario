@@ -217,6 +217,56 @@ export async function loadSnapshot(input: {
        and take_id in (${takesDaDiaria(input)})
   `);
 
+  const continuityTakeData = await db.execute<Record<string, unknown>>(sql`
+    select ${entitySelect('continuityTakeData')} from continuity_take_data
+     where production_id = ${input.productionId}
+       and take_id in (${takesDaDiaria(input)})
+  `);
+
+  /**
+   * As quatro coleções de estado vêm por **cena da produção**, não só pelas cenas do dia.
+   *
+   * É a diferença entre ter e não ter continuidade: o valor delas é atravessar dias — "no
+   * take de ontem o copo estava pela metade, e hoje vamos rodar o contracampo". Recortar
+   * pela diária entregaria uma continuísta sem a memória do que ela mesma anotou.
+   *
+   * São linhas de texto e o volume acompanha o número de cenas, não o de takes. Se um dia
+   * uma produção grande mostrar que isso pesa, o corte natural é por cena **tocada** na
+   * diária — mas cortar antes de doer seria trocar a função do módulo por um byte.
+   */
+  const escopoDaProducao = sql`
+    scene_id in (select id from scenes where production_id = ${input.productionId})
+    or setup_id in (${setupsDaDiaria(input)})
+    or take_id in (${takesDaDiaria(input)})
+  `;
+
+  const continuityProps = await db.execute<Record<string, unknown>>(sql`
+    select ${entitySelect('continuityProp')} from continuity_props
+     where production_id = ${input.productionId} and (${escopoDaProducao})
+  `);
+
+  const continuityWardrobe = await db.execute<Record<string, unknown>>(sql`
+    select ${entitySelect('continuityWardrobe')} from continuity_wardrobe
+     where production_id = ${input.productionId} and (${escopoDaProducao})
+  `);
+
+  const continuityHairMakeup = await db.execute<Record<string, unknown>>(sql`
+    select ${entitySelect('continuityHairMakeup')} from continuity_hair_makeup
+     where production_id = ${input.productionId} and (${escopoDaProducao})
+  `);
+
+  const continuitySetDressing = await db.execute<Record<string, unknown>>(sql`
+    select ${entitySelect('continuitySetDressing')} from continuity_set_dressing
+     where production_id = ${input.productionId} and (${escopoDaProducao})
+  `);
+
+  /** O balanço do dia é fechado no wrap, na locação: vem no snapshot para não pedir rede. */
+  const dailyProgressReport = await db.execute<Record<string, unknown>>(sql`
+    select ${entitySelect('dailyProgressReport')} from daily_progress_report
+     where production_id = ${input.productionId}
+       and shooting_day_id = ${input.shootingDayId}
+  `);
+
   const members = await db.execute<{
     id: string;
     userId: string;
@@ -246,8 +296,23 @@ export async function loadSnapshot(input: {
     soundDayConfig: soundDayConfig.rows,
     soundTakeData: soundTakeData.rows,
     soundTakeTracks: soundTakeTracks.rows,
+    continuityTakeData: continuityTakeData.rows,
+    continuityProps: continuityProps.rows,
+    continuityWardrobe: continuityWardrobe.rows,
+    continuityHairMakeup: continuityHairMakeup.rows,
+    continuitySetDressing: continuitySetDressing.rows,
+    dailyProgressReport: dailyProgressReport.rows,
     members: members.rows,
   };
+}
+
+/** Os setups da diária, como subconsulta — o par de `takesDaDiaria`. */
+function setupsDaDiaria(input: { productionId: string; shootingDayId: string }) {
+  return sql`
+    select id from setups
+     where production_id = ${input.productionId}
+       and shooting_day_id = ${input.shootingDayId}
+  `;
 }
 
 /**

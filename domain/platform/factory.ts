@@ -20,6 +20,7 @@ import type {
   CameraTakeData,
   CameraUnit,
   ContinuityTakeData,
+  DailyProgressReport,
   EntityId,
   Equipment,
   EquipmentAssignment,
@@ -587,6 +588,34 @@ export function createContinuityTakeData(
   };
 }
 
+/**
+ * O Relatório de Progresso da Diária, vazio.
+ *
+ * Nasce sem nenhum número preenchido de propósito: tudo que é contagem — cenas, setups,
+ * takes, cartões, rolls — é **derivado** dos registros do dia, e o que se guarda aqui é
+ * só o que exige mão humana (ADR-034).
+ */
+export function createDailyProgressReport(
+  input: { id?: EntityId; productionId: EntityId; shootingDayId: EntityId },
+  ctx: CreateContext = {},
+): DailyProgressReport {
+  return {
+    id: input.id ?? uid('progresso'),
+    productionId: input.productionId,
+    shootingDayId: input.shootingDayId,
+    firstTakeAt: '',
+    pagesShot: '',
+    estimatedMinutes: '',
+    scenesCovered: '',
+    scenesPartial: '',
+    scenesSkipped: '',
+    scenesAdded: '',
+    notes: '',
+    signedBy: '',
+    ...audit(ctx),
+  };
+}
+
 // ============================================================
 // Equipamentos e fotos
 // ============================================================
@@ -667,6 +696,7 @@ export function createEmptySnapshot(production: Production): ProductionSnapshot 
     continuityWardrobe: [],
     continuityHairMakeup: [],
     continuitySetDressing: [],
+    dailyProgressReports: [],
     equipment: [],
     equipmentAssignments: [],
   };
