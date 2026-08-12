@@ -18,15 +18,16 @@ npm run format         # Prettier --write
 npm run format:check
 npm run icons          # regenerate PWA PNG icons from public/icons/icon.svg
 npm run check:env      # what the build needs before it starts (runs on prebuild)
-npm test               # all six check suites below (346 assertions)
+npm test               # all seven check suites below (377 assertions)
 npm run test:migration # a real v1 boletim through v2 normalization (22 assertions)
 npm run test:platform  # domain/platform set rules: inheritance, take axes, page eighths (91)
 npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-to-end (87)
 npm run test:camera    # camera sheet structure: grouping, print line, take judgment (38)
 npm run test:som       # sound report: ordering, MOS, day summary, CSV escaping (63)
 npm run test:continuidade # verdicts, action fields, progress-report counts (45)
+npm run test:consolidado  # the three departments joined by take_id, gaps, local search (31)
 npm run test:db        # schema/triggers/enums against the real Neon (35) — needs DATABASE_URL
-npm run test:sala      # room rules against the real Neon (27) — needs DATABASE_URL
+npm run test:sala      # room rules + equipment against the real Neon (38) — needs DATABASE_URL
 npm run test:sync      # compare-and-set, idempotency, cursor, registry (67) — needs DATABASE_URL
 npm run test:import    # local-boletim import: idempotency, ownership (29) — needs DATABASE_URL
 ```

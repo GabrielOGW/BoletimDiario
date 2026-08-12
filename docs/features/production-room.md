@@ -178,6 +178,20 @@ Implementação: **local primeiro** (índices do Dexie), porque busca precisa fu
 o servidor complementa com full-text quando online, para o que ainda não foi baixado. Os dois
 caminhos entregam o mesmo formato de resultado.
 
+### Como ficou — Fase 8, `2026-08-12`
+
+A busca **da diária** existe e é local: [`filtraLinhas`](../../features/diaria/consolidado.ts),
+na visão consolidada (§6). Cada palavra do termo precisa aparecer, então "24 boom" é o take da
+cena 24 com nota de boom, e não tudo que tem 24 **ou** boom.
+
+Ela alcança cartão, arquivo, roll, cena, plano, take e as notas dos três departamentos — o
+índice é pré-calculado por linha, porque o filtro roda a cada tecla com o dedo esperando.
+
+**O que ainda não existe:** a busca **global da produção**, cruzando diárias e alcançando o que
+não está fixado no aparelho. Ela precisa do complemento full-text no servidor (o índice
+`scenes_search` já existe desde a migration `0001`) e de decidir como os dois caminhos se
+fundem num resultado só. Fica para a Fase 9, junto dos relatórios — que leem o mesmo recorte.
+
 ## 6. Visão consolidada da diária (§8 do roadmap)
 
 Um take, os três departamentos, lado a lado — relacionados por `take_id`, sem conciliação:
@@ -190,3 +204,27 @@ Cena 24B · Setup C · Take 5
 ```
 
 É a mesma consulta que alimenta o relatório consolidado (Fase 9).
+
+### Como ficou — Fase 8, `2026-08-12`
+
+`/p/[id]/diarias/[dayId]/consolidado`, com a leitura em
+[`features/diaria/consolidado.ts`](../../features/diaria/consolidado.ts).
+
+**Dentro da fronteira offline, e somente leitura.** Tudo que ela mostra já está fixado no banco
+local pela mesma fixação que os módulos fazem, então ela não acrescenta **nenhuma** requisição
+— aberta uma vez com rede, funciona em modo avião como o resto da superfície de diária. Não há
+guarda por departamento: leitura é livre para todo membro, sempre (§3 de permissions.md).
+
+Três decisões que o teste guarda:
+
+- **Multicam não perde a segunda câmera.** `camera_take_data` tem uma linha por câmera por
+  take; mostrar só a primeira esconderia metade do material de um take de duas câmeras — que é
+  exatamente o dado que a pós vem procurar aqui. As linhas viram uma coluna só, com o rótulo da
+  câmera na frente de cada arquivo.
+- **"O que falta" é uma contagem.** Com três cadernos separados, "que take ficou sem som?" só
+  se descobre no dia seguinte, na pós. Aqui é uma leitura da diária fixada.
+- **MOS não é lacuna.** É um take que declaradamente não tem áudio, e contá-lo como "sem som"
+  desfaria justamente o que [ADR-029](../decisions.md#adr-029--julgamento-e-natureza-do-take-são-eixos-separados)
+  resolveu. A coluna do som mostra "MOS — sem áudio", em cinza, e não o alerta.
+
+Verificado por `npm run test:consolidado` (31 checks).

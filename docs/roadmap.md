@@ -303,12 +303,25 @@ cabelo/maquiagem, cenografia · PDF · **Relatório de Progresso da Diária** (c
 em oitavos, minutagem, cobertura, cartões e rolls do dia).
 **Sem fotografias** ([ADR-022](decisions.md#adr-022--sem-fotografias-na-v1)).
 
-## 📋 Fase 8 — Integração
+## ⏳ Fase 8 — Integração
 
-- [ ] Câmera ↔ Som, Câmera ↔ Continuidade, Som ↔ Continuidade
-- [ ] Visão consolidada da diária
-- [ ] Busca global e filtros
-- [ ] "O que estamos usando hoje" entre departamentos
+- [x] Câmera ↔ Som, Câmera ↔ Continuidade, Som ↔ Continuidade — a junção é por `take_id`,
+      então integrar é **consultar**, não conciliar. A Continuidade lê lente, T-stop e roll
+      dos outros dois no cartão de cada take; a visão consolidada mostra os três lado a lado.
+- [x] Visão consolidada da diária — `/p/[id]/diarias/[dayId]/consolidado`, dentro da
+      fronteira e somente leitura. Inclui **o que falta**: takes sem som, sem câmera, sem
+      continuidade. MOS não conta como lacuna.
+- [x] "O que estamos usando hoje" entre departamentos — catálogo em `/p/[id]/equipamentos`
+      e alocação por diária. Com ele fechou a última pendência da Fase 6: o cabeçalho do
+      sound report imprime os modelos do dia.
+- [ ] **Busca global e filtros** — a busca **da diária** existe e é local (cada palavra do
+      termo precisa aparecer). Falta a da **produção inteira**, que precisa do complemento
+      full-text no servidor e de fundir os dois caminhos num resultado só. Vai junto da
+      Fase 9, que lê o mesmo recorte.
+
+**Verificado por** `npm run test:consolidado` (31 checks) e `npm run test:sala` (38, +11,
+contra o Neon real). A fronteira offline **não mudou**: o equipamento chega às folhas
+impressas como props resolvidas no servidor, pela mesma via de produção, horários e equipe.
 
 ## 📋 Fase 9 — Relatórios
 

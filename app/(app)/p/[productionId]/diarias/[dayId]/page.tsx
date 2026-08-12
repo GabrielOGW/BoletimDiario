@@ -9,6 +9,7 @@ import {
   CalendarIcon,
   ClapperboardIcon,
   FileTextIcon,
+  LayersIcon,
   MicIcon,
 } from '@/components/ui/icons';
 import { roleAtLeast } from '@/domain/platform/enums';
@@ -94,6 +95,23 @@ export default async function DiariaPage({
             </span>
             <span className="block text-xs text-zinc-400">
               Ação, estado do set e o relatório de progresso do dia
+            </span>
+          </span>
+        </Link>
+
+        {/* A diária inteira, os três departamentos lado a lado. Somente leitura e sem
+            departamento: leitura é livre para todo membro, sempre. */}
+        <Link
+          href={`/p/${productionId}/diarias/${dayId}/consolidado`}
+          className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 transition hover:bg-surface-hover"
+        >
+          <LayersIcon size={18} className="text-zinc-400" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium text-zinc-200">
+              Diária consolidada
+            </span>
+            <span className="block text-xs text-zinc-500">
+              Um take, os três departamentos — e o que ficou faltando
             </span>
           </span>
         </Link>
