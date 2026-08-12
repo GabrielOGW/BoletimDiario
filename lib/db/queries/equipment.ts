@@ -20,8 +20,7 @@ import { and, asc, eq, isNull } from 'drizzle-orm';
 
 import type { Department, EquipmentCategory } from '@/domain/platform/enums';
 import { db } from '@/lib/db/client';
-import { equipment, equipmentAssignments, productionMembers } from '@/lib/db/schema';
-import { users } from '@/lib/db/schema';
+import { equipment, equipmentAssignments } from '@/lib/db/schema';
 
 export interface EquipmentRow {
   id: string;
@@ -130,10 +129,15 @@ export interface AssignmentRow {
   model: string | null;
   serialNumber: string | null;
   nickname: string | null;
-  /** Quem está com ele, quando alguém está. */
-  memberId: string | null;
-  memberName: string | null;
 }
+
+/*
+ * `equipment_assignments.member_id` existe no schema — "quem está com ele" é parte do §23 —
+ * mas **não é lido aqui**, porque nada ainda o escreve: não há tela que atribua o item a uma
+ * pessoa. Trazê-lo custaria dois LEFT JOIN por consulta para devolver `null`, e um campo que
+ * sempre volta vazio é como uma tela passa a "quase" ter uma funcionalidade. Entra junto com
+ * a tela que o preencher.
+ */
 
 /**
  * O que está alocado numa diária, com o equipamento já resolvido.
@@ -157,13 +161,9 @@ export async function listAssignments(input: {
       model: equipment.model,
       serialNumber: equipment.serialNumber,
       nickname: equipment.nickname,
-      memberId: equipmentAssignments.memberId,
-      memberName: users.name,
     })
     .from(equipmentAssignments)
     .innerJoin(equipment, eq(equipment.id, equipmentAssignments.equipmentId))
-    .leftJoin(productionMembers, eq(productionMembers.id, equipmentAssignments.memberId))
-    .leftJoin(users, eq(users.id, productionMembers.userId))
     .where(
       and(
         eq(equipmentAssignments.productionId, input.productionId),
