@@ -4,7 +4,7 @@
 
 import { z } from 'zod';
 
-import { DEPARTMENTS, MEMBER_ROLES } from '@/domain/platform/enums';
+import { DEPARTMENTS, EQUIPMENT_CATEGORIES, MEMBER_ROLES } from '@/domain/platform/enums';
 
 export const departmentSchema = z.enum(DEPARTMENTS);
 export const memberRoleSchema = z.enum(MEMBER_ROLES);
@@ -86,3 +86,29 @@ export type CreateProductionInput = z.infer<typeof createProductionSchema>;
 export type JoinProductionInput = z.infer<typeof joinProductionSchema>;
 export type UpdateMemberInput = z.infer<typeof updateMemberSchema>;
 export type ShootingDayInput = z.infer<typeof shootingDaySchema>;
+
+/**
+ * Equipamento do catálogo.
+ *
+ * Todo campo descritivo é opcional: em set, o equipamento chega antes da papelada, e
+ * exigir número de série para cadastrar um microfone é como o catálogo deixa de ser
+ * preenchido. Departamento e categoria bastam para o item existir e ser alocado.
+ */
+export const equipmentSchema = z.object({
+  department: departmentSchema,
+  category: z.enum(EQUIPMENT_CATEGORIES),
+  manufacturer: optionalText(80),
+  model: optionalText(120),
+  serialNumber: optionalText(80),
+  nickname: optionalText(80),
+  notes: optionalText(500),
+});
+
+export const assignmentSchema = z.object({
+  equipmentId: uuidSchema,
+  shootingDayId: uuidSchema,
+  label: optionalText(80),
+});
+
+export type EquipmentInput = z.infer<typeof equipmentSchema>;
+export type AssignmentInput = z.infer<typeof assignmentSchema>;

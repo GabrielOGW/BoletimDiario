@@ -166,6 +166,24 @@ export const MicIcon = (p: IconProps) => (
   </Svg>
 );
 
+/** Camadas — a diária vista pelos três departamentos ao mesmo tempo. */
+export const LayersIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m12 2 9 5-9 5-9-5 9-5z" />
+    <path d="m3 12 9 5 9-5" />
+    <path d="m3 17 9 5 9-5" />
+  </Svg>
+);
+
+/** Caixa de equipamento — o kit da produção. */
+export const PackageIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M21 8v8a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8z" />
+    <path d="m3.3 7 8.7 5 8.7-5" />
+    <line x1="12" y1="22" x2="12" y2="12" />
+  </Svg>
+);
+
 export const FilmIcon = (p: IconProps) => (
   <Svg {...p}>
     <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />

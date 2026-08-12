@@ -5,7 +5,7 @@
  * roda também em script de migração — texto de interface não é assunto dele.
  */
 
-import type { Department, MemberRole } from '@/domain/platform/enums';
+import type { Department, EquipmentCategory, MemberRole } from '@/domain/platform/enums';
 
 export const DEPARTMENT_LABEL: Record<Department, string> = {
   CAMERA: 'Câmera',
@@ -39,4 +39,44 @@ export const ROLE_HINT: Record<MemberRole, string> = {
 export function formatDiaria(date: string): string {
   const [year, month, day] = date.split('-');
   return `${day}/${month}/${year}`;
+}
+
+export const CATEGORY_LABEL: Record<EquipmentCategory, string> = {
+  CAMERA: 'Corpo de câmera',
+  LENS: 'Lente',
+  FILTER: 'Filtro',
+  RECORDER: 'Gravador',
+  MIXER: 'Mixer',
+  MICROPHONE: 'Microfone',
+  WIRELESS: 'Sem fio',
+  TIMECODE: 'Timecode',
+  MONITOR: 'Monitor',
+  MEDIA: 'Mídia',
+  OTHER: 'Outro',
+};
+
+/**
+ * Uma linha de texto por equipamento — o formato que sai impresso no cabeçalho.
+ *
+ * Mora aqui, junto dos outros rótulos, e não na camada de query: aquela é
+ * `server-only` de propósito, e esta string é lida também no cliente e na folha
+ * impressa. Numa função só porque os três departamentos imprimem a mesma coisa — três
+ * formatações do mesmo dado é como um relatório passa a discordar do outro.
+ */
+export function descreveEquipamento(linha: {
+  manufacturer: string | null;
+  model: string | null;
+  serialNumber: string | null;
+  nickname: string | null;
+  label?: string | null;
+}): string {
+  const nome = [linha.manufacturer, linha.model].filter(Boolean).join(' ').trim();
+  const identificacao = linha.nickname || nome || 'Equipamento';
+
+  const partes = [identificacao];
+  if (nome && linha.nickname) partes.push(nome);
+  if (linha.serialNumber) partes.push(`s/n ${linha.serialNumber}`);
+  if (linha.label) partes.push(linha.label);
+
+  return partes.join(' · ');
 }

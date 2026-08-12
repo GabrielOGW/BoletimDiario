@@ -215,7 +215,7 @@ ambiguidade dessas é exatamente o que a plataforma existe para eliminar.
 ## 6. Relatório
 
 - **PDF** — sound report em A4, mesmo mecanismo de impressão da Câmera. O cabeçalho imprime os
-  equipamentos do dia; o corpo, uma linha por arquivo.
+  equipamentos do dia (Fase 8); o corpo, uma linha por arquivo.
 - **CSV** — prioritário aqui: é o formato que a pós consome para conformar áudio. Uma linha por
   take, colunas de tracks expandidas, cabeçalho estável entre diárias.
 
@@ -233,10 +233,9 @@ sobre o mesmo dia, e a que a pós receberia seria justamente a menos olhada.
 
 **PDF:** [`FolhaSom.tsx`](../../features/sound/FolhaSom.tsx), com as mesmas classes de impressão
 do `globals.css`. O cabeçalho traz mixer, boom, sample rate, bit depth, frame rate, formato,
-fonte de TC, **hora do jam**, user bits, drop frame, mídia, cópias e "cópias conferidas" — a
-custódia impressa, que é o que o sound report existe para responder. O corpo é uma tabela plana,
-uma linha por take. _Os modelos de equipamento no cabeçalho continuam pendentes: dependem do
-catálogo da Fase 8._
+fonte de TC, **hora do jam**, user bits, drop frame, mídia, cópias, "cópias conferidas" e — desde
+a Fase 8 — os **modelos de equipamento** alocados no dia. É a custódia impressa, que é o que o
+sound report existe para responder. O corpo é uma tabela plana, uma linha por take.
 
 **CSV:** [`csv.ts`](../../features/sound/csv.ts). Colunas na ordem:
 
@@ -281,12 +280,18 @@ reconciliação automática com o arquivo do recorder.
 | Status rápidos, natureza, MOS, motivo de NG     | ✅ um toque para o julgamento                                        |
 | Timecode com jam e user bits                    | ✅                                                                   |
 | PDF e CSV                                       | ✅                                                                   |
-| **Equipamentos no cabeçalho do relatório**      | ⛔ depende do catálogo da **Fase 8**                                 |
+| **Equipamentos no cabeçalho do relatório**      | ✅ **Fase 8** — catálogo + alocação por diária                       |
 
-O único item do escopo que não entrou é a integração com equipamentos — os modelos de recorder,
-mixer e microfones impressos no cabeçalho. Não é dívida desta fase: `equipment` e
-`equipment_assignments` são da Fase 8, e o dado ainda não existe para ser impresso. O que
-depende dele está marcado no lugar certo, e não simulado aqui.
+> **`2026-08-11`:** o único item do escopo que não entrou foi a integração com equipamentos —
+> os modelos de recorder, mixer e microfones impressos no cabeçalho. Não era dívida desta
+> fase: `equipment` e `equipment_assignments` são da Fase 8, e o dado ainda não existia para
+> ser impresso.
+>
+> **Fechado em `2026-08-12` (Fase 8).** O catálogo e a alocação por diária existem, e o
+> cabeçalho imprime os modelos do dia. Eles chegam à folha como props resolvidas no
+> servidor, pela mesma via de produção, horários e equipe — a **fronteira offline não
+> mudou**, e a folha continua sem `fetch`. Detalhe em
+> [production-room.md §4](production-room.md#4-equipamentos-22-23).
 
 **Fontes do levantamento:** [Sound report (Wikipedia)](https://en.wikipedia.org/wiki/Sound_report) ·
 [iXML (Wikipedia)](https://en.wikipedia.org/wiki/IXML) ·

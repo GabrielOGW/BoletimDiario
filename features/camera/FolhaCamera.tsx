@@ -53,6 +53,17 @@ export interface CabecalhoImpressao {
     notes: string | null;
   };
   equipe: { id: string; nome: string; funcao: string }[];
+  /**
+   * O equipamento alocado na diária, já descrito em texto (Fase 8).
+   *
+   * Vem da sala, resolvido no servidor, como o resto deste objeto — o catálogo está fora
+   * da fronteira offline (ADR-016) e a navegação renderizada fica no cache do Service
+   * Worker, então o cabeçalho continua saindo impresso em locação sem sinal.
+   *
+   * Opcional: uma produção que não cadastrou equipamento imprime o boletim sem a seção,
+   * exatamente como imprimia antes.
+   */
+  equipamentos?: { id: string; departamento: string; descricao: string }[];
 }
 
 export interface FolhaCameraProps {
@@ -111,6 +122,11 @@ export function FolhaCamera({
   cameras,
 }: FolhaCameraProps) {
   const { producao, diaria, equipe } = cabecalho;
+
+  /** Só o equipamento de Câmera: o boom não interessa a este cabeçalho. */
+  const equipamentos = (cabecalho.equipamentos ?? []).filter(
+    (item) => item.departamento === 'CAMERA',
+  );
 
   const agrupadas = agrupaCenas(cenas);
   const takesDoSetup = (setupId: string) =>
@@ -240,6 +256,14 @@ export function FolhaCamera({
               <p className="mt-1.5 text-[11px] text-zinc-600">
                 <span className="font-semibold text-zinc-500">Rolls: </span>
                 {rolls.join(' · ')}
+              </p>
+            ) : null}
+            {/* O equipamento alocado na diária, vindo da sala (Fase 8). Só o de Câmera:
+                o boom não interessa a este cabeçalho. */}
+            {equipamentos.length > 0 ? (
+              <p className="mt-1.5 text-[11px] text-zinc-600">
+                <span className="font-semibold text-zinc-500">Equipamento: </span>
+                {equipamentos.map((item) => item.descricao).join(' · ')}
               </p>
             ) : null}
           </div>

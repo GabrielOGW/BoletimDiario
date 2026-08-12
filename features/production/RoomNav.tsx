@@ -17,6 +17,7 @@ export function RoomNav({ productionId }: { productionId: string }) {
     { href: base, label: 'Sala' },
     { href: `${base}/diarias`, label: 'Diárias' },
     { href: `${base}/membros`, label: 'Equipe' },
+    { href: `${base}/equipamentos`, label: 'Kit' },
   ];
 
   return (
