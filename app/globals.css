@@ -117,20 +117,21 @@ input[type='search']::-webkit-search-cancel-button {
     print-color-adjust: exact !important;
   }
 
-  /* Keep-together: um plano (linha + detalhes + observação) nunca quebra no meio. */
-  .pdf-item {
+  /* Keep-together: um plano nunca quebra no meio.
+     `.pdf-item` é a linha da folha do boletim legado (identificação + detalhes de take
+     + observação); `.pdf-plano` é o cartão das folhas de Câmera e Continuidade da
+     plataforma. Nomes diferentes porque são leituras diferentes, mesma regra de papel. */
+  .pdf-item,
+  .pdf-plano {
     break-inside: avoid;
     page-break-inside: avoid;
   }
-  /* A faixa da cena não fica órfã do primeiro plano dela. */
-  .pdf-cena-header {
+  /* Cabeçalhos não ficam órfãos do conteúdo que anunciam. */
+  .pdf-cena-header,
+  .pdf-bloco-header,
+  .pdf-setup {
     break-after: avoid;
     page-break-after: avoid;
-  }
-  /* Uma cena curta não é dividida à toa; as longas quebram entre planos. */
-  .pdf-cena {
-    break-inside: auto;
-    page-break-inside: auto;
   }
   /* Linhas de tabela (mídia/suporte) inteiras. */
   .pdf-table tr {
