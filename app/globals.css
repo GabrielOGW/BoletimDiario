@@ -117,19 +117,22 @@ input[type='search']::-webkit-search-cancel-button {
     print-color-adjust: exact !important;
   }
 
-  /* Keep-together: plano (cabeçalho + tabela + notas) não quebra no meio. */
-  .pdf-plano {
+  /* Keep-together: um plano (linha + detalhes + observação) nunca quebra no meio. */
+  .pdf-item {
     break-inside: avoid;
     page-break-inside: avoid;
   }
-  /* Cabeçalhos não ficam órfãos do conteúdo seguinte. */
-  .pdf-cena-header,
-  .pdf-bloco-header,
-  .pdf-setup {
+  /* A faixa da cena não fica órfã do primeiro plano dela. */
+  .pdf-cena-header {
     break-after: avoid;
     page-break-after: avoid;
   }
-  /* Linhas de take inteiras; cabeçalho da tabela repete ao quebrar página. */
+  /* Uma cena curta não é dividida à toa; as longas quebram entre planos. */
+  .pdf-cena {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+  /* Linhas de tabela (mídia/suporte) inteiras. */
   .pdf-table tr {
     break-inside: avoid;
     page-break-inside: avoid;

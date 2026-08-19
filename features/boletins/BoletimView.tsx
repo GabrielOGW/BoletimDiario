@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Boletim, Plano } from '@/types/boletim';
+import type { Boletim } from '@/types/boletim';
+import type { CenaFolha, ItemFolha, TakeFolha } from './folha';
+import { montaFolha } from './folha';
 import { getById } from '@/lib/storage';
 import { exportBoletim } from '@/lib/backup';
-import { computeStats } from '@/utils/boletim-stats';
 import { formatDateBR, formatDateTimeBR } from '@/utils/date';
 import { useMounted } from '@/hooks/useMounted';
 import { cn } from '@/utils/cn';
@@ -18,7 +19,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import { OfflineBadge } from '@/components/pwa/OfflineBadge';
 import { DownloadIcon, PencilIcon, PrinterIcon } from '@/components/ui/icons';
 
-/** Pequeno cartão de estatística para o resumo da diária. */
+/** Um número do resumo da diária. */
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="rounded-md border border-zinc-300 px-2.5 py-1.5 text-center">
@@ -30,58 +31,119 @@ function StatCard({ label, value }: { label: string; value: number | string }) {
   );
 }
 
+/** Par rótulo/valor — some quando não há valor, em vez de imprimir um travessão. */
 function Info({ label, value }: { label: string; value: string }) {
+  if (!value.trim()) return null;
   return (
     <div className="min-w-0">
       <dt className="text-[9px] font-semibold uppercase tracking-wide text-zinc-500">
         {label}
       </dt>
-      <dd className="truncate text-sm text-zinc-900">{value.trim() || '—'}</dd>
+      <dd className="truncate text-sm text-zinc-900">{value.trim()}</dd>
     </div>
   );
 }
 
-/** Assinatura técnica de um plano — planos iguais (consecutivos) são agrupados. */
-function planoSignature(plano: Plano, camName: string): string {
-  return JSON.stringify([camName, plano.tipo, plano.tecnica, plano.optica]);
+/**
+ * A régua de takes: um plano inteiro em uma linha.
+ * O aprovado é o único que muda de peso — é a informação que a pós procura.
+ */
+function ReguaDeTakes({ takes }: { takes: TakeFolha[] }) {
+  if (takes.length === 0)
+    return <span className="text-[10px] italic text-zinc-400">sem takes</span>;
+  return (
+    <span className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
+      {takes.map((take, i) => (
+        <span
+          key={take.id}
+          className={cn(
+            'min-w-[1.15rem] rounded-sm px-1 text-center font-mono text-[10px] leading-[1.4]',
+            take.aprovado
+              ? 'bg-approved font-bold text-white'
+              : 'bg-zinc-100 text-zinc-500',
+          )}
+        >
+          {take.aprovado ? '✓' : ''}
+          {take.numero || i + 1}
+        </span>
+      ))}
+    </span>
+  );
 }
 
-/** Setup técnico compacto, só com campos preenchidos. */
-function setupParts(plano: Plano, camName: string): string[] {
-  const t = plano.tecnica;
-  const o = plano.optica;
-  const parts: string[] = [];
-  if (camName && camName !== '—') parts.push(camName);
-  if (plano.tipo && plano.tipo !== 'Normal') parts.push(plano.tipo);
-  if (t.formatoGravacao) parts.push(t.formatoGravacao);
-  if (t.resolucao) parts.push(t.resolucao);
-  if (t.frameRate) parts.push(`${t.frameRate} fps`);
-  if (t.iso) parts.push(`ISO ${t.iso}`);
-  if (t.obturador) parts.push(`${t.obturador}°`);
-  if (t.balancoBranco) parts.push(t.balancoBranco);
-  if (t.lutPerfil) parts.push(t.lutPerfil);
-  if (t.espacoCor) parts.push(t.espacoCor);
-  if (o.lentes) parts.push(o.lentes);
-  if (o.filtros) parts.push(o.filtros);
-  if (t.diafragma) parts.push(t.diafragma);
-  if (o.matteBox) parts.push('Matte Box');
-  return parts;
+/** Um plano: identificação, o que ele tem de diferente, e a régua de takes. */
+function LinhaDoPlano({ item }: { item: ItemFolha }) {
+  const marcas = [item.camera, item.tipo].filter(Boolean) as string[];
+  return (
+    <div className="pdf-item border-b border-zinc-100 py-1 last:border-b-0">
+      <div className="flex items-baseline gap-2">
+        <span className="w-14 shrink-0 font-mono text-[11px] font-bold text-zinc-900">
+          {item.ident}
+        </span>
+        <span className="min-w-0 flex-1 text-[11px] leading-snug text-zinc-600">
+          {marcas.length > 0 ? (
+            <span className="font-semibold text-zinc-800">{marcas.join(' · ')} </span>
+          ) : null}
+          {item.ajustes.join(' · ')}
+        </span>
+        <ReguaDeTakes takes={item.takes} />
+      </div>
+
+      {item.detalhes.map((take, i) => (
+        <div
+          key={take.id}
+          className="ml-14 flex gap-2 pl-2 text-[10px] leading-snug text-zinc-600"
+        >
+          <span className="shrink-0 font-mono font-bold text-zinc-500">
+            {take.numero || i + 1}
+          </span>
+          <span className="min-w-0">
+            {take.cartao ? (
+              <span className="mr-2 font-mono text-zinc-800">{take.cartao}</span>
+            ) : null}
+            {take.clipSync ? (
+              <span className="mr-2 font-mono text-zinc-800">{take.clipSync}</span>
+            ) : null}
+            {take.nota}
+          </span>
+        </div>
+      ))}
+
+      {item.observacoes ? (
+        <p className="ml-14 pl-2 text-[10px] leading-snug text-zinc-700">
+          <span className="font-semibold text-zinc-500">Obs.: </span>
+          {item.observacoes}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
-interface PlanoGroup {
-  signature: string;
-  planos: Plano[];
-}
-
-function groupPlanos(planos: Plano[], camName: (p: Plano) => string): PlanoGroup[] {
-  const groups: PlanoGroup[] = [];
-  for (const plano of planos) {
-    const signature = planoSignature(plano, camName(plano));
-    const last = groups[groups.length - 1];
-    if (last && last.signature === signature) last.planos.push(plano);
-    else groups.push({ signature, planos: [plano] });
-  }
-  return groups;
+/** Uma cena: faixa de título e os planos logo abaixo. */
+function BlocoDaCena({ cena }: { cena: CenaFolha }) {
+  return (
+    <div className="pdf-cena">
+      <div className="pdf-cena-header flex items-baseline gap-2 rounded-sm bg-zinc-900 px-2.5 py-1.5 text-white">
+        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+          Cena
+        </span>
+        <span className="text-base font-black leading-none">{cena.numero}</span>
+        {cena.blocoUnico ? (
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
+            Bloco {cena.blocoUnico}
+          </span>
+        ) : null}
+        <span className="ml-auto text-[9px] uppercase tracking-wide text-zinc-400">
+          {cena.planos} planos · {cena.takes} takes · {cena.aprovados} aprov.
+        </span>
+      </div>
+      <div className="mt-0.5">
+        {cena.itens.map((item) => (
+          <LinhaDoPlano key={item.id} item={item} />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function BoletimView({ id }: { id: string | null }) {
@@ -121,29 +183,15 @@ export function BoletimView({ id }: { id: string | null }) {
     );
   }
 
-  const stats = computeStats(boletim);
+  const folha = montaFolha(boletim);
   const { producao } = boletim;
-
-  const cameraName = (plano: Plano): string =>
-    boletim.camerasCadastradas.find((cam) => cam.id === plano.cameraId)?.nomeId ||
-    plano.cameraNome ||
-    '—';
 
   const almoco =
     boletim.horarios.almocoInicio || boletim.horarios.almocoFim
-      ? `${boletim.horarios.almocoInicio || '—'} – ${boletim.horarios.almocoFim || '—'}`
+      ? [boletim.horarios.almocoInicio, boletim.horarios.almocoFim]
+          .filter((h) => h.trim())
+          .join(' – ')
       : boletim.horarios.almoco;
-
-  // Cartões usados (distintos) — takes + inventário de mídia.
-  const cartoes = new Set<string>();
-  for (const cena of boletim.cenas)
-    for (const bloco of cena.blocos)
-      for (const plano of bloco.planos)
-        for (const take of plano.takes)
-          if (take.cartao.trim()) cartoes.add(take.cartao.trim());
-  for (const midia of boletim.midiaSuporte)
-    if (midia.numeroCartao.trim()) cartoes.add(midia.numeroCartao.trim());
-  const cartoesUsados = [...cartoes].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
   const tituloProjeto = producao.tituloProjeto.trim() || 'Sem título';
   const dataBR = formatDateBR(producao.data);
@@ -163,7 +211,7 @@ export function BoletimView({ id }: { id: string | null }) {
         <PageContainer className="max-w-none px-0 sm:px-4">
           <article className="print-sheet mx-auto w-full max-w-[820px] rounded-none bg-white p-6 text-zinc-900 shadow-2xl sm:rounded-xl sm:p-9">
             {/* ===== Cabeçalho ===== */}
-            <header className="border-b-2 border-zinc-900 pb-4">
+            <header className="border-b-2 border-zinc-900 pb-3">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0 border-l-4 border-brand pl-3">
                   <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-zinc-500">
@@ -181,254 +229,89 @@ export function BoletimView({ id }: { id: string | null }) {
                   <dd className="font-semibold">{dataBR}</dd>
                   <dt className="font-semibold text-zinc-500">Diária</dt>
                   <dd className="font-semibold">{producao.diaDiaria || '—'}</dd>
-                  <dt className="font-semibold text-zinc-500">Diretor(a)</dt>
-                  <dd>{producao.diretor || '—'}</dd>
-                  <dt className="font-semibold text-zinc-500">Fotografia</dt>
-                  <dd>{producao.diretorFotografia || '—'}</dd>
+                  {producao.diretor.trim() ? (
+                    <>
+                      <dt className="font-semibold text-zinc-500">Direção</dt>
+                      <dd>{producao.diretor}</dd>
+                    </>
+                  ) : null}
+                  {producao.diretorFotografia.trim() ? (
+                    <>
+                      <dt className="font-semibold text-zinc-500">Fotografia</dt>
+                      <dd>{producao.diretorFotografia}</dd>
+                    </>
+                  ) : null}
                 </dl>
               </div>
             </header>
 
+            {/* ===== Padrão da diária =====
+                A configuração majoritária do dia, escrita uma única vez. É o que
+                permite que cada plano abaixo caiba em uma linha. */}
+            {folha.padrao.length > 0 ? (
+              <section className="mt-3 break-inside-avoid rounded border border-zinc-300 bg-zinc-50 px-3 py-2">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">
+                    Padrão da diária
+                  </span>
+                  <span className="text-[11px] font-semibold leading-snug text-zinc-900">
+                    {folha.padrao.map((campo) => campo.texto).join(' · ')}
+                  </span>
+                </div>
+                <p className="mt-1 text-[9px] italic text-zinc-500">
+                  Cada plano lista apenas o que difere deste padrão.
+                </p>
+              </section>
+            ) : null}
+
             {/* ===== Resumo da diária ===== */}
-            <section className="mt-4 break-inside-avoid">
-              <h2 className="mb-2 text-[11px] font-bold uppercase tracking-widest text-zinc-700">
-                Resumo da diária
-              </h2>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                <StatCard label="Câmeras" value={boletim.camerasCadastradas.length} />
-                <StatCard label="Cenas" value={stats.totalCenas} />
-                <StatCard label="Blocos" value={stats.totalBlocos} />
-                <StatCard label="Planos" value={stats.totalPlanos} />
-                <StatCard label="Takes" value={stats.totalTakes} />
-                <StatCard label="Aprovados" value={stats.takesAprovados} />
+            <section className="mt-3 break-inside-avoid">
+              <div className="grid grid-cols-4 gap-2">
+                <StatCard label="Cenas" value={folha.cenas.length} />
+                <StatCard label="Planos" value={folha.totalPlanos} />
+                <StatCard label="Takes" value={folha.totalTakes} />
+                <StatCard label="Aprovados" value={folha.totalAprovados} />
               </div>
 
-              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
                 {boletim.camerasCadastradas.length > 0 ? (
-                  <div>
-                    <p className="text-[9px] font-semibold uppercase tracking-wide text-zinc-500">
-                      Câmeras
-                    </p>
-                    <ul className="mt-0.5 text-xs text-zinc-700">
-                      {boletim.camerasCadastradas.map((cam) => (
-                        <li key={cam.id}>
-                          <span className="font-semibold text-zinc-900">
-                            {cam.nomeId || '—'}
-                          </span>
-                          {cam.modelo ? ` · ${cam.modelo}` : ''}
-                          {cam.operador ? ` · Op: ${cam.operador}` : ''}
-                          {cam.foco ? ` · Foco: ${cam.foco}` : ''}
-                          {cam.claquetista ? ` · Claquete: ${cam.claquetista}` : ''}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-                <div>
-                  <p className="text-[9px] font-semibold uppercase tracking-wide text-zinc-500">
-                    Cartões usados ({cartoesUsados.length})
-                  </p>
-                  {cartoesUsados.length === 0 ? (
-                    <p className="mt-0.5 text-xs text-zinc-400">—</p>
-                  ) : (
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {cartoesUsados.map((cartao) => (
-                        <span
-                          key={cartao}
-                          className="rounded border border-zinc-300 bg-zinc-50 px-1.5 py-0.5 font-mono text-[11px] text-zinc-800"
-                        >
-                          {cartao}
+                  <ul className="text-[11px] leading-snug text-zinc-700">
+                    {boletim.camerasCadastradas.map((cam) => (
+                      <li key={cam.id}>
+                        <span className="font-semibold text-zinc-900">
+                          {cam.nomeId || 'Câmera'}
                         </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                        {[
+                          cam.modelo,
+                          cam.operador && `Op: ${cam.operador}`,
+                          cam.foco && `Foco: ${cam.foco}`,
+                          cam.claquetista && `Claquete: ${cam.claquetista}`,
+                        ]
+                          .filter(Boolean)
+                          .map((parte) => ` · ${parte}`)
+                          .join('')}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {folha.cartoes.length > 0 ? (
+                  <p className="text-[11px] leading-snug text-zinc-700">
+                    <span className="font-semibold text-zinc-900">Cartões</span>{' '}
+                    <span className="font-mono">{folha.cartoes.join(' · ')}</span>
+                  </p>
+                ) : null}
               </div>
             </section>
 
-            {/* ===== Cenas → Blocos → Planos → Takes ===== */}
-            <section className="mt-6">
-              {boletim.cenas.length === 0 ? (
+            {/* ===== Cenas → Planos → Takes ===== */}
+            <section className="mt-5">
+              {folha.cenas.length === 0 ? (
                 <p className="text-sm text-zinc-500">Nenhuma cena registrada.</p>
               ) : (
-                <div className="space-y-5">
-                  {boletim.cenas.map((cena) => {
-                    let cenaPlanos = 0;
-                    let cenaAprov = 0;
-                    for (const bloco of cena.blocos) {
-                      cenaPlanos += bloco.planos.length;
-                      for (const plano of bloco.planos)
-                        cenaAprov += plano.takes.filter((t) => t.aprovado).length;
-                    }
-                    return (
-                      <div key={cena.id} className="pdf-cena">
-                        {/* CENA = capítulo */}
-                        <div className="pdf-cena-header flex items-center gap-3 rounded-sm bg-zinc-900 px-3 py-2 text-white">
-                          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
-                            Cena
-                          </span>
-                          <span className="text-lg font-black leading-none">
-                            {cena.numero.trim() || 'S/N'}
-                          </span>
-                          <span className="ml-auto text-[10px] uppercase tracking-wide text-zinc-400">
-                            {cena.blocos.length} blocos · {cenaPlanos} planos ·{' '}
-                            {cenaAprov} aprov.
-                          </span>
-                        </div>
-
-                        <div className="mt-2 space-y-3">
-                          {cena.blocos.map((bloco) => (
-                            <div key={bloco.id}>
-                              {/* BLOCO = seção */}
-                              <div className="pdf-bloco-header flex items-center gap-2 border-b-2 border-zinc-300 pb-1">
-                                <span className="rounded bg-zinc-200 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-zinc-700">
-                                  Bloco {bloco.letra || '—'}
-                                </span>
-                                <span className="text-[10px] text-zinc-400">
-                                  {bloco.planos.length}{' '}
-                                  {bloco.planos.length === 1 ? 'plano' : 'planos'}
-                                </span>
-                              </div>
-
-                              <div className="mt-2 space-y-2.5">
-                                {groupPlanos(bloco.planos, cameraName).map((group) => {
-                                  const head = group.planos[0];
-                                  const parts = setupParts(head, cameraName(head));
-                                  const planosLabel = group.planos
-                                    .map((p) => `Plano ${p.numero.trim() || 'S/N'}`)
-                                    .join(' · ');
-                                  const multi = group.planos.length > 1;
-                                  return (
-                                    <div key={group.planos[0].id}>
-                                      {/* Setup compartilhado (reduz repetição) */}
-                                      <div className="pdf-setup rounded border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-[11px] leading-snug">
-                                        <span className="font-bold text-zinc-900">
-                                          {planosLabel}
-                                        </span>
-                                        {parts.length > 0 ? (
-                                          <span className="text-zinc-600">
-                                            {' '}
-                                            — {parts.join(' · ')}
-                                          </span>
-                                        ) : null}
-                                      </div>
-
-                                      {group.planos.map((plano) => (
-                                        <div key={plano.id} className="pdf-plano mt-1.5">
-                                          {multi ? (
-                                            <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-                                              Plano {plano.numero.trim() || 'S/N'}
-                                            </p>
-                                          ) : null}
-                                          {plano.takes.length === 0 ? (
-                                            <p className="py-1 text-[11px] italic text-zinc-400">
-                                              Sem takes registrados.
-                                            </p>
-                                          ) : (
-                                            <table className="pdf-table w-full table-fixed border-collapse text-[11px]">
-                                              <colgroup>
-                                                <col className="w-[7%]" />
-                                                <col className="w-[13%]" />
-                                                <col className="w-[15%]" />
-                                                <col className="w-[17%]" />
-                                                <col />
-                                                <col className="w-[20%]" />
-                                              </colgroup>
-                                              <thead>
-                                                <tr className="border-y border-zinc-300 bg-zinc-100 text-left text-[9px] uppercase tracking-wide text-zinc-600">
-                                                  <th className="px-1.5 py-1 font-bold">
-                                                    #
-                                                  </th>
-                                                  <th className="px-1.5 py-1 font-bold">
-                                                    Cam
-                                                  </th>
-                                                  <th className="px-1.5 py-1 font-bold">
-                                                    Cartão
-                                                  </th>
-                                                  <th className="px-1.5 py-1 font-bold">
-                                                    Clip/Sync
-                                                  </th>
-                                                  <th className="px-1.5 py-1 font-bold">
-                                                    Nota
-                                                  </th>
-                                                  <th className="px-1.5 py-1 font-bold">
-                                                    Status
-                                                  </th>
-                                                </tr>
-                                              </thead>
-                                              <tbody>
-                                                {plano.takes.map((take) => (
-                                                  <tr
-                                                    key={take.id}
-                                                    className={cn(
-                                                      'border-b border-zinc-200 align-top',
-                                                      take.aprovado &&
-                                                        'bg-approved-soft/50',
-                                                    )}
-                                                  >
-                                                    <td
-                                                      className={cn(
-                                                        'px-1.5 py-1 font-mono font-bold',
-                                                        take.aprovado &&
-                                                          'border-l-[3px] border-approved',
-                                                      )}
-                                                    >
-                                                      {take.numero || '—'}
-                                                    </td>
-                                                    <td className="px-1.5 py-1">
-                                                      {cameraName(plano)}
-                                                    </td>
-                                                    <td className="px-1.5 py-1 font-mono">
-                                                      {take.cartao || '—'}
-                                                    </td>
-                                                    <td className="px-1.5 py-1 font-mono">
-                                                      {take.clipSync || '—'}
-                                                    </td>
-                                                    <td
-                                                      className={cn(
-                                                        'break-words px-1.5 py-1',
-                                                        take.aprovado &&
-                                                          'font-semibold text-zinc-900',
-                                                      )}
-                                                    >
-                                                      {take.notaOperacional || '—'}
-                                                    </td>
-                                                    <td className="px-1.5 py-1">
-                                                      {take.aprovado ? (
-                                                        <span className="inline-block rounded bg-approved px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-white">
-                                                          ✓ Aprovado
-                                                        </span>
-                                                      ) : (
-                                                        <span className="text-zinc-300">
-                                                          —
-                                                        </span>
-                                                      )}
-                                                    </td>
-                                                  </tr>
-                                                ))}
-                                              </tbody>
-                                            </table>
-                                          )}
-                                          {plano.observacoes.trim() ? (
-                                            <p className="mt-1 text-[11px] text-zinc-700">
-                                              <span className="font-semibold text-zinc-500">
-                                                Obs.:{' '}
-                                              </span>
-                                              {plano.observacoes}
-                                            </p>
-                                          ) : null}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="space-y-3">
+                  {folha.cenas.map((cena) => (
+                    <BlocoDaCena key={cena.id} cena={cena} />
+                  ))}
                 </div>
               )}
             </section>
@@ -440,7 +323,7 @@ export function BoletimView({ id }: { id: string | null }) {
                   <h2 className="mb-2 border-b border-zinc-300 pb-1 text-[11px] font-bold uppercase tracking-widest text-zinc-700">
                     Mídia / Suporte
                   </h2>
-                  <table className="w-full border-collapse text-[11px]">
+                  <table className="pdf-table w-full border-collapse text-[11px]">
                     <thead>
                       <tr className="border-b border-zinc-300 text-left text-[9px] uppercase tracking-wide text-zinc-500">
                         <th className="py-1 pr-2 font-bold">Tipo</th>
@@ -452,12 +335,10 @@ export function BoletimView({ id }: { id: string | null }) {
                     <tbody>
                       {boletim.midiaSuporte.map((midia) => (
                         <tr key={midia.id} className="border-b border-zinc-100">
-                          <td className="py-1 pr-2">{midia.tipoMidia || '—'}</td>
-                          <td className="py-1 pr-2 font-mono">
-                            {midia.numeroCartao || '—'}
-                          </td>
-                          <td className="py-1 pr-2">{midia.quantidade || '—'}</td>
-                          <td className="py-1">{midia.responsavel || '—'}</td>
+                          <td className="py-1 pr-2">{midia.tipoMidia}</td>
+                          <td className="py-1 pr-2 font-mono">{midia.numeroCartao}</td>
+                          <td className="py-1 pr-2">{midia.quantidade}</td>
+                          <td className="py-1">{midia.responsavel}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -491,10 +372,8 @@ export function BoletimView({ id }: { id: string | null }) {
                       key={membro.id}
                       className="flex justify-between gap-3 border-b border-zinc-100 py-0.5 text-[11px]"
                     >
-                      <span className="font-medium text-zinc-900">
-                        {membro.nome || '—'}
-                      </span>
-                      <span className="text-zinc-500">{membro.funcao || '—'}</span>
+                      <span className="font-medium text-zinc-900">{membro.nome}</span>
+                      <span className="text-zinc-500">{membro.funcao}</span>
                     </li>
                   ))}
                 </ul>
