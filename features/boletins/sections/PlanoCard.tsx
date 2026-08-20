@@ -38,7 +38,7 @@ interface PlanoCardProps {
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div>
-      <h5 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+      <h5 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
         {title}
       </h5>
       {children}
@@ -286,7 +286,7 @@ export function PlanoCard({
 
           <Group title="Takes">
             {plano.takes.length === 0 ? (
-              <p className="mb-3 text-sm text-zinc-500">
+              <p className="mb-3 text-sm text-zinc-400">
                 Nenhum take. Adicione e marque os aprovados pelo diretor.
               </p>
             ) : (

@@ -48,7 +48,7 @@ export default async function TakesPage({
         right={<SyncIndicator />}
       />
 
-      <PageContainer className="flex flex-col gap-4 py-4 pb-8">
+      <PageContainer as="main" className="flex flex-col gap-4 py-4 pb-8">
         <DiariaSurface
           productionId={productionId}
           shootingDayId={dayId}

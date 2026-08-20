@@ -36,7 +36,7 @@ export default async function NovaDiariaPage({
         backHref={`/p/${productionId}/diarias`}
       />
 
-      <PageContainer className="flex flex-col gap-4 py-4 pb-8">
+      <PageContainer as="main" className="flex flex-col gap-4 py-4 pb-8">
         <DiariaForm productionId={productionId} />
       </PageContainer>
     </>

@@ -967,3 +967,178 @@ mostra, e se a fixação falhar nada na tela muda.
   caminho longo é o certo.
 - O primeiro dia num aparelho novo continua custando o caminho completo — não há o que
   lembrar antes de a pessoa ter estado em algum lugar. É o preço de não adivinhar.
+
+---
+
+### ADR-038 · O limite de tentativas mora no banco; RLS fica de fora, e a sessão longa se paga com revogação
+
+`2026-08-20` · **Aceita** · implementa a [Fase 10](roadmap.md#-fase-10--hardening) ·
+**revisita** [ADR-025](#adr-025--conta-obrigatória-na-plataforma-legado-sem-conta) e o item 4 da
+[§7 de database.md](architecture/database.md#7-segurança), que prometia "avaliar RLS na Fase 10"
+
+Três perguntas de endurecimento que pareciam independentes e não são: as três são sobre o que
+acontece quando o atacante tem **tempo**, e as três respondem à mesma pressão vinda do
+offline-first.
+
+#### O contador do rate limit é tabela, não memória
+
+A Better Auth já limita `/api/auth/**`. O padrão dela é contar **em memória** — e em memória o
+limite quase não existe num deploy serverless: cada instância tem o seu contador, então "cinco
+tentativas por minuto" vira cinco por minuto **por instância**. Quem está adivinhando ganha o
+paralelismo de graça, e o gráfico de segurança fica bonito enquanto a porta está aberta.
+
+**Decisão: `storage: 'database'`**, tabela `rate_limits` (migration `0008`). O contador é um só,
+e é um lugar só para olhar quando alguém reclamar de ter sido barrado.
+
+O resgate do **código de convite** não passa por rota da Better Auth — é Server Action — e ficou
+de fora até aqui. É o alvo que mais compensa: o código tem quatro caracteres sobre um alfabeto
+de 32 e o prefixo vem do nome da produção, que quem quer entrar geralmente conhece. Entra em
+`lib/auth/limite.ts`, **na mesma tabela**: duas tabelas de contador seriam dois lugares para
+esquecer de limpar.
+
+A chave é o **usuário**, não o IP. A ação exige sessão, então ganhar paralelismo custa muitas
+contas — e criar conta já é limitado. Por IP puniria a equipe inteira atrás do roteador da base,
+que é o caso normal e não o suspeito. **Acertar o código zera a cota**: quem entra em cinco
+salas numa tarde não é quem o limite existe para pegar, e um acerto encerra a adivinhação em
+vez de continuá-la.
+
+#### A armadilha da janela global, que não tem sintoma
+
+Dividir a tabela com a Better Auth cobra um preço que só se vê lendo a implementação dela: ela
+**poda `rate_limits` sozinha**, e o corte é `agora - max(rateLimit.window, 10, 60)`, aplicado a
+**todas** as linhas, sem olhar a chave — as janelas de `customRules` não entram nessa conta.
+
+Com a janela global em 60 s, que foi a primeira escrita, qualquer rolagem de janela de login
+apagava a tabela inteira a cada minuto. As regras de uma hora — cadastro, redefinição, e o
+resgate de código, que divide a mesma tabela — valiam, na prática, **um minuto**. Sessenta
+vezes mais fracas do que o que estava escrito, e sem nada quebrar: os testes passavam, a tela
+funcionava, o `429` aparecia na hora certa dentro do minuto.
+
+**A regra que ficou: a janela global é a maior janela em uso.** Quem acrescentar uma regra mais
+longa precisa subir a global junto. Subir a janela obriga a subir o teto (200 por hora e por
+rota, em vez de 100 por minuto), e isso é folgado porque **nenhuma sessão é lida por HTTP**
+aqui — o servidor chama `auth.api.getSession` direto, sem passar pelo limitador, então o que
+sobra em `/api/auth` é entrar, sair, cadastrar e redefinir.
+
+`npm run test:sala` guarda a invariante, e uma mutação confirmou que ela pega o retorno.
+
+#### RLS: **não** entra, e a razão não é preguiça
+
+Row Level Security do Postgres protege contra uma conexão que chega ao banco com identidade de
+usuário. **Não é o que existe aqui**: o driver serverless usa uma conexão de aplicação única, e
+o `user_id` não atravessa a conexão — chega como argumento da query. Ligar RLS assim significa
+ou rodar `set local app.user_id` a cada requisição (que o driver HTTP, sem transação interativa,
+não sustenta), ou uma política que aceita tudo — segurança de fachada, que é pior que nenhuma
+porque muda o que as pessoas acham que está protegido.
+
+**Decisão: a autorização continua sendo da aplicação**, em `lib/db/queries` e `lib/auth/guards`,
+onde ela é legível, testável (`npm run test:sala`) e já cobre a regra que RLS não expressaria de
+qualquer jeito — "não é membro recebe 404, não 403".
+
+RLS volta à mesa no dia em que houver acesso direto ao banco por identidade: cliente falando com
+o Postgres, ou uma segunda aplicação com credencial própria. Nenhum dos dois está no roadmap.
+
+#### A sessão de 90 dias se paga com revogação, não com expiração curta
+
+A sessão longa não é folga: é o que sustenta o offline (ADR-025). Em locação sem sinal, sessão
+expirada não tem como ser renovada — e o assistente fica sem preencher a diária, que é a única
+coisa que o produto promete nunca acontecer.
+
+O preço é real: um telefone perdido continua entrando na produção por três meses. **A resposta
+não é encurtar a sessão** — encurtar quebra o offline para todo mundo por causa do aparelho de
+um. A resposta é **poder revogar**, e isso só existe porque a sessão vive no banco e não num
+JWT: um JWT não tem como ser cancelado antes de expirar. Era uma capacidade que o schema já
+tinha e que não tinha tela.
+
+`/conta` lista os aparelhos conectados — navegador, sistema, IP e desde quando — e derruba
+qualquer um deles, ou todos os outros de uma vez. O aparelho atual **não** tem botão de
+desconectar: ele tem "Sair", que é outra coisa, e misturar os dois faria alguém se deslogar
+tentando derrubar o outro.
+
+**E a sessão deixa de precisar ser "fresca"** (`session.freshAge: 0`). O padrão da Better Auth
+é um dia: passado esse prazo, os endpoints marcados como sensíveis recusam a sessão até a
+pessoa entrar de novo. Com sessão de 90 dias que nunca é reverificada, isso quer dizer que
+**quase toda** sessão real está velha — e o único endpoint em uso que exige frescor é
+justamente listar os aparelhos. A proteção desligava o remédio: a tela que existe para
+derrubar um telefone perdido era a que não abria, e o botão de revogar (que nunca exigiu
+frescor) ficava do outro lado de um erro.
+
+O que se perde é pouco: listar e revogar **as próprias** sessões não é escalada de privilégio,
+porque quem tem o cookie já tem a conta inteira. Trocar e-mail e apagar conta também são
+gatilhos de frescor e nenhum dos dois existe neste app; se um dia existirem, a exigência volta
+**neles**, não no global.
+
+**Consequências:**
+
+- Uma migration nova (`0008`) e uma tabela que **não** segue as convenções de domínio: sem
+  `production_id`, sem auditoria, sem soft delete, sem `version`, sem trigger de `sync_log`. É
+  schema da Better Auth, como `sessions` — e contador de tentativa não sincroniza para aparelho
+  nenhum.
+- O limite passa a valer em produção e **não** em desenvolvimento (o padrão da biblioteca), o
+  que é deliberado: um limite que dispara no `npm run dev` é um limite que se aprende a
+  contornar.
+- Quem for barrado vê "tente de novo em 12 minutos", não "espere 743 segundos". Mensagem que
+  não é acionável vira ticket de suporte.
+- A tabela ganha **poda**: é uma linha por chave e chave nova a cada IP, então sem limpeza ela
+  só cresce. Some o que passou de 24 h, e o gatilho é a **abertura de janela**, não a
+  tentativa: preso à tentativa, quem estivesse sendo barrado faria o servidor varrer a tabela
+  a cada batida — trabalho feito em nome de quem já foi recusado. Não é cron porque não
+  precisa ser ainda; quando precisar, é cron, e não uma poda mais agressiva por requisição.
+- O limitador **falha aberto**, e agora de verdade: a primeira versão prometia isso num
+  comentário e num ramo inalcançável, enquanto o erro que de fato acontece — uma falha
+  passageira do Neon — subia como erro de Server Action na tela de entrar. Um limitador que
+  tranca todo mundo quando ele próprio falha transforma um defeito de contador em
+  indisponibilidade da sala inteira, e a porta que ele guarda já exige sessão e um código
+  secreto.
+- A §7 de `database.md` deixa de prometer RLS e passa a explicar por que não.
+
+---
+
+### ADR-039 · O design system tem duas superfícies, e o cinza que serve numa cega a outra
+
+`2026-08-20` · **Aceita** · fecha a [Fase 10](roadmap.md#-fase-10--hardening) ·
+**complementa** [ADR-024](#adr-024--design-system-único-o-do-boletim-de-câmera)
+
+A auditoria de acessibilidade encontrou uma coisa que ninguém tinha notado em cinco fases: o
+cinza dominante do texto secundário — `zinc-500`, em 218 lugares — dá **3,2:1 a 4,1:1** sobre
+os fundos escuros do tema. O mínimo de AA para texto pequeno é 4,5:1.
+
+Isso não é conformidade. **É um telefone segurado ao sol, numa locação, por quem precisa ler o
+cartão da câmera entre dois takes.** Contraste baixo aqui é a diferença entre conferir e
+adivinhar.
+
+**Decisão: no escuro, cor de texto é `zinc-400` ou mais clara.** Sobre `ink`, `surface`,
+`surface-raised` e `surface-hover`, `zinc-400` fica entre 6,0:1 e 7,8:1; `zinc-500` e
+`zinc-600` deixam de ser cores de texto. A hierarquia visual não some junto, porque ela nunca
+dependeu de apagar o texto — depende de tamanho, de peso e do branco dos títulos.
+
+#### A parte que quase deu errado
+
+A substituição óbvia é global, e teria quebrado o produto no lugar mais caro: **as folhas
+impressas são a superfície oposta**. `FolhaCamera`, `FolhaSom`, `FolhaContinuidade`,
+`FolhaConsolidada` e a folha do boletim legado são `bg-white text-zinc-900`. Ali o mesmo
+`zinc-500` é escuro sobre branco e passa com folga (4,83:1). Trocá-lo por `zinc-400` daria
+2,3:1 — texto quase invisível **no papel**, que é o entregável do fim da diária.
+
+O defeito não apareceria em nenhuma tela. Apareceria na impressora de alguém, às 22h, com a
+equipe indo embora.
+
+Então o design system tem **duas** superfícies declaradas, e a regra é diferente em cada uma:
+
+| Superfície             | Onde                               | Texto secundário            |
+| ---------------------- | ---------------------------------- | --------------------------- |
+| Escura (app)           | tudo, exceto as folhas             | `zinc-400` ou mais claro    |
+| Clara (folha impressa) | as cinco `Folha*` + a folha legada | `zinc-500`/`zinc-600`, dark |
+
+**Consequências:**
+
+- `npm run test:acessibilidade` guarda **as duas metades** — nada de cinza fraco no escuro, e
+  as folhas mantendo o cinza escuro. Uma regra só pegaria metade do erro e daria confiança
+  onde não devia.
+- `placeholder:` fica de fora da conta: dica dentro do campo não é conteúdo, e clareá-la a
+  faria parecer valor preenchido.
+- Componente novo herda a superfície de onde vive. Se um dia existir um terceiro contexto (um
+  tema claro de tela, por exemplo), ele entra nesta tabela **antes** de entrar no código.
+- Os tamanhos `sm` de `Button` (38 px) e `OptionChips` (32 px) **não** subiram para 44 px. A
+  regra dos 44 px é dos alvos principais, que a cumprem; esses são controles densos e
+  secundários de uma tela validada em set, e mudá-los mudaria a densidade de algo que funciona.

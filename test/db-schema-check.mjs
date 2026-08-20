@@ -353,6 +353,116 @@ async function verificaEixos() {
        and operation = 'DELETE'
   `;
   check('o soft delete do relatório vira DELETE no log', logDelete.total === 1);
+
+  // ---- Fase 10: o contador do rate limit ----
+
+  const colunasDoLimite = await sql`
+    select column_name, data_type from information_schema.columns
+     where table_name = 'rate_limits'
+     order by column_name
+  `;
+  const tipoDe = (nome) =>
+    colunasDoLimite.find((coluna) => coluna.column_name === nome)?.data_type;
+
+  check('a tabela rate_limits existe', colunasDoLimite.length === 4);
+  check('a chave do limite é texto', tipoDe('key') === 'text');
+  check('a contagem é inteira', tipoDe('count') === 'integer');
+  // A Better Auth grava epoch em milissegundos. `integer` estouraria em 1970+24 dias, e
+  // `timestamptz` obrigaria a traduzir nos dois sentidos a cada requisição.
+  check('last_request é bigint, não timestamp', tipoDe('last_request') === 'bigint');
+
+  const [chaveUnica] = await sql`
+    select count(*)::int as total
+      from information_schema.table_constraints c
+      join information_schema.key_column_usage k
+        on k.constraint_name = c.constraint_name
+     where c.table_name = 'rate_limits'
+       and c.constraint_type = 'UNIQUE'
+       and k.column_name = 'key'
+  `;
+  // Sem a unicidade, duas requisições simultâneas criariam duas linhas para a mesma
+  // chave — e o limite passaria a valer o dobro exatamente sob carga, que é quando ele
+  // precisa valer.
+  check('a chave do limite é única', chaveUnica.total === 1);
+
+  const [limiteSemSync] = await sql`
+    select count(distinct trigger_name)::int as total from information_schema.triggers
+     where event_object_table = 'rate_limits'
+  `;
+  // Não é tabela de domínio: contador de tentativa não sincroniza para aparelho nenhum.
+  check('rate_limits não tem trigger de sync nem de version', limiteSemSync.total === 0);
+
+  // ---- Fase 10: os índices das coleções de estado (migration 0009) ----
+
+  // Elas nasceram na Fase 7 com a `check` de escopo e nada além da PK. O snapshot as lê
+  // por `production_id` + escopo, e sem índice isso vira varredura no caminho da fixação
+  // da diária — a primeira coisa que acontece de manhã, e a única requisição obrigatória
+  // da fronteira offline. O plano de execução depende do volume; a existência do índice,
+  // não. É por isso que a checagem mora aqui e não na suíte de carga.
+  const [indicesDeEstado] = await sql`
+    select count(*)::int as total from pg_indexes
+     where schemaname = 'public'
+       and tablename in ('continuity_props','continuity_wardrobe',
+                         'continuity_hair_makeup','continuity_set_dressing')
+       and indexname like '%_production_%'
+  `;
+  check(
+    'as quatro coleções de estado têm índice por cena e por take',
+    indicesDeEstado.total === 8,
+  );
+
+  /**
+   * Cada tabela de conteúdo tem índice **pelo recorte com que ela é lida** — não
+   * necessariamente por `production_id`.
+   *
+   * A primeira versão desta checagem exigia `production_id` em todas, e estava errada em
+   * duas: `sound_take_tracks` e `daily_progress_report` nunca são lidas por produção. A
+   * primeira é lida por take (quatro linhas por take, e a fixação recorta pelos takes da
+   * diária); a segunda é uma linha por diária. Exigir um índice por produção nelas seria
+   * pagar escrita mais cara em toda anotação de som para acelerar uma consulta que
+   * ninguém faz.
+   *
+   * O que se protege aqui é a lista, não o dogma: se alguém mudar o recorte de leitura,
+   * muda a linha correspondente e a mudança fica visível na revisão.
+   */
+  const recorteDeLeitura = {
+    scenes: 'production_id',
+    setups: 'production_id',
+    takes: 'production_id',
+    camera_take_data: 'production_id',
+    sound_take_data: 'production_id',
+    continuity_take_data: 'production_id',
+    continuity_props: 'production_id',
+    continuity_wardrobe: 'production_id',
+    continuity_hair_makeup: 'production_id',
+    continuity_set_dressing: 'production_id',
+    // Lida pelos takes da diária, nunca pela produção inteira.
+    sound_take_tracks: 'take_id',
+    // Uma linha por diária.
+    daily_progress_report: 'shooting_day_id',
+  };
+
+  const indices = await sql`
+    select tablename, indexdef from pg_indexes where schemaname = 'public'
+  `;
+
+  // A coluna precisa ser a **primeira** do índice: um btree em `(a, b)` não serve para
+  // filtrar só por `b`. Daí a âncora no parêntese de abertura.
+  const lidera = (indexdef, coluna) =>
+    new RegExp('\\("?' + coluna + '"?[,)]').test(indexdef);
+
+  const semRecorte = Object.entries(recorteDeLeitura).filter(
+    ([tabela, coluna]) =>
+      !indices.some(
+        (indice) => indice.tablename === tabela && lidera(indice.indexdef, coluna),
+      ),
+  );
+
+  check(
+    'toda tabela de conteúdo é indexada pelo recorte com que é lida',
+    semRecorte.length === 0,
+    semRecorte.length ? ` (${semRecorte.map(([t]) => t).join(', ')})` : '',
+  );
 }
 
 try {

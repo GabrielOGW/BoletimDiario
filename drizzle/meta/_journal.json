@@ -57,6 +57,20 @@
       "when": 1786501195438,
       "tag": "0007_fase7_relatorio_progresso",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787228638026,
+      "tag": "0008_fase10_rate_limit",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787229747693,
+      "tag": "0009_fase10_indices_continuidade",
+      "breakpoints": true
     }
   ]
 }

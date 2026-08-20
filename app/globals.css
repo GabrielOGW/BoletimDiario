@@ -70,6 +70,21 @@ input[type='search']::-webkit-search-cancel-button {
   color: #08090b;
 }
 
+/* Quem pediu menos movimento recebe menos movimento.
+   A interface é cheia de `transition` e de um `slide-up` nos diálogos; para parte das
+   pessoas isso não é polimento, é enjoo. As transições viram instantâneas em vez de
+   sumirem: o estado final é o mesmo, só não há caminho até ele. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ===== Impressão / Exportar PDF (A4) ===== */
 @media print {
   @page {

@@ -369,16 +369,191 @@ uma delas esquecer o BOM que o Excel em pt-BR exige.
 desvio de roteiro, estado do set —, e texto em planilha é onde ele deixa de ser lido. O
 relatório de progresso e a folha continuam sendo a entrega dela. Entra se alguém pedir.
 
-## 📋 Fase 10 — Hardening
+## ✅ Fase 10 — Hardening
 
 Contínua **a partir da Fase 4**, não um bloco no fim: teste de sync escrito depois de o sync
 existir é teste que nunca é escrito.
 
-- [ ] **Vitest** cobrindo domínio, sync e conflitos
-- [ ] **Playwright** incluindo o fluxo offline completo
-- [ ] Rate limit, sessões por dispositivo, avaliação de RLS
-- [ ] Performance com produção grande (40 diárias, 2000 takes)
-- [ ] Auditoria de PWA, acessibilidade e UX mobile
+- [x] **Vitest** cobrindo o cliente do sync — `2026-08-20`
+- [x] **Playwright** incluindo o fluxo offline completo — `2026-08-20`
+- [x] Rate limit, sessões por dispositivo, avaliação de RLS — `2026-08-20`
+- [x] Performance com produção grande (40 diárias, 2000 takes) — `2026-08-20`
+- [x] Auditoria de PWA, acessibilidade e UX mobile — `2026-08-20`
+
+> **Os dois runners entraram em `2026-08-20`**, e o recorte de cada um foi escolhido pelo
+> buraco que existia, não pelo que dá um número bonito de cobertura.
+>
+> **Vitest (57 testes, `npm run test:vitest`, dentro do `npm test`).** As nove suítes `.mjs`
+> provam o domínio puro e as três folhas; `npm run test:sync` prova o que o **servidor**
+> decide, contra o Neon real. Ninguém provava **o que o cliente faz com a resposta** — e é ali
+> que o erro é mudo, porque quase todo defeito termina do mesmo jeito: a fila esvazia sem o
+> dado ter chegado, ou o dado chega e some da tela. Entraram a fila de saída contra IndexedDB
+> de verdade (`fake-indexeddb`, não dublê), o repositório da fronteira e o motor inteiro —
+> `426` sem gastar tentativa, `401`/`403` virando `FAILED` com o payload intacto, o conflito
+> que converge e vira pendência, o cursor que só avança depois de aplicar, o campo com
+> operação na fila que não é sobrescrito.
+>
+> A prova mais importante do lote é a menor: **falhar o enfileiramento desfaz a escrita
+> local**. É a regra do ADR-016 que, quebrada, não faz barulho nenhum — a tela mostra o dado,
+> o assistente segue anotando, e a falta só aparece na montagem no dia seguinte.
+>
+> **Playwright (`npm run test:e2e`, fora do `npm test`).** Fecha as duas últimas caixas de
+> [synchronization.md §8](architecture/synchronization.md#8-testes-obrigatórios), abertas desde
+> a Fase 4 por um motivo honesto: exigem IndexedDB real e mais de uma página viva. Roda contra
+> o **build de produção**, porque o Service Worker só é registrado lá e sem ele a navegação
+> offline não tem o que servir; cria conta, produção e diária **pela interface** e apaga tudo
+> no fim.
+>
+> Ele encontrou uma coisa que o teste manual esconde: a **primeiríssima** navegação de um
+> aparelho acontece antes de o Service Worker assumir o controle, então ela não entra no cache
+> de runtime. Quem abre a diária e vai direto para o modo avião cai no app shell — que é o
+> boletim local, não a diária. Na prática o segundo acesso resolve, e é isso que o teste
+> reproduz; mas está escrito, e não descoberto de novo em locação.
+>
+> As três suítes foram conferidas por mutação: cortar a proteção de campo pendente no `pull`,
+> baixar o limiar de "servidor inalcançável" para uma falha e remover o `runtime.put` do
+> Service Worker derrubam exatamente o teste que deveriam derrubar.
+
+> **Rate limit, dispositivos e RLS em `2026-08-20`**
+> ([ADR-038](decisions.md#adr-038--o-limite-de-tentativas-mora-no-banco-rls-fica-de-fora-e-a-sessão-longa-se-paga-com-revogação)),
+> em duas passagens: `banco` (migration `0008`, tabela `rate_limits`) e `plataforma`.
+>
+> **O rate limit da Better Auth existia e quase não valia.** O padrão dela conta em memória, e
+> em memória o limite é **por instância** num deploy serverless: "cinco por minuto" vira cinco
+> por minuto vezes o número de instâncias, e quem está adivinhando ganha o paralelismo de
+> graça. Com `storage: 'database'` o contador é um só. Verificado contra o build de produção:
+> a sexta tentativa de entrar responde `429`, e a linha aparece em `rate_limits`.
+>
+> **O resgate do código de convite** — a pendência registrada lá na Fase 3 — não passa por rota
+> da Better Auth e era o alvo que mais compensava: quatro caracteres sobre um alfabeto de 32,
+> com o prefixo saindo do nome da produção. Agora são 10 tentativas por hora **por usuário**
+> (por IP puniria a equipe inteira atrás do roteador da base), cobradas depois da validação de
+> formato, porque código malformado não é tentativa de adivinhar.
+>
+> **RLS foi avaliada e recusada, com o motivo escrito.** Ela protege contra uma conexão que
+> chega ao banco com identidade de usuário, e não é o que existe aqui — o driver serverless usa
+> uma conexão de aplicação única e o `user_id` chega como argumento da query. Ligá-la assim
+> daria uma política que aceita tudo: segurança de fachada, que é pior que nenhuma porque muda
+> o que as pessoas acham que está protegido.
+>
+> **`/conta` é a contrapartida da sessão de 90 dias.** A sessão longa não é folga, é o que
+> sustenta o offline — sessão expirada em locação sem sinal não tem como ser renovada. O preço
+> é o telefone perdido que continua entrando por três meses, e a resposta não é encurtar a
+> sessão de todo mundo por causa do aparelho de um: é poder derrubar aquele. Só é possível
+> porque a sessão vive no banco e não num JWT — uma capacidade que o schema já tinha e que não
+> tinha tela.
+>
+> **Dois achados da revisão, e os dois do tipo que não dá sintoma.**
+>
+> O primeiro é o mais grave da fase: **dividir `rate_limits` com a Better Auth quase anulou os
+> limites de uma hora.** Ela poda a tabela sozinha, e o corte é
+> `agora - max(rateLimit.window, 10, 60)` — sobre **todas** as linhas, sem olhar a chave e sem
+> consultar as janelas de `customRules`. Com a janela global em 60 s, qualquer rolagem de
+> janela de login apagava a tabela inteira a cada minuto, e as regras de uma hora valiam um
+> minuto: sessenta vezes mais fracas do que o escrito, com os testes passando e o `429`
+> aparecendo na hora certa dentro do minuto. A janela global passou a ser a maior janela em
+> uso, e `npm run test:sala` guarda a invariante — conferido por mutação.
+>
+> O segundo: a Better Auth exige
+> sessão "fresca" para **listar** sessões, e o padrão dela de frescor é 24 h. Com sessão de 90
+> dias que nunca é reverificada, isso significa que `/conta` funcionaria só no primeiro dia de
+> cada login — a tela que existe para derrubar um telefone perdido seria justamente a que não
+> abre. Nenhum teste tinha pegado porque a conta do E2E nasce segundos antes de ser usada.
+> Agora `test/e2e/conta.spec.ts` envelhece a sessão no banco antes de abrir a tela, e
+> `freshAge: 0` está no config com o motivo escrito.
+>
+> **Verificado por** `npm run test:db` (41, +6), `npm run test:sala` (62, +11) e o E2E da conta,
+> além de exercício HTTP contra o build de produção.
+
+> **Produção grande em `2026-08-20`** — `npm run test:carga`: 40 diárias, 200 cenas, 2400
+> takes, 4800 linhas de câmera, 9600 tracks e 24 mil linhas de `sync_log`, semeadas, medidas e
+> apagadas. A pergunta não era "quantos milissegundos" e sim **onde a curva vira**: o que é
+> recortado por diária continua barato para sempre, e o que é recortado por produção cresce o
+> filme inteiro. A fixação carrega os dois.
+>
+> **Três achados, e nenhum deles era o esperado.**
+>
+> 1. **As quatro coleções de estado da continuidade não tinham índice nenhum além da PK.**
+>    Nasceram na Fase 7 com a `check` de escopo e nada mais, e o snapshot as lê por
+>    `production_id` + escopo — no caminho da fixação, que é a primeira coisa que acontece de
+>    manhã e a única requisição obrigatória da fronteira offline. Migration `0009`.
+> 2. **A fixação fazia dezessete idas ao banco, uma de cada vez.** As consultas sempre foram
+>    independentes; só faltava mandá-las juntas. 613 ms com o banco a 40 ms de distância — e
+>    esse número é aritmética de **latência**, não de dados: com os 200 ms de um 4G fraco de
+>    locação as mesmas dezessete idas passariam de três segundos para abrir a diária. Com
+>    `db.batch`, uma requisição e 253 ms.
+> 3. **Dois testes meus mediam a coisa errada, e o teste é que estava errado.** O primeiro
+>    comparava o tempo do pull incremental com o do pull do zero: nesta escala as duas
+>    consultas são dominadas pela ida e volta, então a razão entre elas é ruído de latência —
+>    passaria ou falharia conforme o minuto. O segundo exigia que o plano de execução usasse
+>    índice: com as 600 linhas de **uma** produção o planejador escolhe varredura porque ela é
+>    de fato mais barata, e o teste acusaria um defeito inexistente. Viraram, respectivamente,
+>    uma afirmação sobre o **recorte** do cursor e uma sobre a **existência** do índice (esta
+>    em `test:db`, onde não depende de volume).
+>
+> O que a suíte afirma da fixação passou a ser **estrutural**: ela conta as requisições ao
+> banco e exige **uma**. Teto de tempo não pegaria a regressão que importa — desfazer o
+> `db.batch` mal mexe no relógio de quem está perto do banco, e triplica o tempo de quem está
+> na serra.
+>
+> O resto não precisou de nada: busca na produção inteira 114 ms, lista de diárias 29 ms,
+> dashboard 26 ms, pull incremental 70 ms. E a fixação continua trazendo **60 takes de 2400** —
+> o recorte por diária é o que impede o aparelho de baixar o filme inteiro para anotar um dia.
+
+> **Auditoria de PWA, acessibilidade e UX mobile em `2026-08-20`** — a última da fase.
+>
+> **O PWA já estava certo** e não precisou de nada: manifesto completo, ícones maskable,
+> `start_url` que abre sem rede, atalhos do ícone (Fase 11), `viewport-fit=cover`,
+> `theme-color`, Service Worker com aviso de atualização em vez de troca sob os dedos. Os
+> ícones já vinham com `aria-hidden`, o `IconButton` já tinha 44 px, o `Toggle` já tinha a
+> linha inteira como alvo de toque, e os campos já associavam erro por `aria-describedby`.
+>
+> **O achado grande foi contraste, e ele não é conformidade — é conseguir ler.** O cinza
+> dominante do texto secundário (`zinc-500`, 218 ocorrências) dá **3,2:1 a 4,1:1** sobre os
+> fundos do tema. O mínimo de AA para texto pequeno é 4,5:1, e o contexto aqui é um telefone
+> segurado ao sol, numa locação, por quem precisa ler o cartão da câmera entre dois takes.
+> Passou a `zinc-400` — 6,0:1 a 7,8:1 — e a hierarquia continua de pé, porque ela nunca
+> dependeu de apagar o texto: depende de tamanho, peso e do branco dos títulos.
+>
+> **A armadilha, que quase custou caro:** as folhas impressas são superfície **clara**
+> (`bg-white text-zinc-900`). Nelas o mesmo `zinc-500` é escuro sobre branco e passa com
+> folga (4,83:1); uma substituição cega teria deixado o papel ilegível — e o defeito só
+> apareceria na impressora de alguém, no fim de uma diária. As cinco folhas ficaram de fora,
+> e o teste guarda **as duas** regras: nada de cinza fraco no escuro, e as folhas mantendo o
+> cinza escuro.
+>
+> **O resto dos consertos**, todos pequenos e todos reais:
+>
+> - **`<main>` em toda tela da plataforma.** As telas do boletim legado sempre tiveram; as da
+>   plataforma nasceram sem, e sem elas quem navega por leitor de tela cai no topo e percorre
+>   o cabeçalho de novo a cada troca de rota.
+> - **Cartão recolhível voltou a ser cabeçalho.** `<h2>` não cabe dentro de `<button>`, e a
+>   solução tinha sido trocar por `<span>` — com isso a tela de diária, que é quase só cartões
+>   recolhíveis, virava uma lista sem estrutura. O padrão certo é o inverso: cabeçalho por
+>   fora, botão por dentro.
+> - **O indicador de sync passou a ser anunciado** (`role="status"`, `aria-live="polite"` — e
+>   não `alert`, que interromperia a leitura no meio de um take para dizer que o Wi-Fi caiu).
+>   Os símbolos `● ▲ ⟳ ✕ ⬆` ganharam `aria-hidden`: sem isso o leitor de tela lê "círculo
+>   preto pequeno sincronizado", com o enfeite na frente da informação.
+> - **`prefers-reduced-motion`**, que não existia. Para parte das pessoas as transições não
+>   são polimento, são enjoo.
+> - **O botão de limpar a busca** tinha 36 px, contra os 44 px que a regra do projeto exige e
+>   que o resto da interface cumpre.
+> - **"Pular para o conteúdo"**, visível só quando recebe foco. Sem ele, quem navega por
+>   teclado atravessa "voltar", "conta" e "sair" de novo a cada rota para chegar sempre no
+>   mesmo lugar.
+>
+> **Não mexido, e de propósito:** os tamanhos `sm` de `Button` (38 px) e `OptionChips` (32 px).
+> São controles densos e secundários de uma tela validada em set, e a regra dos 44 px foi
+> escrita para os alvos principais — que a cumprem. Subi-los mudaria a densidade de uma
+> interface que funciona.
+>
+> **Verificado por** `npm run test:acessibilidade` (15 checks, dentro do `npm test`): ele
+> calcula os contrastes, varre os `.tsx` atrás de cinza reprovado fora das folhas, confere o
+> `<main>` em todas as telas e trava os quatro detalhes que somem numa refatoração distraída.
+> E olhado nas duas superfícies — a tela escura e a folha branca. A regra das duas
+> superfícies virou [ADR-039](decisions.md#adr-039--o-design-system-tem-duas-superfícies-e-o-cinza-que-serve-numa-cega-a-outra),
+> porque é o tipo de armadilha que só se evita se estiver escrita.
 
 ---
 

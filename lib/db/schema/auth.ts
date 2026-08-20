@@ -18,7 +18,16 @@
  */
 
 import { relations, sql } from 'drizzle-orm';
-import { boolean, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  bigint,
+  boolean,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id')
@@ -102,6 +111,36 @@ export const verifications = pgTable(
       .notNull(),
   },
   (t) => [index('verifications_identifier_idx').on(t.identifier)],
+);
+
+/**
+ * Contador do rate limit — tabela, e não memória (Fase 10).
+ *
+ * O padrão da Better Auth é guardar em memória, e em memória o limite **não existe** aqui:
+ * cada instância serverless tem a sua, então "cinco tentativas por minuto" vira cinco por
+ * minuto **por instância**, e quem está tentando adivinhar um código de convite ganha o
+ * paralelismo de graça.
+ *
+ * Vale para as rotas da Better Auth e para o resgate de código de convite, que usa a mesma
+ * tabela por `lib/auth/limite.ts`: um contador só é um lugar só para olhar quando alguém
+ * reclamar de ter sido barrado.
+ *
+ * Não é tabela de domínio: sem `production_id`, sem soft delete, sem `version` e sem
+ * trigger de `sync_log` — como o resto do schema da Better Auth. `last_request` é epoch em
+ * milissegundos porque é o que a biblioteca grava e lê; converter para `timestamptz` aqui
+ * significaria traduzir nos dois sentidos a cada requisição.
+ */
+export const rateLimits = pgTable(
+  'rate_limits',
+  {
+    id: uuid('id')
+      .default(sql`pg_catalog.gen_random_uuid()`)
+      .primaryKey(),
+    key: text('key').notNull().unique(),
+    count: integer('count').notNull(),
+    lastRequest: bigint('last_request', { mode: 'number' }).notNull(),
+  },
+  (t) => [index('rate_limits_last_request_idx').on(t.lastRequest)],
 );
 
 export const usersRelations = relations(users, ({ many }) => ({

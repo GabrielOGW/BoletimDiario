@@ -38,7 +38,7 @@ export function CenasSection({
       {cenas.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line bg-surface/50 px-5 py-10 text-center">
           <p className="text-sm text-zinc-400">Nenhuma cena ainda.</p>
-          <p className="mt-1 text-xs text-zinc-600">
+          <p className="mt-1 text-xs text-zinc-400">
             Cada cena vira um card expansível com configurações, óptica e takes.
           </p>
         </div>

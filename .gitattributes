@@ -1,0 +1,15 @@
+# Fim de linha normalizado no repositório.
+#
+# Sem isto, uma edição vinda de ferramenta que escreve CRLF no Windows reescreve o arquivo
+# inteiro: a revisão da Fase 10 pegou 180 linhas de mudança real aparecendo como 1.910 de
+# diff em `test/room-check.mjs`, com as asserções novas enterradas no meio. Diff que ninguém
+# consegue ler é revisão que não acontece.
+* text=auto eol=lf
+
+# Binários não passam por normalização nenhuma.
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

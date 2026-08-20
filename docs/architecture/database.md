@@ -544,7 +544,66 @@ create index on continuity_take_data (production_id, take_id);
 -- busca global (§35)
 create index on scenes using gin (to_tsvector('portuguese',
         coalesce(number,'')||' '||coalesce(block,'')||' '||coalesce(description,'')));
+
+-- As quatro coleções de estado (migration 0009, Fase 10). Nasceram na Fase 7 com a
+-- `check` de escopo e nada além da PK; o snapshot as lê por produção + escopo, no
+-- caminho da fixação da diária.
+create index on continuity_props           (production_id, scene_id);
+create index on continuity_props           (production_id, take_id);
+create index on continuity_wardrobe        (production_id, scene_id);
+create index on continuity_wardrobe        (production_id, take_id);
+create index on continuity_hair_makeup     (production_id, scene_id);
+create index on continuity_hair_makeup     (production_id, take_id);
+create index on continuity_set_dressing    (production_id, scene_id);
+create index on continuity_set_dressing    (production_id, take_id);
 ```
+
+**Duas tabelas de conteúdo não lideram por `production_id`, e é intencional**:
+`sound_take_tracks` é lida pelos takes da diária (quatro linhas por take) e
+`daily_progress_report` é uma linha por diária. Um índice por produção nelas seria escrita
+mais cara em toda anotação de som para acelerar uma consulta que ninguém faz. `test:db`
+guarda a lista de qual coluna cada tabela é lida — mudar o recorte de leitura obriga a
+mudar a linha, e a mudança fica visível na revisão.
+
+### 4.8 Contador de rate limit (migration `0008`, Fase 10)
+
+```sql
+create table rate_limits (
+  id            uuid primary key default gen_random_uuid(),
+  key           text    not null unique,
+  count         integer not null,
+  last_request  bigint  not null      -- epoch em milissegundos
+);
+create index on rate_limits (last_request);
+```
+
+**Por que tabela e não memória.** O padrão da Better Auth é contar em memória, e em memória
+o limite praticamente não existe aqui: cada instância serverless tem a sua, então "cinco
+tentativas por minuto" vira cinco por minuto **por instância** — e quem está adivinhando um
+código de convite ganha o paralelismo de graça. Com uma tabela o contador é um só, e é um só
+lugar para olhar quando alguém reclamar de ter sido barrado.
+
+Ela **não é tabela de domínio**, e nada das convenções da §2 se aplica: sem `production_id`,
+sem auditoria, sem soft delete, sem `version` e sem trigger de `sync_log` — contador de
+tentativa não sincroniza para aparelho nenhum. É schema da Better Auth, como `sessions` e
+`verifications`, e a única coisa acrescentada é o índice em `last_request`, para a limpeza
+periódica não varrer a tabela inteira.
+
+`last_request` é `bigint` e não `timestamptz` porque é o que a biblioteca grava e lê;
+traduzir nos dois sentidos a cada requisição só criaria uma chance de erro. `integer` não
+serve: epoch em milissegundos estoura o `int4` desde 1970.
+
+A unicidade de `key` não é enfeite — sem ela, duas requisições simultâneas criam duas linhas
+para a mesma chave e o limite passa a valer o dobro exatamente sob carga, que é quando ele
+precisa valer. Verificado por `npm run test:db`.
+
+**Poda.** É uma linha por chave, e chave nova a cada IP: sem limpeza a tabela só cresce.
+`lib/auth/limite.ts` apaga o que passou de 24 h junto do resgate de código de convite — uma
+operação rara, então a faxina não mora num caminho quente, e o `delete` é a varredura de
+índice que o `last_request` existe para servir. Vinte e quatro horas cobrem com folga a janela
+mais longa em uso (uma hora), e quem foi podado já teria recomeçado a contagem de qualquer
+jeito. Se um dia isso não bastar, o lugar certo é um cron, não uma poda mais agressiva no
+caminho da requisição.
 
 ---
 
@@ -595,6 +654,13 @@ Detalhe em [permissions.md](permissions.md). O que é responsabilidade **do banc
 3. Toda tabela carrega `production_id` para que **qualquer** query possa ser filtrada por
    escopo em um único predicado — inclusive as de sync.
 4. A autorização é aplicada na camada `lib/db/queries` (checagem de `production_members`
-   antes de qualquer leitura/escrita). Row Level Security do Postgres é uma **segunda**
-   camada a avaliar na Fase 10; não substitui a checagem de aplicação, porque o driver
-   serverless usa uma conexão de aplicação única, não uma por usuário.
+   antes de qualquer leitura/escrita), e **fica lá**. Row Level Security foi avaliada na
+   Fase 10 e **recusada** ([ADR-038](../decisions.md#adr-038--o-limite-de-tentativas-mora-no-banco-rls-fica-de-fora-e-a-sessão-longa-se-paga-com-revogação)):
+   RLS protege contra uma conexão que chega ao banco **com identidade de usuário**, e não
+   é o que existe aqui — o driver serverless usa uma conexão de aplicação única e o
+   `user_id` chega como argumento da query, não pela conexão. Ligá-la assim daria ou um
+   `set local` por requisição, que o driver HTTP não sustenta sem transação interativa, ou
+   uma política que aceita tudo: segurança de fachada, pior que nenhuma, porque muda o que
+   as pessoas acham que está protegido. Volta à mesa se algum dia houver acesso direto ao
+   banco por identidade.
+5. O limite de tentativas é do banco, não da memória do processo — §4.8 e ADR-038.

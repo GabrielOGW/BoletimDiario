@@ -62,7 +62,7 @@ export function EquipmentDoDia({
     >
       <div className="flex flex-col gap-3">
         {alocados.length === 0 ? (
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-zinc-400">
             Nada alocado nesta diária. O que for alocado aqui aparece para os três
             departamentos e sai impresso no cabeçalho dos boletins.
           </p>
@@ -70,7 +70,7 @@ export function EquipmentDoDia({
 
         {[...porDepartamento.entries()].map(([departamento, itens]) => (
           <div key={departamento} className="flex flex-col gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
               {DEPARTMENT_LABEL[departamento as keyof typeof DEPARTMENT_LABEL] ??
                 departamento}
             </p>
@@ -118,7 +118,7 @@ export function EquipmentDoDia({
         ) : null}
 
         {canManage && catalogo.length === 0 ? (
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-zinc-400">
             O catálogo da produção está vazio. Cadastre o equipamento uma vez em
             Equipamentos, e depois é só alocar em cada diária.
           </p>

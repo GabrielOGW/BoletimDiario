@@ -24,7 +24,7 @@ export function EquipeSection({ items, onAdd, onChange, onRemove }: EquipeSectio
       summary={`${items.length} ${items.length === 1 ? 'pessoa' : 'pessoas'}`}
     >
       {items.length === 0 ? (
-        <p className="mb-3 text-sm text-zinc-500">
+        <p className="mb-3 text-sm text-zinc-400">
           Adicione os integrantes da equipe de câmera do dia.
         </p>
       ) : (

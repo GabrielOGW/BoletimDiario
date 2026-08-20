@@ -31,7 +31,7 @@ export function ImportarBoletins() {
   }, []);
 
   if (!montado) {
-    return <p className="py-8 text-center text-sm text-zinc-500">Lendo o aparelho…</p>;
+    return <p className="py-8 text-center text-sm text-zinc-400">Lendo o aparelho…</p>;
   }
 
   if (grupos.length === 0) {
@@ -103,7 +103,7 @@ function GrupoCard({ grupo }: { grupo: BoletimGroup }) {
       }
     >
       <div className="flex flex-col gap-3">
-        {grupo.company ? <p className="text-sm text-zinc-500">{grupo.company}</p> : null}
+        {grupo.company ? <p className="text-sm text-zinc-400">{grupo.company}</p> : null}
 
         <dl className="grid grid-cols-3 gap-3 text-sm sm:grid-cols-5">
           <Numero rotulo="Diárias" valor={grupo.boletins.length} />
@@ -130,7 +130,7 @@ function Numero({
 }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-zinc-500">{rotulo}</dt>
+      <dt className="text-xs uppercase tracking-wide text-zinc-400">{rotulo}</dt>
       <dd
         className={`text-lg font-semibold ${destaque ? 'text-approved' : 'text-zinc-100'}`}
       >

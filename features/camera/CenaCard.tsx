@@ -84,7 +84,7 @@ export function CenaCard({
         <span className="text-base font-semibold text-zinc-100">Cena {numero}</span>
         <span className="flex-1" />
         {aprovados > 0 ? <Badge tone="approved">{aprovados} aprovado(s)</Badge> : null}
-        <span className="text-xs text-zinc-500">
+        <span className="text-xs text-zinc-400">
           {ordenados.length} bloco(s) · {planos} plano(s)
         </span>
         <ChevronDownIcon
@@ -188,7 +188,7 @@ function BlocoCard({
           Bloco {bloco.block ?? '—'}
         </span>
         <span className="flex-1" />
-        <span className="text-xs text-zinc-500">{ordenados.length} plano(s)</span>
+        <span className="text-xs text-zinc-400">{ordenados.length} plano(s)</span>
         <ChevronDownIcon
           size={18}
           className={cn('text-zinc-400 transition', aberto && 'rotate-180')}
@@ -211,7 +211,7 @@ function BlocoCard({
           ) : null}
 
           {ordenados.length === 0 ? (
-            <p className="text-sm text-zinc-500">Sem planos neste bloco.</p>
+            <p className="text-sm text-zinc-400">Sem planos neste bloco.</p>
           ) : null}
 
           {ordenados.map((setup) => (

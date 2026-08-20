@@ -128,7 +128,7 @@ export function CameraDiaria({
 
   if (fixacao === 'CARREGANDO') {
     return (
-      <p className="px-1 py-8 text-center text-sm text-zinc-500">Abrindo o boletim…</p>
+      <p className="px-1 py-8 text-center text-sm text-zinc-400">Abrindo o boletim…</p>
     );
   }
 
@@ -198,7 +198,7 @@ export function CameraDiaria({
           action={canEdit ? <NovaCena productionId={productionId} /> : null}
         >
           {agrupadas.length === 0 ? (
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-zinc-400">
               {canEdit
                 ? 'Nenhuma cena ainda. Crie a primeira para começar o boletim.'
                 : 'Nenhuma cena registrada nesta diária.'}
@@ -234,25 +234,25 @@ export function CameraDiaria({
         <SectionCard title="Cenas do dia" icon={<FilmIcon size={18} />}>
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <dt className="text-xs uppercase tracking-wide text-zinc-500">Cenas</dt>
+              <dt className="text-xs uppercase tracking-wide text-zinc-400">Cenas</dt>
               <dd className="text-lg font-semibold text-zinc-100">{agrupadas.length}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-zinc-500">Planos</dt>
+              <dt className="text-xs uppercase tracking-wide text-zinc-400">Planos</dt>
               <dd className="text-lg font-semibold text-zinc-100">
                 {(setups ?? []).length}
               </dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-zinc-500">Takes</dt>
+              <dt className="text-xs uppercase tracking-wide text-zinc-400">Takes</dt>
               <dd className="text-lg font-semibold text-zinc-100">{totalTakes}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-zinc-500">Aprovados</dt>
+              <dt className="text-xs uppercase tracking-wide text-zinc-400">Aprovados</dt>
               <dd className="text-lg font-semibold text-approved">{takesAprovados}</dd>
             </div>
           </dl>
-          <p className="mt-3 text-xs text-zinc-500">
+          <p className="mt-3 text-xs text-zinc-400">
             Contados a partir dos takes — não há dois números divergentes na mesma tela.
           </p>
         </SectionCard>
@@ -378,7 +378,7 @@ function MidiaSection({
     >
       <div className="flex flex-col gap-3">
         {vazia ? (
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-zinc-400">
             Nenhum cartão anotado ainda. O cartão de cada take aparece aqui sozinho.
           </p>
         ) : null}
@@ -391,7 +391,7 @@ function MidiaSection({
                 className="flex items-baseline justify-between gap-3 rounded-xl border border-line bg-surface-raised px-3 py-2"
               >
                 <span className="font-mono text-sm text-zinc-100">{item.cartao}</span>
-                <span className="text-right text-xs text-zinc-500">
+                <span className="text-right text-xs text-zinc-400">
                   {item.takes} {item.takes === 1 ? 'take' : 'takes'}
                   {item.rolls.length > 0 ? ` · ${item.rolls.join(' · ')}` : ''}
                 </span>
@@ -414,7 +414,7 @@ function MidiaSection({
         {/* Lacuna, não erro: o take existe e ninguém anotou em que cartão gravou. É a
             pergunta que o DIT faz no fim do dia — e ela some quando alguém preenche. */}
         {midia.takesSemCartao > 0 ? (
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-zinc-400">
             <span className="text-zinc-400">
               {midia.takesSemCartao}{' '}
               {midia.takesSemCartao === 1 ? 'take sem cartão' : 'takes sem cartão'}
@@ -429,7 +429,7 @@ function MidiaSection({
 
 function Resumo({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
-    <p className="text-xs text-zinc-500">
+    <p className="text-xs text-zinc-400">
       <span className="uppercase tracking-wide text-zinc-400">{rotulo}: </span>
       {valor}
     </p>

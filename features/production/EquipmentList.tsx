@@ -69,7 +69,7 @@ export function EquipmentList({
       ) : null}
 
       {equipamentos.length === 0 ? (
-        <p className="px-1 text-sm text-zinc-500">
+        <p className="px-1 text-sm text-zinc-400">
           Nenhum equipamento cadastrado. O que for cadastrado aqui pode ser alocado em
           cada diária — e sai impresso no cabeçalho dos boletins.
         </p>
@@ -132,7 +132,7 @@ function EquipmentCard({
         <Badge tone="neutral">{CATEGORY_LABEL[item.category] ?? item.category}</Badge>
       </div>
 
-      {item.notes ? <p className="text-xs text-zinc-500">{item.notes}</p> : null}
+      {item.notes ? <p className="text-xs text-zinc-400">{item.notes}</p> : null}
 
       {canManage ? (
         <div className="flex gap-2">

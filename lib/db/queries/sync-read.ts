@@ -140,150 +140,170 @@ export async function pullChanges(input: {
  * Traz **todas** as cenas da produção, não só as do dia: escolher a cena de um setup novo
  * é preenchimento, e preenchimento não pode depender de rede (ADR-016). São poucos
  * registros de texto — o custo é irrelevante perto de travar em locação.
+ *
+ * **Uma requisição, não dezessete** (Fase 10). As consultas sempre foram independentes,
+ * mas iam uma de cada vez, e o `await` entre elas custa uma ida e volta cada. Medido
+ * contra uma produção de 40 diárias e 2400 takes, isso dava 613 ms com o banco a 40 ms de
+ * distância — e o número é aritmética de latência, não de dados: com os 200 ms de um 4G
+ * fraco de locação, as mesmas dezessete idas passariam de três segundos. `db.batch` manda
+ * tudo junto, e é justamente na conexão ruim que a diferença aparece.
+ *
+ * A diária vem no mesmo lote e o "não encontrei" é decidido **depois**. Consultar o resto
+ * à toa num 404 desperdiça uma requisição que já falhou; esperar por ela para só então
+ * pedir o resto desperdiçaria uma ida e volta em **todas** as vezes que dá certo. Nada
+ * vaza: cada consulta é recortada por `production_id`, e quem chega aqui já passou pelo
+ * guarda de membresia.
  */
 export async function loadSnapshot(input: {
   productionId: string;
   shootingDayId: string;
 }): Promise<Omit<SnapshotResponse, 'protocol' | 'productionId'> | null> {
-  const dia = await db.execute<Record<string, unknown>>(sql`
-    select id::text as id, date::text as date, day_number as "dayNumber", unit,
-           location, call_time::text as "callTime", wrap_time::text as "wrapTime",
-           notes, version
-      from shooting_days
-     where id = ${input.shootingDayId} and production_id = ${input.productionId}
-       and deleted_at is null
-     limit 1
-  `);
+  const daDiaria = takesDaDiaria(input);
+
+  const [
+    dia,
+    scenes,
+    setups,
+    takes,
+    cameraUnits,
+    cameraTakeData,
+    soundDayConfig,
+    soundTakeData,
+    soundTakeTracks,
+    continuityTakeData,
+    continuityProps,
+    continuityWardrobe,
+    continuityHairMakeup,
+    continuitySetDressing,
+    dailyProgressReport,
+    members,
+    cursor,
+  ] = await db.batch([
+    db.execute<Record<string, unknown>>(sql`
+      select id::text as id, date::text as date, day_number as "dayNumber", unit,
+             location, call_time::text as "callTime", wrap_time::text as "wrapTime",
+             notes, version
+        from shooting_days
+       where id = ${input.shootingDayId} and production_id = ${input.productionId}
+         and deleted_at is null
+       limit 1
+    `),
+
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('scene')} from scenes
+       where production_id = ${input.productionId} and deleted_at is null
+    `),
+
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('setup')} from setups
+       where production_id = ${input.productionId}
+         and shooting_day_id = ${input.shootingDayId}
+    `),
+
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('take')} from takes
+       where production_id = ${input.productionId}
+         and setup_id in (${setupsDaDiaria(input)})
+    `),
+
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('cameraUnit')} from camera_units
+       where production_id = ${input.productionId} and deleted_at is null
+    `),
+
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('cameraTakeData')} from camera_take_data
+       where production_id = ${input.productionId} and take_id in (${daDiaria})
+    `),
+
+    /**
+     * A configuração de som é **da diária**, não da produção: uma linha, e ela é o
+     * primeiro registro que o som toca no dia. Vem no snapshot para que tocar nele não
+     * peça sinal.
+     */
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('soundDayConfig')} from sound_day_config
+       where production_id = ${input.productionId}
+         and shooting_day_id = ${input.shootingDayId}
+    `),
+
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('soundTakeData')} from sound_take_data
+       where production_id = ${input.productionId} and take_id in (${daDiaria})
+    `),
+
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('soundTakeTrack')} from sound_take_tracks
+       where production_id = ${input.productionId} and take_id in (${daDiaria})
+    `),
+
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('continuityTakeData')} from continuity_take_data
+       where production_id = ${input.productionId} and take_id in (${daDiaria})
+    `),
+
+    /**
+     * As quatro coleções de estado vêm por **cena da produção**, não só pelas cenas do
+     * dia.
+     *
+     * É a diferença entre ter e não ter continuidade: o valor delas é atravessar dias —
+     * "no take de ontem o copo estava pela metade, e hoje vamos rodar o contracampo".
+     * Recortar pela diária entregaria uma continuísta sem a memória do que ela mesma
+     * anotou.
+     *
+     * São linhas de texto e o volume acompanha o número de cenas, não o de takes: com as
+     * 200 cenas medidas na Fase 10 são 2400 itens, e a fixação inteira continua numa
+     * requisição. Se um dia doer, o corte natural é por cena **tocada** na diária — mas
+     * cortar antes de doer seria trocar a função do módulo por um byte.
+     */
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('continuityProp')} from continuity_props
+       where production_id = ${input.productionId} and (${escopoDaProducao(input)})
+    `),
+
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('continuityWardrobe')} from continuity_wardrobe
+       where production_id = ${input.productionId} and (${escopoDaProducao(input)})
+    `),
+
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('continuityHairMakeup')} from continuity_hair_makeup
+       where production_id = ${input.productionId} and (${escopoDaProducao(input)})
+    `),
+
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('continuitySetDressing')} from continuity_set_dressing
+       where production_id = ${input.productionId} and (${escopoDaProducao(input)})
+    `),
+
+    /** O balanço do dia é fechado no wrap, na locação: vem junto para não pedir rede. */
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('dailyProgressReport')} from daily_progress_report
+       where production_id = ${input.productionId}
+         and shooting_day_id = ${input.shootingDayId}
+    `),
+
+    db.execute<{
+      id: string;
+      userId: string;
+      name: string;
+      department: string;
+    }>(sql`
+      select m.id::text as id, m.user_id::text as "userId",
+             coalesce(nullif(m.display_name, ''), u.name) as name, m.department
+        from production_members m
+        join users u on u.id = m.user_id
+       where m.production_id = ${input.productionId} and m.deleted_at is null
+    `),
+
+    db.execute<{ seq: string | null }>(sql`
+      select max(seq)::text as seq from sync_log
+       where production_id = ${input.productionId}
+    `),
+  ]);
 
   const shootingDay = dia.rows[0];
   if (!shootingDay) return null;
-
-  const scenes = await db.execute<Record<string, unknown>>(sql`
-    select ${entitySelect('scene')} from scenes
-     where production_id = ${input.productionId} and deleted_at is null
-  `);
-
-  const setups = await db.execute<Record<string, unknown>>(sql`
-    select ${entitySelect('setup')} from setups
-     where production_id = ${input.productionId}
-       and shooting_day_id = ${input.shootingDayId}
-  `);
-
-  const takes = await db.execute<Record<string, unknown>>(sql`
-    select ${entitySelect('take')} from takes
-     where production_id = ${input.productionId}
-       and setup_id in (
-         select id from setups
-          where production_id = ${input.productionId}
-            and shooting_day_id = ${input.shootingDayId}
-       )
-  `);
-
-  const cameraUnits = await db.execute<Record<string, unknown>>(sql`
-    select ${entitySelect('cameraUnit')} from camera_units
-     where production_id = ${input.productionId} and deleted_at is null
-  `);
-
-  const cameraTakeData = await db.execute<Record<string, unknown>>(sql`
-    select ${entitySelect('cameraTakeData')} from camera_take_data
-     where production_id = ${input.productionId}
-       and take_id in (
-         select t.id from takes t
-           join setups s on s.id = t.setup_id
-          where s.production_id = ${input.productionId}
-            and s.shooting_day_id = ${input.shootingDayId}
-       )
-  `);
-
-  /**
-   * A configuração de som é **da diária**, não da produção: uma linha, e ela é o primeiro
-   * registro que o som toca no dia. Vem no snapshot para que tocar nele não peça sinal.
-   */
-  const soundDayConfig = await db.execute<Record<string, unknown>>(sql`
-    select ${entitySelect('soundDayConfig')} from sound_day_config
-     where production_id = ${input.productionId}
-       and shooting_day_id = ${input.shootingDayId}
-  `);
-
-  const soundTakeData = await db.execute<Record<string, unknown>>(sql`
-    select ${entitySelect('soundTakeData')} from sound_take_data
-     where production_id = ${input.productionId}
-       and take_id in (${takesDaDiaria(input)})
-  `);
-
-  const soundTakeTracks = await db.execute<Record<string, unknown>>(sql`
-    select ${entitySelect('soundTakeTrack')} from sound_take_tracks
-     where production_id = ${input.productionId}
-       and take_id in (${takesDaDiaria(input)})
-  `);
-
-  const continuityTakeData = await db.execute<Record<string, unknown>>(sql`
-    select ${entitySelect('continuityTakeData')} from continuity_take_data
-     where production_id = ${input.productionId}
-       and take_id in (${takesDaDiaria(input)})
-  `);
-
-  /**
-   * As quatro coleções de estado vêm por **cena da produção**, não só pelas cenas do dia.
-   *
-   * É a diferença entre ter e não ter continuidade: o valor delas é atravessar dias — "no
-   * take de ontem o copo estava pela metade, e hoje vamos rodar o contracampo". Recortar
-   * pela diária entregaria uma continuísta sem a memória do que ela mesma anotou.
-   *
-   * São linhas de texto e o volume acompanha o número de cenas, não o de takes. Se um dia
-   * uma produção grande mostrar que isso pesa, o corte natural é por cena **tocada** na
-   * diária — mas cortar antes de doer seria trocar a função do módulo por um byte.
-   */
-  const escopoDaProducao = sql`
-    scene_id in (select id from scenes where production_id = ${input.productionId})
-    or setup_id in (${setupsDaDiaria(input)})
-    or take_id in (${takesDaDiaria(input)})
-  `;
-
-  const continuityProps = await db.execute<Record<string, unknown>>(sql`
-    select ${entitySelect('continuityProp')} from continuity_props
-     where production_id = ${input.productionId} and (${escopoDaProducao})
-  `);
-
-  const continuityWardrobe = await db.execute<Record<string, unknown>>(sql`
-    select ${entitySelect('continuityWardrobe')} from continuity_wardrobe
-     where production_id = ${input.productionId} and (${escopoDaProducao})
-  `);
-
-  const continuityHairMakeup = await db.execute<Record<string, unknown>>(sql`
-    select ${entitySelect('continuityHairMakeup')} from continuity_hair_makeup
-     where production_id = ${input.productionId} and (${escopoDaProducao})
-  `);
-
-  const continuitySetDressing = await db.execute<Record<string, unknown>>(sql`
-    select ${entitySelect('continuitySetDressing')} from continuity_set_dressing
-     where production_id = ${input.productionId} and (${escopoDaProducao})
-  `);
-
-  /** O balanço do dia é fechado no wrap, na locação: vem no snapshot para não pedir rede. */
-  const dailyProgressReport = await db.execute<Record<string, unknown>>(sql`
-    select ${entitySelect('dailyProgressReport')} from daily_progress_report
-     where production_id = ${input.productionId}
-       and shooting_day_id = ${input.shootingDayId}
-  `);
-
-  const members = await db.execute<{
-    id: string;
-    userId: string;
-    name: string;
-    department: string;
-  }>(sql`
-    select m.id::text as id, m.user_id::text as "userId",
-           coalesce(nullif(m.display_name, ''), u.name) as name, m.department
-      from production_members m
-      join users u on u.id = m.user_id
-     where m.production_id = ${input.productionId} and m.deleted_at is null
-  `);
-
-  const cursor = await db.execute<{ seq: string | null }>(sql`
-    select max(seq)::text as seq from sync_log
-     where production_id = ${input.productionId}
-  `);
 
   return {
     cursor: Number(cursor.rows[0]?.seq ?? 0),
@@ -304,6 +324,15 @@ export async function loadSnapshot(input: {
     dailyProgressReport: dailyProgressReport.rows,
     members: members.rows,
   };
+}
+
+/** O escopo das coleções de estado: a cena da produção, ou o setup/take da diária. */
+function escopoDaProducao(input: { productionId: string; shootingDayId: string }) {
+  return sql`
+    scene_id in (select id from scenes where production_id = ${input.productionId})
+    or setup_id in (${setupsDaDiaria(input)})
+    or take_id in (${takesDaDiaria(input)})
+  `;
 }
 
 /** Os setups da diária, como subconsulta — o par de `takesDaDiaria`. */

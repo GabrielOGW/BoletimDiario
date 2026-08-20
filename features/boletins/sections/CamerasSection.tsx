@@ -23,7 +23,7 @@ export function CamerasSection({
   return (
     <SectionCard title="Câmeras cadastradas" icon={<CameraIcon size={18} />}>
       {items.length === 0 ? (
-        <p className="mb-3 text-sm text-zinc-500">
+        <p className="mb-3 text-sm text-zinc-400">
           Cadastre as câmeras do dia (A CAM, B CAM…). Cada plano poderá selecionar a
           câmera utilizada.
         </p>

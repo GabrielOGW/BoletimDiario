@@ -58,7 +58,7 @@ export default async function BuscaPage({
         backHref={`/p/${productionId}`}
       />
 
-      <PageContainer className="flex flex-col gap-4 py-4 pb-8">
+      <PageContainer as="main" className="flex flex-col gap-4 py-4 pb-8">
         <BuscaForm productionId={productionId} termo={termo} />
 
         {!temTermo ? (
@@ -75,7 +75,7 @@ export default async function BuscaPage({
           />
         ) : (
           <>
-            <p className="px-1 text-sm text-zinc-500">
+            <p className="px-1 text-sm text-zinc-400">
               {resultados.length === LIMITE_DE_BUSCA
                 ? `Mostrando os ${LIMITE_DE_BUSCA} primeiros. Acrescente uma palavra para estreitar.`
                 : `${resultados.length} ${resultados.length === 1 ? 'take' : 'takes'} em ${porDiaria.length} ${porDiaria.length === 1 ? 'diária' : 'diárias'}.`}
@@ -108,18 +108,18 @@ export default async function BuscaPage({
                       </p>
                       {hit.camera ? (
                         <p className="mt-0.5 text-xs text-zinc-400">
-                          <span className="text-zinc-500">Câmera: </span>
+                          <span className="text-zinc-400">Câmera: </span>
                           {hit.camera}
                         </p>
                       ) : null}
                       {hit.som ? (
                         <p className="text-xs text-zinc-400">
-                          <span className="text-zinc-500">Som: </span>
+                          <span className="text-zinc-400">Som: </span>
                           {hit.som}
                         </p>
                       ) : null}
                       {hit.nota ? (
-                        <p className="mt-0.5 break-words text-xs italic text-zinc-500">
+                        <p className="mt-0.5 break-words text-xs italic text-zinc-400">
                           {hit.nota}
                         </p>
                       ) : null}

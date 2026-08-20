@@ -67,7 +67,7 @@ export function RelatorioProgresso({
           <Texto rotulo="Rolls" valor={contagens.rolls.join(' · ') || '—'} />
         </dl>
 
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-zinc-400">
           Contado a partir da diária — cenas e planos saem dos registros, cartões vêm da
           Câmera e rolls do Som. Nada disso é digitado aqui, e por isso não pode divergir
           do que foi preenchido.
@@ -132,7 +132,7 @@ export function RelatorioProgresso({
           />
         </div>
 
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-zinc-400">
           A cobertura é a única parte que a plataforma não sabe sozinha: só quem estava em
           set sabe que a cena 31 ficou pela metade. O que aparece em cinza é sugestão do
           que foi rodado — não é o que vai impresso.
@@ -187,7 +187,7 @@ function Contagem({
 }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-zinc-500">{rotulo}</dt>
+      <dt className="text-xs uppercase tracking-wide text-zinc-400">{rotulo}</dt>
       <dd
         className={
           destaque
@@ -204,7 +204,7 @@ function Contagem({
 function Texto({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
     <div className="min-w-0">
-      <dt className="text-xs uppercase tracking-wide text-zinc-500">{rotulo}</dt>
+      <dt className="text-xs uppercase tracking-wide text-zinc-400">{rotulo}</dt>
       <dd className="truncate text-sm text-zinc-200">{valor}</dd>
     </div>
   );

@@ -31,7 +31,7 @@ export default async function MembrosPage({
         backHref={`/p/${productionId}`}
       />
 
-      <PageContainer className="flex flex-col gap-4 py-4 pb-8">
+      <PageContainer as="main" className="flex flex-col gap-4 py-4 pb-8">
         <MembersList
           productionId={productionId}
           members={membros}

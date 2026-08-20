@@ -214,7 +214,7 @@ export function ConsolidadoDiaria({
 
   if (fixacao === 'CARREGANDO') {
     return (
-      <p className="px-1 py-8 text-center text-sm text-zinc-500">Abrindo a diária…</p>
+      <p className="px-1 py-8 text-center text-sm text-zinc-400">Abrindo a diária…</p>
     );
   }
 
@@ -244,7 +244,7 @@ export function ConsolidadoDiaria({
             <Lacuna rotulo="Sem câmera" valor={lacunas.semCamera} alerta />
             <Lacuna rotulo="Sem continuidade" valor={lacunas.semContinuidade} />
           </dl>
-          <p className="mt-3 text-xs text-zinc-500">
+          <p className="mt-3 text-xs text-zinc-400">
             Contado dos três departamentos, pelo mesmo <code>take_id</code>. Take MOS não
             conta como &ldquo;sem som&rdquo; — ele foi rodado sem áudio de propósito.
           </p>
@@ -269,12 +269,12 @@ export function ConsolidadoDiaria({
         ) : null}
 
         {linhas.length === 0 ? (
-          <p className="px-1 text-sm text-zinc-500">
+          <p className="px-1 text-sm text-zinc-400">
             Nenhum take nesta diária ainda. Assim que qualquer departamento registrar o
             primeiro, ele aparece aqui.
           </p>
         ) : filtradas.length === 0 ? (
-          <p className="px-1 text-sm text-zinc-500">
+          <p className="px-1 text-sm text-zinc-400">
             Nada encontrado para “{termo}”. A busca é local: ela funciona sem rede, mas só
             alcança esta diária.
           </p>
@@ -348,7 +348,7 @@ function Lacuna({
 }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-zinc-500">{rotulo}</dt>
+      <dt className="text-xs uppercase tracking-wide text-zinc-400">{rotulo}</dt>
       <dd
         className={cn(
           'text-lg font-semibold text-zinc-100',
@@ -402,13 +402,13 @@ function Coluna({
           : 'border-line bg-surface-raised',
       )}
     >
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
         {titulo}
       </p>
 
       {!coluna.anotou ? (
         <p
-          className={cn('mt-0.5 text-xs', ausenteOk ? 'text-zinc-500' : 'text-amber-400')}
+          className={cn('mt-0.5 text-xs', ausenteOk ? 'text-zinc-400' : 'text-amber-400')}
         >
           {ausenteOk ? 'MOS — sem áudio' : 'Sem anotação'}
         </p>

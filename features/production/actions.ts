@@ -24,6 +24,13 @@ import {
   requireMember,
   type Membership,
 } from '@/lib/auth/guards';
+import {
+  LIMITE_DE_ENTRADA,
+  chaveDeEntrada,
+  consomeTentativa,
+  emLinguagemDeGente,
+  esqueceTentativas,
+} from '@/lib/auth/limite';
 import { requireUser } from '@/lib/auth/session';
 import {
   assignmentSchema,
@@ -131,6 +138,22 @@ export async function entrarPorCodigoAction(
 
   if (!parsed.success) return { error: primeiroErro(parsed.error.issues) };
 
+  /**
+   * O limite vem **depois** da validação de formato e **antes** de consultar o código.
+   *
+   * Depois, porque código malformado nem chega a ser uma tentativa de adivinhar — gastar
+   * a cota de quem digitou o hífen errado seria punir o engano. Antes da consulta, porque
+   * é a consulta que se quer tornar cara: são 32⁴ sufixos, e sem limite o espaço inteiro
+   * cabe numa tarde.
+   */
+  const chave = chaveDeEntrada(user.id);
+  const veredito = await consomeTentativa(chave, LIMITE_DE_ENTRADA);
+  if (!veredito.permitido) {
+    return {
+      error: `Muitas tentativas. Tente de novo em ${emLinguagemDeGente(veredito.esperarSegundos)}.`,
+    };
+  }
+
   const result = await joinProductionByCode({
     ...parsed.data,
     userId: user.id,
@@ -145,6 +168,10 @@ export async function entrarPorCodigoAction(
   if (result.status === 'CLOSED') {
     return { error: 'Esta sala está fechada para novas entradas.' };
   }
+
+  // Acertou: a cota volta ao começo. Quem entra em cinco salas numa tarde não é quem o
+  // limite existe para pegar, e um acerto **encerra** a adivinhação em vez de continuá-la.
+  await esqueceTentativas(chave);
 
   revalidatePath('/producoes');
   redirect(`/p/${result.productionId}`);

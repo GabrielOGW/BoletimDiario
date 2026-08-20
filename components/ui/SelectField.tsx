@@ -70,11 +70,11 @@ export function SelectField({
         </select>
         <ChevronDownIcon
           size={18}
-          className="pointer-events-none absolute inset-y-0 right-3.5 my-auto text-zinc-500"
+          className="pointer-events-none absolute inset-y-0 right-3.5 my-auto text-zinc-400"
         />
       </div>
       {hint ? (
-        <p id={hintId} className="text-xs text-zinc-500">
+        <p id={hintId} className="text-xs text-zinc-400">
           {hint}
         </p>
       ) : null}

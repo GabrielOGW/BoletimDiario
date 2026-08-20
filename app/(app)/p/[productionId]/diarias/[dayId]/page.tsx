@@ -53,7 +53,7 @@ export default async function DiariaPage({
         backHref={`/p/${productionId}/diarias`}
       />
 
-      <PageContainer className="flex flex-col gap-4 py-4 pb-8">
+      <PageContainer as="main" className="flex flex-col gap-4 py-4 pb-8">
         <Link
           href={`/p/${productionId}/diarias/${dayId}/camera`}
           className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-brand/30 bg-brand-soft px-4 py-3 transition hover:brightness-110"
@@ -110,7 +110,7 @@ export default async function DiariaPage({
             <span className="block text-sm font-medium text-zinc-200">
               Diária consolidada
             </span>
-            <span className="block text-xs text-zinc-500">
+            <span className="block text-xs text-zinc-400">
               Um take, os três departamentos — e o que ficou faltando
             </span>
           </span>
@@ -129,7 +129,7 @@ export default async function DiariaPage({
             <span className="block text-sm font-medium text-zinc-300">
               Base compartilhada · Cena · Setup · Take
             </span>
-            <span className="block text-xs text-zinc-500">
+            <span className="block text-xs text-zinc-400">
               A prova do sync, sem os campos de nenhum departamento
             </span>
           </span>
@@ -179,7 +179,7 @@ function ResumoDaDiaria({
         <dl className="flex flex-col gap-2 text-sm">
           {linhas.map(([rotulo, valor]) => (
             <div key={rotulo} className="flex justify-between gap-3">
-              <dt className="text-zinc-500">{rotulo}</dt>
+              <dt className="text-zinc-400">{rotulo}</dt>
               <dd className="text-right text-zinc-200">{valor ?? '—'}</dd>
             </div>
           ))}

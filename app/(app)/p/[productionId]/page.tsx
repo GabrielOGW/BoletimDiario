@@ -60,7 +60,7 @@ export default async function SalaPage({
         right={<Badge tone="brand">{ROLE_LABEL[membership.role]}</Badge>}
       />
 
-      <PageContainer className="flex flex-col gap-4 py-4 pb-8">
+      <PageContainer as="main" className="flex flex-col gap-4 py-4 pb-8">
         {/* Fase 11: abrir a sala já deixa hoje e amanhã no aparelho. Sem isto, o atalho
             "diária de hoje" levaria a uma tela que precisa de rede — e quem o usa está
             saindo de casa às 5h para uma locação sem cobertura. Não desenha nada. */}
@@ -95,13 +95,13 @@ export default async function SalaPage({
                 {[proxima.unit, proxima.location].filter(Boolean).join(' · ') ||
                   'Sem locação registrada'}
               </p>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-zinc-400">
                 {proxima.callTime ? `Call ${proxima.callTime.slice(0, 5)}` : 'Sem call'}
                 {proxima.wrapTime ? ` · Wrap ${proxima.wrapTime.slice(0, 5)}` : ''}
               </p>
             </div>
           ) : (
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-zinc-400">
               Nenhuma diária criada.{' '}
               {canManage
                 ? 'Crie a primeira em Diárias.'
@@ -135,7 +135,7 @@ export default async function SalaPage({
                 <span className="min-w-0 truncate text-[15px] text-zinc-100">
                   {membro.name}
                   {membro.jobTitle ? (
-                    <span className="text-zinc-500"> · {membro.jobTitle}</span>
+                    <span className="text-zinc-400"> · {membro.jobTitle}</span>
                   ) : null}
                 </span>
                 <Badge>{DEPARTMENT_LABEL[membro.department]}</Badge>
@@ -157,7 +157,7 @@ export default async function SalaPage({
           }
         >
           {equipamentos.length === 0 ? (
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-zinc-400">
               Nenhum equipamento cadastrado. O catálogo é preenchido uma vez e alocado por
               diária — é dele que sai o modelo impresso no cabeçalho dos boletins.
             </p>
@@ -175,7 +175,7 @@ export default async function SalaPage({
           )}
         </SectionCard>
 
-        <p className="px-1 text-xs leading-relaxed text-zinc-600">
+        <p className="px-1 text-xs leading-relaxed text-zinc-400">
           Câmera, Som e Continuidade anotam a diária nos módulos; a sala é a fonte
           compartilhada — produção, equipe, horários e kit — e nada dela precisa de
           sincronização para existir.

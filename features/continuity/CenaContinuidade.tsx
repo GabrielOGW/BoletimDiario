@@ -112,11 +112,11 @@ export function CenaContinuidade({
       >
         <span className="text-base font-semibold text-zinc-100">Cena {numero}</span>
         {referencia?.page ? (
-          <span className="font-mono text-xs text-zinc-500">{referencia.page}</span>
+          <span className="font-mono text-xs text-zinc-400">{referencia.page}</span>
         ) : null}
         <span className="flex-1" />
         {prints > 0 ? <Badge tone="approved">{prints} print</Badge> : null}
-        <span className="text-xs text-zinc-500">{takesDaCena.length} take(s)</span>
+        <span className="text-xs text-zinc-400">{takesDaCena.length} take(s)</span>
         <ChevronDownIcon
           size={20}
           className={cn('text-zinc-400 transition', aberto && 'rotate-180')}
@@ -201,7 +201,7 @@ function MetadadosDaCena({
       >
         <span className="text-sm font-semibold text-zinc-200">Cena</span>
         <span className="flex-1" />
-        <span className="truncate text-xs text-zinc-500">
+        <span className="truncate text-xs text-zinc-400">
           {resumo || 'Sem metadados'}
         </span>
         <ChevronDownIcon
@@ -261,7 +261,7 @@ function MetadadosDaCena({
           />
 
           {blocos > 1 ? (
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-zinc-400">
               Esta cena tem {blocos} blocos. O que for editado aqui vale para todos —
               blocos são divisões da mesma cena de roteiro.
             </p>
@@ -302,12 +302,12 @@ function BlocoContinuidade({
           Bloco {bloco.block ?? '—'}
         </span>
         <span className="flex-1" />
-        <span className="text-xs text-zinc-500">{ordenados.length} plano(s)</span>
+        <span className="text-xs text-zinc-400">{ordenados.length} plano(s)</span>
       </div>
 
       <div className="flex flex-col gap-3 p-3">
         {ordenados.length === 0 ? (
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-zinc-400">
             Sem planos neste bloco. Eles aparecem aqui assim que a Câmera os criar.
           </p>
         ) : null}
@@ -377,10 +377,10 @@ function PlanoContinuidade({
       >
         <span className="text-sm font-semibold text-zinc-100">Plano {setup.code}</span>
         {enquadramento ? (
-          <span className="truncate text-xs text-zinc-500">{enquadramento}</span>
+          <span className="truncate text-xs text-zinc-400">{enquadramento}</span>
         ) : null}
         <span className="flex-1" />
-        <span className="text-xs text-zinc-500">{takes.length} take(s)</span>
+        <span className="text-xs text-zinc-400">{takes.length} take(s)</span>
         <ChevronDownIcon
           size={18}
           className={cn('text-zinc-400 transition', aberto && 'rotate-180')}
@@ -437,7 +437,7 @@ function PlanoContinuidade({
           </div>
 
           {takes.length === 0 ? (
-            <p className="text-sm text-zinc-500">Nenhum take neste plano ainda.</p>
+            <p className="text-sm text-zinc-400">Nenhum take neste plano ainda.</p>
           ) : null}
 
           {takes.map((take) => (

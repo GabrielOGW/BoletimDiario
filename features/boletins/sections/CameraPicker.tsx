@@ -45,7 +45,7 @@ export function CameraPicker({ cameraId, cameraNome, onChange }: CameraPickerPro
               >
                 {label}
                 {camera.modelo && camera.nomeId ? (
-                  <span className="text-xs text-zinc-500">· {camera.modelo}</span>
+                  <span className="text-xs text-zinc-400">· {camera.modelo}</span>
                 ) : null}
               </button>
             );

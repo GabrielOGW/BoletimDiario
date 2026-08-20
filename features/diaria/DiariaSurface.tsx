@@ -90,7 +90,7 @@ export function DiariaSurface({
 
   if (fixacao === 'CARREGANDO') {
     return (
-      <p className="px-1 py-8 text-center text-sm text-zinc-500">Abrindo a diária…</p>
+      <p className="px-1 py-8 text-center text-sm text-zinc-400">Abrindo a diária…</p>
     );
   }
 
@@ -112,7 +112,7 @@ export function DiariaSurface({
   return (
     <div className="flex flex-col gap-4">
       {podeAnotar ? (
-        <p className="rounded-xl border border-line bg-surface px-3.5 py-2.5 text-xs leading-relaxed text-zinc-500">
+        <p className="rounded-xl border border-line bg-surface px-3.5 py-2.5 text-xs leading-relaxed text-zinc-400">
           Base compartilhada entre Câmera, Som e Continuidade — ainda em construção. O{' '}
           <a href="/legado" className="text-zinc-300 underline underline-offset-2">
             Boletim de Câmera
@@ -183,7 +183,7 @@ export function DiariaSurface({
             }
           >
             {doSetup.length === 0 ? (
-              <p className="text-sm text-zinc-500">Sem takes ainda.</p>
+              <p className="text-sm text-zinc-400">Sem takes ainda.</p>
             ) : (
               <ul className="flex flex-col gap-3">
                 {doSetup.map((take) => (

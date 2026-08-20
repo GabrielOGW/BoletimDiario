@@ -62,7 +62,7 @@ export default async function SomPage({
         right={<SyncIndicator />}
       />
 
-      <PageContainer className="flex flex-col gap-4 py-4 pb-8">
+      <PageContainer as="main" className="flex flex-col gap-4 py-4 pb-8">
         <SomDiaria
           productionId={productionId}
           shootingDayId={dayId}
@@ -165,7 +165,7 @@ export default async function SomPage({
                 }
               >
                 {equipeSom.length === 0 ? (
-                  <p className="text-sm text-zinc-500">
+                  <p className="text-sm text-zinc-400">
                     Ninguém cadastrado no departamento de Som ainda.
                   </p>
                 ) : (
@@ -173,7 +173,7 @@ export default async function SomPage({
                     {equipeSom.map((membro) => (
                       <li key={membro.id} className="flex justify-between gap-3">
                         <span className="text-zinc-100">{membro.name}</span>
-                        <span className="text-zinc-500">
+                        <span className="text-zinc-400">
                           {membro.jobTitle ?? DEPARTMENT_LABEL[membro.department]}
                         </span>
                       </li>
@@ -192,7 +192,7 @@ export default async function SomPage({
 function Linha({ rotulo, valor }: { rotulo: string; valor?: string | null }) {
   return (
     <div className="flex justify-between gap-3">
-      <dt className="text-zinc-500">{rotulo}</dt>
+      <dt className="text-zinc-400">{rotulo}</dt>
       <dd className="text-right text-zinc-200">{valor || '—'}</dd>
     </div>
   );

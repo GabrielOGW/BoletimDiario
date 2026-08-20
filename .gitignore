@@ -41,3 +41,9 @@ next-env.d.ts
 
 # Manifesto do Service Worker, gerado no build
 public/sw-manifest.js
+
+# Artefatos do Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+test/e2e/.artefatos/

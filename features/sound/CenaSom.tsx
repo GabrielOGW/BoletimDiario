@@ -84,7 +84,7 @@ export function CenaSom({
         <span className="text-base font-semibold text-zinc-100">Cena {numero}</span>
         <span className="flex-1" />
         {circled > 0 ? <Badge tone="approved">{circled} circled</Badge> : null}
-        <span className="text-xs text-zinc-500">
+        <span className="text-xs text-zinc-400">
           {ordenados.length} bloco(s) · {takesDaCena.length} take(s)
         </span>
         <ChevronDownIcon
@@ -170,12 +170,12 @@ function BlocoSom({
           Bloco {bloco.block ?? '—'}
         </span>
         <span className="flex-1" />
-        <span className="text-xs text-zinc-500">{ordenados.length} plano(s)</span>
+        <span className="text-xs text-zinc-400">{ordenados.length} plano(s)</span>
       </div>
 
       <div className="flex flex-col gap-3 p-3">
         {ordenados.length === 0 ? (
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-zinc-400">
             Sem planos neste bloco. A Câmera cria os planos; o Som pode registrar wild
             tracks aqui de qualquer jeito.
           </p>
@@ -246,10 +246,10 @@ function PlanoSom({
       >
         <span className="text-sm font-semibold text-zinc-100">{titulo}</span>
         {setup.name && !wild ? (
-          <span className="truncate text-xs text-zinc-500">{setup.name}</span>
+          <span className="truncate text-xs text-zinc-400">{setup.name}</span>
         ) : null}
         <span className="flex-1" />
-        <span className="text-xs text-zinc-500">{takes.length} take(s)</span>
+        <span className="text-xs text-zinc-400">{takes.length} take(s)</span>
         <ChevronDownIcon
           size={18}
           className={cn('text-zinc-400 transition', aberto && 'rotate-180')}
@@ -259,7 +259,7 @@ function PlanoSom({
       {aberto ? (
         <div className="flex flex-col gap-2 p-3">
           {takes.length === 0 ? (
-            <p className="text-sm text-zinc-500">Nenhum take neste plano ainda.</p>
+            <p className="text-sm text-zinc-400">Nenhum take neste plano ainda.</p>
           ) : null}
 
           {takes.map((take) => (

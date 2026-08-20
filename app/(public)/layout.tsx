@@ -21,14 +21,14 @@ export default async function PublicLayout({ children }: { children: React.React
           <span className="text-lg font-semibold tracking-tight text-zinc-100">
             Boletim Audiovisual
           </span>
-          <span className="mt-1 block text-xs uppercase tracking-wide text-zinc-500">
+          <span className="mt-1 block text-xs uppercase tracking-wide text-zinc-400">
             Câmera · Som · Continuidade
           </span>
         </Link>
 
         {children}
 
-        <p className="mt-8 text-center text-xs leading-relaxed text-zinc-600">
+        <p className="mt-8 text-center text-xs leading-relaxed text-zinc-400">
           Só para a sala colaborativa. O boletim de câmera local continua funcionando{' '}
           <Link href="/legado" className="text-zinc-400 underline underline-offset-2">
             sem conta

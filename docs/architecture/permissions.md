@@ -161,8 +161,25 @@ usuário autenticado insere o código
 - O departamento é escolhido por quem entra e pode ser corrigido depois por um `ADMIN`.
 - Código rotacionável (`join_code` novo invalida o anterior) e desativável
   (`join_enabled = false`) sem trocar o código.
-- Rate limit por IP e por usuário nas tentativas de resgate — o código é curto.
-- Convite direto por e-mail (com papel e departamento predefinidos) fica para a Fase 4+.
+- **Rate limit no resgate: 10 tentativas por hora, por usuário** (`lib/auth/limite.ts`,
+  Fase 10). O código é curto de propósito — ele é ditado por rádio e digitado com luva —,
+  e curto significa adivinhável: quatro caracteres sobre um alfabeto de 32, com o prefixo
+  saindo do nome da produção, que quem quer entrar geralmente conhece. Sem limite, o
+  espaço inteiro cabe numa tarde.
+
+  Por **usuário** e não por IP: a ação exige sessão, então ganhar paralelismo custa muitas
+  contas — e criar conta já é limitado pela Better Auth. Por IP puniria a equipe inteira
+  atrás do roteador da base, que é o caso normal e não o suspeito. O contador fica na
+  tabela `rate_limits`, a mesma da Better Auth, porque em memória ele valeria por
+  instância ([ADR-038](../decisions.md#adr-038--o-limite-de-tentativas-mora-no-banco-rls-fica-de-fora-e-a-sessão-longa-se-paga-com-revogação)).
+
+  O limite é cobrado **depois** da validação de formato: código malformado não é tentativa
+  de adivinhar, e gastar a cota de quem errou o hífen seria punir o engano. E **acertar
+  zera a cota** — quem entra em cinco salas numa tarde não é quem o limite existe para
+  pegar, e um acerto encerra a adivinhação em vez de continuá-la.
+
+- Convite direto por e-mail (com papel e departamento predefinidos) continua para depois —
+  depende de haver envio de e-mail ([ADR-028](../decisions.md#adr-028--recuperação-de-senha-sem-provedor-de-e-mail)).
 
 ---
 

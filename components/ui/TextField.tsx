@@ -107,7 +107,7 @@ export function TextField({
             tabIndex={-1}
             aria-label={`Limpar ${label}`}
             onClick={() => onChange?.('')}
-            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-zinc-500 transition hover:text-white"
+            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-zinc-400 transition hover:text-white"
           >
             <XIcon size={18} />
           </button>
@@ -125,7 +125,7 @@ export function TextField({
           {error}
         </p>
       ) : hint ? (
-        <p id={messageId} className="text-xs text-zinc-500">
+        <p id={messageId} className="text-xs text-zinc-400">
           {hint}
         </p>
       ) : null}

@@ -134,6 +134,79 @@ export const auth = betterAuth({
      */
     expiresIn: 60 * 60 * 24 * 90,
     updateAge: 60 * 60 * 24 * 7,
+
+    /**
+     * Sem exigência de sessão "fresca" — e isto **não** é afrouxar por conveniência.
+     *
+     * O padrão da biblioteca é um dia: passado esse prazo, os endpoints marcados como
+     * sensíveis recusam a sessão até a pessoa entrar de novo. Aqui a sessão dura 90 dias
+     * e nunca é reverificada, porque reverificar quebraria o offline (ADR-025) — então,
+     * na prática, a sessão de quem usa o app quase sempre tem mais de um dia.
+     *
+     * Só um endpoint em uso neste projeto exige frescor, e é justamente o pior possível:
+     * **listar os aparelhos conectados**. Com o padrão, a tela que existe para derrubar
+     * um telefone perdido era exatamente a que não abria — a proteção desligando o
+     * remédio. Revogar sessão nunca exigiu frescor, então quem entrasse em `/conta`
+     * veria um erro sem entender que o botão que precisava estava do outro lado dele.
+     *
+     * O que se perde é pouco: listar e revogar **as próprias** sessões não é escalada de
+     * privilégio — quem tem o cookie já tem a conta inteira. O que se ganha é a tela
+     * funcionar para quem precisa dela. Trocar e-mail e apagar conta também são gatilhos
+     * de frescor, e nenhum dos dois existe neste app; se um dia existirem, a exigência
+     * volta **neles**, não no global. Coberto por `test/e2e/conta.spec.ts`, que envelhece
+     * a sessão no banco antes de abrir a tela.
+     */
+    freshAge: 0,
+  },
+
+  /**
+   * Rate limit **em tabela**, não em memória (Fase 10).
+   *
+   * O padrão da biblioteca conta em memória, e em memória o limite quase não existe num
+   * deploy serverless: cada instância tem o seu contador, então "cinco tentativas por
+   * minuto" vira cinco por minuto **por instância** — e quem está tentando adivinhar uma
+   * senha ganha o paralelismo de graça. Com `database` o contador é um só
+   * (`rate_limits`, migration `0008`).
+   *
+   * Os limites por rota saem do custo de errar, não de um número redondo:
+   *
+   * - **entrar** é o alvo de força bruta de senha, e cinco por minuto não atrapalha quem
+   *   digitou errado duas vezes no escuro do set;
+   * - **cadastrar** e **pedir redefinição** são caros para quem está do outro lado (conta
+   *   nova, e-mail enviado) e raros para quem é de verdade — a janela é de uma hora;
+   * - **redefinir** aceita mais que pedir porque o link já é secreto: o que se limita ali
+   *   é adivinhar o token, não incomodar o dono da conta.
+   *
+   * **A janela global não é só o limite genérico — ela decide a poda da tabela**, e essa
+   * é a armadilha desta configuração.
+   *
+   * A Better Auth limpa `rate_limits` sozinha, e o corte é
+   * `agora - max(rateLimit.window, 10, 60)`, aplicado a **todas** as linhas, sem olhar a
+   * chave. As janelas de `customRules` não entram nessa conta. Com o `window: 60` que
+   * estava aqui, qualquer rolagem de janela de login apagava a tabela inteira a cada
+   * minuto — e as regras de uma hora (cadastro, redefinição, e o resgate de código de
+   * convite em `limite.ts`, que divide a mesma tabela) valiam, na prática, um minuto.
+   * Sessenta vezes mais fracas do que o que está escrito, e sem sintoma nenhum.
+   *
+   * Por isso **a janela global é a maior janela em uso**. Quem acrescentar uma regra mais
+   * longa que uma hora precisa subir esta junto, ou ela volta a ser destruída em silêncio.
+   *
+   * Subir a janela obriga a subir o teto — 200 por hora e por rota, contra os 100 por
+   * minuto de antes. Continua folgado: nenhuma sessão é lida por HTTP aqui (o servidor
+   * chama `auth.api.getSession` direto, sem passar pelo limitador), então o que sobra em
+   * `/api/auth` é entrar, sair, cadastrar e redefinir — punhado de requisições por pessoa
+   * por dia, mesmo com a equipe inteira atrás do roteador da base.
+   */
+  rateLimit: {
+    storage: 'database',
+    window: 60 * 60,
+    max: 200,
+    customRules: {
+      '/sign-in/email': { window: 60, max: 5 },
+      '/sign-up/email': { window: 60 * 60, max: 10 },
+      '/request-password-reset': { window: 60 * 60, max: 3 },
+      '/reset-password': { window: 60 * 60, max: 10 },
+    },
   },
 
   /** Precisa ser o último: escreve os cookies de sessão nas Server Actions do Next. */

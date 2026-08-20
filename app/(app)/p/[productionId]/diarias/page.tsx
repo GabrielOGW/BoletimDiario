@@ -48,7 +48,7 @@ export default async function DiariasPage({
         }
       />
 
-      <PageContainer className="flex flex-col gap-3 py-4 pb-8">
+      <PageContainer as="main" className="flex flex-col gap-3 py-4 pb-8">
         {diarias.length === 0 ? (
           <EmptyState
             icon={<CalendarIcon size={40} />}
@@ -72,7 +72,7 @@ export default async function DiariasPage({
                       {diaria.dayNumber ? `Diária ${diaria.dayNumber} · ` : ''}
                       {formatDiaria(diaria.date)}
                     </p>
-                    <p className="truncate text-xs text-zinc-500">
+                    <p className="truncate text-xs text-zinc-400">
                       {[diaria.unit, diaria.location].filter(Boolean).join(' · ') ||
                         'Sem locação'}
                     </p>

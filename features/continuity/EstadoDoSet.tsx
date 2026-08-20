@@ -166,7 +166,7 @@ function ColecaoDaCena({
       >
         <span className="text-sm font-semibold text-zinc-200">{definicao.titulo}</span>
         <span className="flex-1" />
-        <span className="truncate text-xs text-zinc-500">{resumo || 'Nada anotado'}</span>
+        <span className="truncate text-xs text-zinc-400">{resumo || 'Nada anotado'}</span>
         <ChevronDownIcon
           size={18}
           className={cn('shrink-0 text-zinc-400 transition', aberto && 'rotate-180')}
@@ -337,7 +337,7 @@ export function EstadoDoTake({
         type="button"
         aria-expanded={aberto}
         onClick={() => setAberto((valor) => !valor)}
-        className="flex min-h-[32px] w-full items-center gap-2 text-xs text-zinc-500 hover:text-zinc-300"
+        className="flex min-h-[32px] w-full items-center gap-2 text-xs text-zinc-400 hover:text-zinc-300"
       >
         <ChevronDownIcon size={14} className={cn('transition', aberto && 'rotate-180')} />
         Estado do set
@@ -356,7 +356,7 @@ export function EstadoDoTake({
 
             return (
               <div key={definicao.colecao} className="flex flex-col gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
                   {definicao.titulo}
                 </p>
 
@@ -376,7 +376,7 @@ export function EstadoDoTake({
                         {item.state ? ` · ${String(item.state)}` : ''}
                       </span>
                       {jaAlterado ? (
-                        <span className="shrink-0 text-zinc-500">alterado abaixo</span>
+                        <span className="shrink-0 text-zinc-400">alterado abaixo</span>
                       ) : canEdit ? (
                         <Button
                           size="sm"
@@ -411,7 +411,7 @@ export function EstadoDoTake({
           })}
 
           {(daCena ?? []).every((lista) => lista.length === 0) && total === 0 ? (
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-zinc-400">
               Nada anotado na cena ainda. O que for anotado lá aparece aqui, e só vira
               registro deste take quando mudar.
             </p>
