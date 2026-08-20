@@ -30,6 +30,7 @@ import { fetchAndPin, startSync, syncNow } from '@/lib/sync/engine';
 import { NovaCena } from '@/features/diaria/NovaCena';
 import { ConflictList } from '@/features/sync/ConflictList';
 import { cn } from '@/utils/cn';
+import { useLembraDiaria } from '@/features/diaria/useLembraDiaria';
 import { baixaCSV } from '@/utils/download';
 
 import { CenaCard } from './CenaCard';
@@ -64,6 +65,17 @@ export function CameraDiaria({
   /** Os mesmos dados de sala, em texto puro, para a folha impressa. */
   impressao: CabecalhoImpressao;
 }) {
+  // Fase 11: esta tela passa a ser "onde eu estava" — o botão Continuar da tela
+  // inicial, da barra da sala e do menu longo do ícone lê exatamente isto.
+  useLembraDiaria({
+    productionId,
+    shootingDayId,
+    modulo: 'camera',
+    producao: impressao.producao.name,
+    data: impressao.diaria.date,
+    dayNumber: impressao.diaria.dayNumber,
+  });
+
   const [fixacao, setFixacao] = useState<'CARREGANDO' | 'PRONTA' | 'SEM_REDE'>(
     'CARREGANDO',
   );

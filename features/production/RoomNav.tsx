@@ -21,7 +21,10 @@ export function RoomNav({ productionId }: { productionId: string }) {
   ];
 
   return (
-    <nav className="sticky bottom-0 z-30 border-t border-line bg-ink/90 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+    // A fixação no rodapé passou para o contêiner do layout, que agora empilha a barra de
+    // diária ativa em cima desta navegação (Fase 11). Dois `sticky` aninhados só fariam o
+    // de dentro virar decoração.
+    <nav className="border-t border-line bg-ink/90 pb-[env(safe-area-inset-bottom)] backdrop-blur">
       <ul className="mx-auto flex w-full max-w-2xl">
         {items.map((item) => {
           const active =

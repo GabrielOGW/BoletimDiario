@@ -20,6 +20,7 @@ import { NovaCena } from '@/features/diaria/NovaCena';
 import { ConflictList } from '@/features/sync/ConflictList';
 import type { CabecalhoImpressao } from '@/features/camera/FolhaCamera';
 import { cn } from '@/utils/cn';
+import { useLembraDiaria } from '@/features/diaria/useLembraDiaria';
 
 import { CenaContinuidade } from './CenaContinuidade';
 import { FolhaContinuidade, type DocumentoImpresso } from './FolhaContinuidade';
@@ -50,6 +51,17 @@ export function ContinuidadeDiaria({
   cabecalho: React.ReactNode;
   impressao: CabecalhoImpressao;
 }) {
+  // Fase 11: esta tela passa a ser "onde eu estava" — o botão Continuar da tela
+  // inicial, da barra da sala e do menu longo do ícone lê exatamente isto.
+  useLembraDiaria({
+    productionId,
+    shootingDayId,
+    modulo: 'continuidade',
+    producao: impressao.producao.name,
+    data: impressao.diaria.date,
+    dayNumber: impressao.diaria.dayNumber,
+  });
+
   const [fixacao, setFixacao] = useState<'CARREGANDO' | 'PRONTA' | 'SEM_REDE'>(
     'CARREGANDO',
   );

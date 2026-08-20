@@ -26,6 +26,7 @@ import { NovaCena } from '@/features/diaria/NovaCena';
 import { ConflictList } from '@/features/sync/ConflictList';
 import type { CabecalhoImpressao } from '@/features/camera/FolhaCamera';
 import { cn } from '@/utils/cn';
+import { useLembraDiaria } from '@/features/diaria/useLembraDiaria';
 import { baixaCSV } from '@/utils/download';
 
 import { CenaSom } from './CenaSom';
@@ -61,6 +62,17 @@ export function SomDiaria({
   /** Os mesmos dados de sala, em texto puro, para a folha impressa. */
   impressao: CabecalhoImpressao;
 }) {
+  // Fase 11: esta tela passa a ser "onde eu estava" — o botão Continuar da tela
+  // inicial, da barra da sala e do menu longo do ícone lê exatamente isto.
+  useLembraDiaria({
+    productionId,
+    shootingDayId,
+    modulo: 'som',
+    producao: impressao.producao.name,
+    data: impressao.diaria.date,
+    dayNumber: impressao.diaria.dayNumber,
+  });
+
   const [fixacao, setFixacao] = useState<'CARREGANDO' | 'PRONTA' | 'SEM_REDE'>(
     'CARREGANDO',
   );

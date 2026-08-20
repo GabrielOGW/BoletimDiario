@@ -5,10 +5,11 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { ClapperboardIcon } from '@/components/ui/icons';
+import { CalendarIcon, ClapperboardIcon } from '@/components/ui/icons';
 import { requireUser } from '@/lib/auth/session';
 import { listProductionsForUser } from '@/lib/db/queries/productions';
 import { SignOutButton } from '@/features/auth/SignOutButton';
+import { ContinuarDiaria } from '@/features/diaria/ContinuarDiaria';
 import { DEPARTMENT_LABEL, ROLE_LABEL } from '@/features/production/labels';
 import { ProductionsForms } from '@/features/production/ProductionsForms';
 
@@ -27,6 +28,28 @@ export default async function ProducoesPage() {
       />
 
       <PageContainer className="flex flex-col gap-4 py-4 pb-16">
+        {/* Os dois caminhos curtos (Fase 11), antes da lista: "continuar" é local e
+            aparece só quando há para onde voltar; "hoje" pergunta ao servidor e resolve
+            no destino. A lista continua aqui embaixo, inteira — atalho que esconde o
+            caminho longo vira armadilha no dia em que ele é o certo. */}
+        {producoes.length > 0 ? (
+          <>
+            <ContinuarDiaria />
+            <Link
+              href="/hoje"
+              className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 transition hover:bg-surface-hover"
+            >
+              <CalendarIcon size={20} className="shrink-0 text-brand" />
+              <span className="min-w-0 flex-1 text-sm font-medium text-zinc-100">
+                Diária de hoje
+              </span>
+              <span aria-hidden className="text-zinc-500">
+                →
+              </span>
+            </Link>
+          </>
+        ) : null}
+
         {producoes.length === 0 ? (
           <EmptyState
             icon={<ClapperboardIcon size={40} />}
