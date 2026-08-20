@@ -834,3 +834,61 @@ decisão.
 **Não decidido aqui:** a mesma inversão para a folha do módulo de Câmera da plataforma
 ([`features/camera/estrutura.ts`](../features/camera/estrutura.ts)), que tem o mesmo problema em
 menor escala. Fica para quando o módulo imprimir uma diária real.
+
+---
+
+### ADR-036 · A busca tem dois alcances declarados, e eles não viram uma lista só
+
+`2026-08-19` · **Aceita** · fecha a [Fase 8](roadmap.md#-fase-8--integração) · revisita
+["os dois caminhos entregam o mesmo formato de resultado"](features/production-room.md#5-busca-8-do-roadmap),
+que a Fase 8 deixou escrito como se o resultado devesse ser **um só**
+
+A busca **da diária** já existia desde a Fase 8: local, sobre a diária fixada, respondendo a
+cada tecla e sem rede. Faltava a busca **da produção inteira** — a que alcança o que este
+aparelho nunca baixou. O plano dizia "fundir os dois caminhos num resultado só". Ao
+implementar, essa fusão se revela a pior das opções disponíveis.
+
+**Decisão: dois alcances, cada um dizendo qual é o seu, e um levando ao outro com o termo na
+mão.**
+
+- **Diária** — `filtraLinhas` sobre o banco local. Instantânea, offline, alcança um dia.
+- **Produção** — [`lib/db/queries/search.ts`](../lib/db/queries/search.ts), Server Component
+  em `/p/[id]/busca`. Alcança toda diária da produção e **exige rede**, como o resto da sala
+  (ADR-016).
+
+**Por que não uma lista só.** Uma lista misturada seria composta de duas metades com
+disponibilidade diferente: a local sempre existe, a do servidor some quando o sinal cai. O
+sintoma seria uma busca que **encolhe em silêncio** — o mesmo termo, o mesmo aparelho, menos
+resultados, sem nada na tela explicando por quê. Numa busca, isso não é degradação: é a
+pessoa concluindo "esse take não existe" e refazendo trabalho que já estava feito. Duas
+listas rotuladas dizem a verdade sobre o que cada uma cobre.
+
+**O que é fundido de verdade é a semântica.** As duas exigem que **cada palavra do termo
+apareça** ("24 boom" é o take da cena 24 com nota de boom, não tudo que tem 24 ou boom), as
+duas concatenam o texto pesquisável antes de comparar — para que as palavras possam vir de
+campos diferentes — e as duas devolvem o mesmo formato: cena · plano · take, mais onde bateu.
+Quem aprende uma sabe usar a outra, que é o que "um resultado só" queria dizer.
+
+E as duas se entregam o termo: a diária oferece "procurar em todas as diárias" quando há
+termo digitado, e o resultado da produção abre a diária com `?q=` já preenchido. Procurar
+duas vezes a mesma coisa é onde a pessoa desiste.
+
+**`ilike`, e não `to_tsvector`.** O índice `scenes_search` (migration `0001`) é full-text em
+português sobre a cena e continua servindo à descrição. Mas o que se procura aqui é quase
+sempre **identificador**: `A023`, `A023C012_001`, `008_012`, `24B`. Full-text trata
+`A023C012_001` como um lexema só — buscar `A023` **não acharia**, que é exatamente o sintoma
+de "a busca não acha nada". Trecho é o que este domínio pede. O preço é varredura sem índice;
+numa produção — dezenas de diárias, milhares de takes — é barato, e se um dia deixar de ser,
+a resposta é um índice `pg_trgm` sobre as mesmas colunas, não trocar a semântica que as
+pessoas já aprenderam.
+
+**Consequências:**
+
+- A fronteira offline **não muda**: nada é escrito na busca, nenhuma entidade nova entra no
+  sync, e a tela de produção é sala comum — Server Component lendo Drizzle.
+- Multicam devolve **um resultado por take**, com a primeira câmera como rótulo. A busca
+  responde "onde está"; quem quer as duas câmeras abre a diária consolidada, que mostra as
+  duas.
+- O resultado tem teto (`LIMITE_DE_BUSCA`, 60) e a tela diz quando bateu nele. Uma lista sem
+  fim é uma lista que ninguém lê — e o remédio, acrescentar uma palavra, é a mesma regra que
+  a busca já ensina.

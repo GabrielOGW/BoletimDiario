@@ -43,6 +43,7 @@ const {
   listEquipment,
 } = await import('@/lib/db/queries/equipment');
 const { descreveEquipamento } = await import('@/features/production/labels');
+const { searchProduction } = await import('@/lib/db/queries/search');
 
 let passed = 0;
 let failed = 0;
@@ -380,6 +381,90 @@ async function run() {
   check(
     'a alocação de equipamento removido some da diária',
     (await listAssignments({ productionId, shootingDayId: outraUnidade })).length === 0,
+  );
+
+  // ---- Busca da produção (Fase 8, ADR-036) ----
+  //
+  // A busca da diária é local e já tem teste; esta é a outra metade — a que varre todas as
+  // diárias e por isso vive no servidor. O que se procura aqui é quase sempre
+  // identificador, e é isso que o teste guarda.
+
+  const cenaId = randomUUID();
+  const planoId = randomUUID();
+  const takeUm = randomUUID();
+  const takeDois = randomUUID();
+
+  await sql`
+    insert into scenes (id, production_id, number, block, description, created_by)
+    values (${cenaId}, ${productionId}, '24', 'A', 'João atravessa o galpão', ${membro.id})
+  `;
+  await sql`
+    insert into setups (id, production_id, scene_id, shooting_day_id, code, sort_order, created_by)
+    values (${planoId}, ${productionId}, ${cenaId}, ${idDia}, '1', 0, ${membro.id})
+  `;
+  await sql`
+    insert into takes (id, production_id, setup_id, number, created_by)
+    values (${takeUm}, ${productionId}, ${planoId}, 1, ${membro.id}),
+           (${takeDois}, ${productionId}, ${planoId}, 2, ${membro.id})
+  `;
+  await sql`
+    insert into camera_take_data (id, production_id, take_id, card, roll, file_name, notes, created_by)
+    values (${randomUUID()}, ${productionId}, ${takeUm}, 'A023', 'R1', 'A023C012_001', 'estourou o fundo', ${membro.id}),
+           (${randomUUID()}, ${productionId}, ${takeDois}, 'A023', 'R1', 'A023C012_002', null, ${membro.id})
+  `;
+  await sql`
+    insert into sound_take_data (id, production_id, take_id, sound_roll, file_name, notes, created_by)
+    values (${randomUUID()}, ${productionId}, ${takeUm}, '008', '008_012', 'avião', ${membro.id})
+  `;
+
+  const porCartao = await searchProduction({ productionId, termo: 'A023' });
+  check('a busca acha os takes pelo cartão', porCartao.length === 2);
+
+  // Full-text trataria `A023C012_001` como um lexema só e não acharia "A023" dentro dele.
+  // É o motivo de a busca ser por trecho (ADR-036).
+  const porTrechoDeArquivo = await searchProduction({ productionId, termo: 'C012_001' });
+  check('a busca acha um trecho no meio do nome do arquivo', porTrechoDeArquivo.length === 1);
+
+  check(
+    'a busca é insensível a maiúsculas',
+    (await searchProduction({ productionId, termo: 'a023c012_002' })).length === 1,
+  );
+
+  // Digitar mais restringe, nunca amplia — a mesma regra da busca local.
+  const duasPalavras = await searchProduction({ productionId, termo: '24 avião' });
+  check('cada palavra do termo precisa aparecer', duasPalavras.length === 1);
+  check(
+    'as palavras podem vir de departamentos diferentes',
+    duasPalavras[0]?.takeId === takeUm,
+  );
+  check(
+    'palavra que não existe zera o resultado',
+    (await searchProduction({ productionId, termo: '24 helicóptero' })).length === 0,
+  );
+
+  const umTake = porTrechoDeArquivo[0];
+  check('o resultado diz de que diária é', umTake?.shootingDayId === idDia);
+  check('o resultado localiza cena, plano e take', umTake?.cena === '24' && umTake?.plano === '1' && umTake?.take === 1);
+  check('o resultado traz o rótulo da câmera', (umTake?.camera ?? '').includes('A023C012_001'));
+  check('o resultado traz o do som quando existe', (umTake?.som ?? '').includes('008_012'));
+
+  // Buscar por espaço em branco devolveria a produção inteira: isso não é resultado.
+  check(
+    'termo vazio não devolve nada',
+    (await searchProduction({ productionId, termo: '   ' })).length === 0,
+  );
+
+  // A busca é da produção de quem pergunta — nunca de outra.
+  check(
+    'a busca não atravessa produção',
+    (await searchProduction({ productionId: randomUUID(), termo: 'A023' })).length === 0,
+  );
+
+  // Take apagado não volta pela busca: soft delete é o modo de apagar (ADR-015).
+  await sql`update takes set deleted_at = now() where id = ${takeDois}`;
+  check(
+    'take apagado não aparece na busca',
+    (await searchProduction({ productionId, termo: 'A023' })).length === 1,
   );
 }
 
