@@ -771,3 +771,66 @@ não `0` — para o que não dá para somar, e `somaPaginas` devolve os valores 
 relatório mostra "2 4/8 (+1 sem soma: 'meia')" em vez de fingir um total completo. Errar para
 menos em silêncio, num número que a produção lê no fim do dia, é o defeito que ninguém
 descobre.
+
+---
+
+### ADR-035 · A folha impressa é diferencial: o que se repete o dia inteiro vira "padrão da diária"
+
+`2026-08-19` · **Aceita** · revisita [ADR-014](#adr-014--manter-a-impressão-nativa-para-pdf) · vale também para [ADR-030](#adr-030--o-módulo-de-câmera-reproduz-o-boletim-tela-por-tela)
+
+Duas diárias reais de _Amigo Gay_ saíram do `/legado/visualizar`: a de 15/08 com 4 cenas, 21
+planos e 51 takes gerou **8 páginas**; a de 16/08, com 15 planos e 30 takes, gerou **6**. Postas
+ao lado da OD correspondente — uma página por diária, com o dia inteiro em uma tabela — a
+diferença não era de conteúdo, era de repetição.
+
+O que ocupava as páginas:
+
+1. **A configuração técnica reimpressa em cada plano.** Todo plano herda o anterior, então
+   `opengate · 6K 4:3 · 24 fps · ISO 400 · 180° · T2.9 · 5600K · Matte Box · sem filtro`
+   aparecia 21 vezes. Em 231 chips impressos, uns 30 eram informação nova.
+2. **Uma tabela de takes por plano**, com o cabeçalho `# · CAM · CARTÃO · CLIP/SYNC · NOTA ·
+STATUS` repetido 21 vezes, e as colunas `CARTÃO`/`CLIP/SYNC`/`NOTA` vazias em 48 dos 51
+   takes — 144 células com um travessão dentro.
+3. **A coluna `CAM`** com "Black Magic" em todas as 51 linhas, numa diária de uma câmera só.
+4. **Uma faixa `BLOCO X · 1 plano`** para cada bloco. No set real o bloco quase sempre tem um
+   plano: 15 blocos com 15 planos na diária 02, 17 com 21 na diária 01. A faixa era um título
+   para uma linha.
+
+**Decisão: a folha passa a ser diferencial.** [`features/boletins/folha.ts`](../features/boletins/folha.ts)
+lê a diária uma vez e produz três coisas que não existiam:
+
+- **O padrão da diária** — para cada campo técnico, o valor que a **maioria** dos planos usa.
+  Impresso uma vez, no alto. Cada plano imprime apenas o que difere dele.
+- **A régua de takes** — todo take vira um quadradinho numerado, o aprovado em verde. Um plano
+  de seis takes cabe em uma linha. Só o take que tem cartão, clip/sync ou nota ganha linha
+  própria, com o texto que alguém de fato escreveu.
+- **A identificação curta** — dentro da cena, o que é igual na cena inteira sai da linha e vai
+  para o cabeçalho dela. Uma cena cujos blocos são todos "A" mostra `BLOCO A` no cabeçalho e
+  os números dos planos na coluna; uma cena com blocos A/D/C/E/F-H/J e todos "plano 2" mostra
+  só as letras. É como a OD escreve: `1.2 - A`.
+
+**Maioria, e não "o valor mais comum".** Se o dia se divide ao meio entre 24 e 48 fps, não
+existe padrão de fps e os dois valores continuam impressos plano a plano. Um "padrão" que
+descreve 40% da diária faria o leitor assumir errado nos outros 60% — e um boletim é lido
+justamente por quem não estava lá.
+
+**Campo vazio não imprime nada.** O travessão de ausência foi metade do volume: ausência de
+anotação não é decisão de câmera. A exceção é o booleano com padrão contrário — num dia que
+usa matte box, o plano _sem_ matte box imprime "sem Matte Box", porque aí a ausência é a
+decisão.
+
+**Consequências:**
+
+- A mesma diária de 21 planos e 51 takes cabe em **duas páginas** sem perder um dado: tudo que
+  foi digitado continua impresso, uma vez cada.
+- A tela de visualização e o PDF são a mesma leitura — `montaFolha()` é a única —, então não
+  existe "sai diferente na impressão".
+- `npm run test:folha` (62 checks) trava as regras que o papel depende: que a maioria não
+  invente padrão, que campo vazio não vire linha, que nenhum plano fique sem identificação.
+- **O modelo de dados não mudou.** Bloco continua existindo; a folha é que parou de dar a ele
+  um título quando ele não separa nada. Anotar continua como está — a bagunça de entrada é
+  legítima, é o relatório que precisava ser escrito.
+
+**Não decidido aqui:** a mesma inversão para a folha do módulo de Câmera da plataforma
+([`features/camera/estrutura.ts`](../features/camera/estrutura.ts)), que tem o mesmo problema em
+menor escala. Fica para quando o módulo imprimir uma diária real.

@@ -18,10 +18,11 @@ npm run format         # Prettier --write
 npm run format:check
 npm run icons          # regenerate PWA PNG icons from public/icons/icon.svg
 npm run check:env      # what the build needs before it starts (runs on prebuild)
-npm test               # all seven check suites below (377 assertions)
+npm test               # all eight check suites below (439 assertions)
 npm run test:migration # a real v1 boletim through v2 normalization (22 assertions)
 npm run test:platform  # domain/platform set rules: inheritance, take axes, page eighths (91)
 npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-to-end (87)
+npm run test:folha     # legacy print sheet: day standard, per-plano deltas, take strip (62)
 npm run test:camera    # camera sheet structure: grouping, print line, take judgment (38)
 npm run test:som       # sound report: ordering, MOS, day summary, CSV escaping (63)
 npm run test:continuidade # verdicts, action fields, progress-report counts (45)
@@ -66,6 +67,15 @@ All inputs are free text; `<datalist>` presets just accelerate entry. Suggestion
 ### Entity creation/duplication ([lib/factory.ts](lib/factory.ts))
 
 All new entities and all clones come from here. **Duplication regenerates every nested id** (`duplicateCena`/`duplicateBloco`/`duplicatePlano`/`duplicateBoletim`) to avoid id collisions — except camera ids, which are kept so plano→camera links survive.
+
+### The printed sheet ([features/boletins/folha.ts](features/boletins/folha.ts))
+
+`/legado/visualizar` renders **one** reading of the day, produced by `montaFolha()`: screen and
+PDF cannot diverge. The sheet is **differential** (ADR-035) — the technical config the majority
+of planos share is printed once as the _padrão da diária_, and each plano prints only what
+differs; takes become a numbered strip, and only a take with card/clip/note gets its own line.
+Empty fields print nothing. Adding a technical field to the sheet means adding it to `CAMPOS`
+there, in camera-check order, not to a table.
 
 ### Routes ([app/](app/))
 

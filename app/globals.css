@@ -117,19 +117,23 @@ input[type='search']::-webkit-search-cancel-button {
     print-color-adjust: exact !important;
   }
 
-  /* Keep-together: plano (cabeçalho + tabela + notas) não quebra no meio. */
+  /* Keep-together: um plano nunca quebra no meio.
+     `.pdf-item` é a linha da folha do boletim legado (identificação + detalhes de take
+     + observação); `.pdf-plano` é o cartão das folhas de Câmera e Continuidade da
+     plataforma. Nomes diferentes porque são leituras diferentes, mesma regra de papel. */
+  .pdf-item,
   .pdf-plano {
     break-inside: avoid;
     page-break-inside: avoid;
   }
-  /* Cabeçalhos não ficam órfãos do conteúdo seguinte. */
+  /* Cabeçalhos não ficam órfãos do conteúdo que anunciam. */
   .pdf-cena-header,
   .pdf-bloco-header,
   .pdf-setup {
     break-after: avoid;
     page-break-after: avoid;
   }
-  /* Linhas de take inteiras; cabeçalho da tabela repete ao quebrar página. */
+  /* Linhas de tabela (mídia/suporte) inteiras. */
   .pdf-table tr {
     break-inside: avoid;
     page-break-inside: avoid;
