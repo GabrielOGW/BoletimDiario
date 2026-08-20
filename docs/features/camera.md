@@ -306,8 +306,8 @@ assim o take 4, que herdou o valor novo, também o mostra, em vez de parecer ter
 pela folha. Duplicar o agrupamento nos dois lugares acabaria em um PDF que mostra a diária
 diferente de como ela foi preenchida. Coberto por `npm run test:camera` (25 checks).
 
-A seção **Mídia/Suporte** saiu com a Fase 8 e substituiu "Cartões usados" na folha (§8).
-O que ainda falta, por depender de outra fase: o CSV para a pós (Fase 9).
+A seção **Mídia/Suporte** saiu com a Fase 8 e substituiu "Cartões usados" na folha (§8), e
+o **CSV para a pós** saiu com a Fase 9 (§9). O relatório do módulo está completo.
 
 ---
 
@@ -417,3 +417,40 @@ Coberto por `npm run test:camera` (60 checks, +22).
 pode haver link, e o componente simplesmente não a renderizava. As três telas de diária
 passavam um "Editar na sala" que **nunca aparecia**. Agora a ação desce para o fim do corpo
 do cartão, e os links de equipe de Câmera, Som e Continuidade passaram a existir.
+
+---
+
+## 9. O CSV para a pós — Fase 9, `2026-08-19`
+
+O sound report já tinha o dele desde a Fase 6, porque o som é conformado por arquivo. O da
+câmera é o par: o que a montagem e a finalização abrem para achar um clip sem ler um PDF
+com o dedo. [`features/camera/csv.ts`](../../features/camera/csv.ts), sem biblioteca — um
+CSV é separador, aspas e fim de linha (ADR-008).
+
+**A folha é diferencial; o arquivo não pode ser.** No papel, o que se repete vira padrão do
+plano e o take mostra só o que mudou — é o que faz a folha caber e ser lida em set. Numa
+planilha isso seria um erro: a pós filtra, ordena e cruza colunas, e uma célula vazia ali
+lê-se como "ninguém anotou", não como "igual ao de cima". Por isso `linhasDoBoletim()`
+achata a diária com **o valor herdado escrito por extenso em cada take**. É a mesma diária,
+lida para outro leitor — e as duas leituras moram no mesmo `estrutura.ts`, que é o que
+impede que discordem.
+
+**As colunas técnicas não são declaradas no CSV.** Saem de `CAMPOS_TECNICOS`, a mesma lista
+que ordena a linha do plano na tela e na folha: cada campo carrega o rótulo impresso _e_ o
+nome da coluna. Acrescentar um campo técnico ao módulo passa a dar a coluna de graça, e não
+existe a segunda lista que ficaria para trás — o teste guarda isso (`toda coluna técnica do
+módulo entra no arquivo`).
+
+Três decisões que o arquivo carrega:
+
+- **Uma linha por câmera, não por take.** Multicam grava dois clips, e a pós conforma dois
+  arquivos. Uma linha só esconderia metade do material — o oposto do que ela vem buscar.
+- **Take sem dado de câmera não vira linha.** Ele existe (o Som pode tê-lo criado para um
+  wild track), mas não há clip para conformar, e linha vazia num arquivo de câmera é ruído
+  que alguém vai ter de explicar.
+- **`Sync` escrito por extenso** quando a natureza do take está vazia, como no CSV de som:
+  na planilha, célula em branco lê-se como "não preencheram".
+
+O download é `Blob` no cliente ([`utils/download.ts`](../../utils/download.ts)), com BOM —
+sem ele o Excel em pt-BR abre "avião" como outra coisa. Nenhuma rota de servidor: fechar a
+diária é o momento em que a locação está sem sinal.

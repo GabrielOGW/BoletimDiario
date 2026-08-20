@@ -228,3 +228,26 @@ Três decisões que o teste guarda:
   resolveu. A coluna do som mostra "MOS — sem áudio", em cinza, e não o alerta.
 
 Verificado por `npm run test:consolidado` (31 checks).
+
+### O que ela passou a entregar — Fase 9, `2026-08-19`
+
+A tela deixou de ser só consulta e virou o lugar de onde a diária **sai**:
+
+- **Relatório consolidado em A4** ([`FolhaConsolidada.tsx`](../../features/diaria/FolhaConsolidada.tsx)),
+  em sobreposição na própria rota, como as três folhas de departamento. Ele responde ao que
+  nenhuma delas responde sozinha: o dia take a take, com Câmera, Som e Continuidade na mesma
+  linha, e as lacunas no cabeçalho. Quem recebe as três folhas separadas ainda tem de
+  casá-las à mão — que é exatamente o trabalho que o `take_id` compartilhado acabou.
+  Departamento que não anotou imprime **traço**, não célula vazia: em branco lê-se "não sei".
+- **JSON da diária** ([`export.ts`](../../features/diaria/export.ts)): entidades **cruas**
+  dos três departamentos — mais tracks de som, as quatro coleções de estado do set e o
+  relatório de progresso —, sem os campos de sincronização (`_dirty` é contabilidade deste
+  aparelho; `version` fica, porque é do servidor). Exportar a leitura consolidada seria
+  exportar uma interpretação, e interpretação se refaz — dado perdido, não.
+
+Os dois são gerados **no cliente**, do banco local, por `Blob`: fechar a diária é o momento
+em que a locação está sem sinal. A tela passou a ler também o que só o arquivo precisa (som,
+estado do set, relatório) — um export que carrega meia diária só é descoberto quando o dado
+já não existe mais.
+
+Verificado por `npm run test:consolidado` (56 checks, +25).

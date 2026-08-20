@@ -5,11 +5,17 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { requireMember } from '@/lib/auth/guards';
 import { uuidSchema } from '@/lib/contracts';
+import { listAssignments } from '@/lib/db/queries/equipment';
+import { listMembers } from '@/lib/db/queries/members';
 import { getProduction } from '@/lib/db/queries/productions';
 import { getShootingDay } from '@/lib/db/queries/shooting-days';
 import { ConsolidadoDiaria } from '@/features/diaria/ConsolidadoDiaria';
 import { SyncIndicator } from '@/features/sync/SyncIndicator';
-import { formatDiaria } from '@/features/production/labels';
+import {
+  DEPARTMENT_LABEL,
+  descreveEquipamento,
+  formatDiaria,
+} from '@/features/production/labels';
 
 export const metadata: Metadata = { title: 'Diária consolidada' };
 
@@ -32,9 +38,11 @@ export default async function ConsolidadoPage({
   if (!uuidSchema.safeParse(dayId).success) notFound();
 
   await requireMember(productionId);
-  const [producao, diaria] = await Promise.all([
+  const [producao, diaria, membros, equipamentos] = await Promise.all([
     getProduction(productionId),
     getShootingDay({ productionId, dayId }),
+    listMembers(productionId),
+    listAssignments({ productionId, shootingDayId: dayId }),
   ]);
 
   if (!producao || !diaria) notFound();
@@ -49,7 +57,44 @@ export default async function ConsolidadoPage({
       />
 
       <PageContainer className="flex flex-col gap-4 py-4 pb-8">
-        <ConsolidadoDiaria productionId={productionId} shootingDayId={dayId} />
+        <ConsolidadoDiaria
+          productionId={productionId}
+          shootingDayId={dayId}
+          // O cabeçalho vai junto com a página, como nos três módulos: o relatório é
+          // impresso e o arquivo é gerado no fim da diária, quando não há sinal.
+          // Aqui a equipe é a **inteira**, não a de um departamento — a folha
+          // consolidada é a que a produção recebe.
+          impressao={{
+            producao: {
+              name: producao.name,
+              company: producao.company,
+              director: producao.director,
+              dop: producao.dop,
+            },
+            diaria: {
+              date: diaria.date,
+              dayNumber: diaria.dayNumber,
+              callTime: diaria.callTime,
+              wrapTime: diaria.wrapTime,
+              lunchStart: diaria.lunchStart,
+              lunchEnd: diaria.lunchEnd,
+              location: diaria.location,
+              unit: diaria.unit,
+              notes: diaria.notes,
+            },
+            equipamentos: equipamentos.map((linha) => ({
+              id: linha.id,
+              departamento: linha.department,
+              categoria: linha.category,
+              descricao: descreveEquipamento(linha),
+            })),
+            equipe: membros.map((membro) => ({
+              id: membro.id,
+              nome: membro.name,
+              funcao: membro.jobTitle ?? DEPARTMENT_LABEL[membro.department],
+            })),
+          }}
+        />
       </PageContainer>
     </>
   );

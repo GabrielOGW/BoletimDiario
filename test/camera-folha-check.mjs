@@ -6,12 +6,19 @@
 import {
   agrupaCenas,
   assinaturaDoPlano,
+  CAMPOS_TECNICOS,
   diferencasDoPlano,
+  linhasDoBoletim,
   partesTecnicas,
   resumoDeMidia,
   rotuloDoJulgamento,
   rotuloDoTipo,
 } from '@/features/camera/estrutura.ts';
+import {
+  colunasDoCSV,
+  montaCSV,
+  nomeDoArquivo,
+} from '@/features/camera/csv.ts';
 import {
   equipamentosDoDepartamento,
   suportesDeMidia,
@@ -234,6 +241,170 @@ ok(
 );
 ok('lista ausente não quebra o filtro', equipamentosDoDepartamento(undefined, 'CAMERA').length === 0);
 ok('lista ausente não quebra o suporte', suportesDeMidia(undefined).length === 0);
+
+// ---- A diária linha a linha, e o CSV da pós (Fase 9) ----
+//
+// A folha imprime a diária diferencial — o que se repete vira padrão do plano. O arquivo
+// não pode: na planilha, célula vazia lê-se como "ninguém anotou", não como "igual ao de
+// cima". Estes checks guardam essa diferença.
+
+const reg = { productionId: 'p', version: 0, _dirty: 0 };
+const cenaCsv = (id, number, block) => ({ ...reg, id, number, block });
+const planoCsv = (id, sceneId, code, sortOrder = 0, kind = null) => ({
+  ...reg,
+  id,
+  sceneId,
+  shootingDayId: 'd',
+  code,
+  sortOrder,
+  kind,
+});
+const takeCsv = (id, setupId, number, extra = {}) => ({
+  ...reg,
+  id,
+  setupId,
+  number,
+  status: 'RECORDED',
+  ...extra,
+});
+
+const fonteCsv = {
+  cenas: [cenaCsv('c24a', '24', 'A'), cenaCsv('c3', '3', 'A')],
+  setups: [
+    planoCsv('s1', 'c24a', '1', 0, 'Insert'),
+    planoCsv('s2', 'c24a', '2', 1, 'Normal'),
+    planoCsv('s3', 'c3', '1', 0),
+  ],
+  takes: [
+    takeCsv('t1', 's1', 1),
+    takeCsv('t2', 's1', 2, { kind: 'MOS', durationSec: 42, notes: 'nota do take' }),
+    takeCsv('t3', 's2', 1),
+    // Take sem dado de câmera: existe (o Som pode tê-lo criado), mas não vira linha.
+    takeCsv('t4', 's3', 1),
+  ],
+  cameras: [
+    { ...reg, id: 'camB', label: 'B' },
+    { ...reg, id: 'camA', label: 'A' },
+  ],
+  dadosCamera: [
+    {
+      ...reg,
+      id: 'd1',
+      takeId: 't1',
+      cameraUnitId: 'camA',
+      approved: true,
+      status: 'CIRCLE',
+      card: 'A002',
+      roll: 'R1',
+      fileName: 'A002C001_001',
+      lens: 'Cooke 32mm',
+      iso: '800',
+      matteBox: true,
+      notes: 'estourou o fundo; refazer',
+    },
+    // Multicam: o mesmo take gravado por duas câmeras são dois clips, duas linhas.
+    {
+      ...reg,
+      id: 'd2',
+      takeId: 't1',
+      cameraUnitId: 'camB',
+      approved: false,
+      status: 'NG',
+      ngReason: 'foco',
+      card: 'B004',
+      fileName: 'B004C001_001',
+      iso: '800',
+    },
+    {
+      ...reg,
+      id: 'd3',
+      takeId: 't2',
+      cameraUnitId: 'camA',
+      approved: false,
+      card: 'A002',
+      iso: '1600',
+      fileName: 'A002C002_001',
+    },
+    {
+      ...reg,
+      id: 'd4',
+      takeId: 't3',
+      cameraUnitId: 'camA',
+      approved: false,
+      iso: '800',
+      fileName: 'A002C003_001',
+    },
+  ],
+};
+
+const linhasCsv = linhasDoBoletim(fonteCsv);
+
+ok('cada câmera do take vira uma linha', linhasCsv.length === 4);
+// Um take sem clip nenhum não tem o que a pós conformar; linha vazia é ruído.
+ok(
+  'take sem dado de câmera não vira linha',
+  !linhasCsv.some((linha) => linha.takeId === 't4'),
+);
+// A cena 3 vem antes da 24 (ordem numérica, não alfabética), e dentro dela o take sem
+// dado de câmera não aparece — por isso a cena 3 não abre a lista.
+ok(
+  'a ordem é a do dia: cena, bloco, plano, take',
+  linhasCsv.map((linha) => `${linha.cena}.${linha.plano}.${linha.take}`).join(',') ===
+    '24.1.1,24.1.1,24.1.2,24.2.1',
+);
+ok(
+  'as câmeras do mesmo take saem em ordem de rótulo',
+  linhasCsv[0].camera === 'A' && linhasCsv[1].camera === 'B',
+);
+ok('o valor técnico sai por extenso em cada linha', linhasCsv[2].tecnica.iso === '1600');
+ok('o tipo Normal não vira valor', linhasCsv[3].tipo === '');
+ok('o tipo diferente de Normal sai', linhasCsv[0].tipo === 'Insert');
+ok('a natureza do take compartilhado sai', linhasCsv[2].natureza === 'MOS');
+ok('o julgamento da câmera sai cru para a planilha', linhasCsv[1].julgamento === 'NG');
+ok('o motivo do NG acompanha o julgamento', linhasCsv[1].motivoNG === 'foco');
+ok('a aprovação do diretor sai como booleano', linhasCsv[0].aprovado === true);
+ok('matte box vira booleano, não marca de texto', linhasCsv[0].matteBox === true);
+ok('a nota do take se junta à da câmera', linhasCsv[2].nota.includes('nota do take'));
+ok('a duração do take acompanha a linha', linhasCsv[2].duracaoSeg === 42);
+
+const csv = montaCSV(linhasCsv, { projeto: 'Projeto X', data: '2026-08-19' });
+const CRLF = '\r\n';
+const linhasArquivo = csv.split(CRLF);
+
+ok('o arquivo tem cabeçalho e uma linha por clip', linhasArquivo.length === 5);
+ok('as linhas terminam em CRLF (RFC 4180)', csv.includes(CRLF));
+// Uma coluna técnica esquecida no arquivo é um dado que a pós nunca vai ver.
+ok(
+  'toda coluna técnica do módulo entra no arquivo',
+  CAMPOS_TECNICOS.every(({ coluna }) => linhasArquivo[0].split(',').includes(coluna)),
+);
+ok(
+  'o cabeçalho começa por projeto e data',
+  linhasArquivo[0].startsWith('projeto,data,cena,bloco,plano,tipo,take,camera'),
+);
+// O ponto e vírgula é separador no Excel em pt-BR: sem aspas, a nota quebraria a linha.
+ok(
+  'nota com ponto e vírgula sai entre aspas',
+  linhasArquivo[1].includes('"estourou o fundo; refazer"'),
+);
+// Célula vazia numa planilha lê-se como "ninguém preencheu" — o take normal tem nome.
+ok('take sem natureza vira Sync no arquivo', linhasArquivo[1].split(',').includes('Sync'));
+ok('take MOS mantém a natureza no arquivo', linhasArquivo[3].split(',').includes('MOS'));
+ok('o cabeçalho é o mesmo que `colunasDoCSV` declara', linhasArquivo[0] === colunasDoCSV().join(','));
+ok(
+  'diária vazia ainda gera o cabeçalho',
+  montaCSV([], { projeto: 'X', data: '2026-08-19' }) === colunasDoCSV().join(','),
+);
+
+ok(
+  'o nome do arquivo perde acento e espaço',
+  nomeDoArquivo({ projeto: 'Ação Entre Amigos', data: '2026-08-19' }) ===
+    'camera-acao-entre-amigos-2026-08-19.csv',
+);
+ok(
+  'projeto sem nome não gera arquivo sem nome',
+  nomeDoArquivo({ projeto: '   ', data: '2026-08-19' }) === 'camera-diaria-2026-08-19.csv',
+);
 
 let failed = 0;
 for (const c of checks) {

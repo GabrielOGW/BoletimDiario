@@ -16,7 +16,15 @@ import {
   suportesDeMidia,
   type EquipamentoDaDiaria,
 } from '@/features/diaria/equipamentos';
-import type { LocalCameraTakeData } from '@/lib/offline/db';
+import type {
+  LocalCameraTakeData,
+  LocalCameraUnit,
+  LocalScene,
+  LocalSetup,
+  LocalTake,
+} from '@/lib/offline/db';
+
+import { agrupaCenas } from '@/features/diaria/cenas';
 
 export { agrupaCenas, type CenaAgrupada } from '@/features/diaria/cenas';
 
@@ -24,6 +32,14 @@ type CampoTecnico = {
   field: keyof LocalCameraTakeData;
   /** Como o valor aparece impresso — "800" vira "ISO 800", como no boletim de hoje. */
   rotulo: (valor: string) => string;
+  /**
+   * O nome da coluna no CSV da pós.
+   *
+   * Fica na mesma lista de propósito: acrescentar um campo técnico passa a dar, de uma
+   * vez, a linha do plano na tela, a linha impressa e a coluna do arquivo. Uma segunda
+   * lista de colunas seria a primeira a ficar para trás.
+   */
+  coluna: string;
 };
 
 /**
@@ -32,20 +48,20 @@ type CampoTecnico = {
  * A mesma lista do cartão de Plano (`PlanoCard`), acrescida do que o modelo novo ganhou.
  */
 export const CAMPOS_TECNICOS: CampoTecnico[] = [
-  { field: 'codec', rotulo: (v) => v },
-  { field: 'resolution', rotulo: (v) => v },
-  { field: 'fps', rotulo: (v) => `${v} fps` },
-  { field: 'iso', rotulo: (v) => `ISO ${v}` },
-  { field: 'shutter', rotulo: (v) => v },
-  { field: 'whiteBalance', rotulo: (v) => v },
-  { field: 'lut', rotulo: (v) => v },
-  { field: 'colorSpace', rotulo: (v) => v },
-  { field: 'lens', rotulo: (v) => v },
-  { field: 'focalLength', rotulo: (v) => v },
-  { field: 'filter', rotulo: (v) => v },
-  { field: 'tStop', rotulo: (v) => v },
-  { field: 'aspectRatio', rotulo: (v) => v },
-  { field: 'vfx', rotulo: (v) => `VFX: ${v}` },
+  { field: 'codec', rotulo: (v) => v, coluna: 'codec' },
+  { field: 'resolution', rotulo: (v) => v, coluna: 'resolucao' },
+  { field: 'fps', rotulo: (v) => `${v} fps`, coluna: 'fps' },
+  { field: 'iso', rotulo: (v) => `ISO ${v}`, coluna: 'iso' },
+  { field: 'shutter', rotulo: (v) => v, coluna: 'obturador' },
+  { field: 'whiteBalance', rotulo: (v) => v, coluna: 'wb' },
+  { field: 'lut', rotulo: (v) => v, coluna: 'lut' },
+  { field: 'colorSpace', rotulo: (v) => v, coluna: 'espaco_de_cor' },
+  { field: 'lens', rotulo: (v) => v, coluna: 'lente' },
+  { field: 'focalLength', rotulo: (v) => v, coluna: 'focal' },
+  { field: 'filter', rotulo: (v) => v, coluna: 'filtro' },
+  { field: 'tStop', rotulo: (v) => v, coluna: 'diafragma' },
+  { field: 'aspectRatio', rotulo: (v) => v, coluna: 'aspecto' },
+  { field: 'vfx', rotulo: (v) => `VFX: ${v}`, coluna: 'vfx' },
 ];
 
 const texto = (
@@ -205,4 +221,133 @@ export function resumoDeMidia(
     suportes: suportesDeMidia(equipamentos),
     takesSemCartao,
   };
+}
+
+// ---- A diária linha a linha (Fase 9) ----
+
+/**
+ * Um take de uma câmera, achatado — a forma que o CSV da pós consome.
+ *
+ * A folha imprime a diária **diferencial**: o que se repete vira padrão do plano e o take
+ * só mostra o que mudou. Isso é certo no papel e errado no arquivo — a pós filtra, ordena
+ * e cruza colunas, e uma célula vazia ali significaria "não foi anotado", não "igual ao
+ * de cima". Por isso a linha do arquivo é **completa**, com o valor herdado escrito por
+ * extenso em cada take. É a mesma diária, lida para outro leitor.
+ */
+export interface LinhaCamera {
+  takeId: string;
+  cena: string;
+  bloco: string;
+  plano: string;
+  /** Tipo de captação do plano (`Normal` é omitido, como no papel). */
+  tipo: string;
+  take: number;
+  /** Rótulo da câmera — uma linha por câmera, porque multicam grava dois clips. */
+  camera: string;
+  arquivo: string;
+  cartao: string;
+  roll: string;
+  volume: string;
+  notaMidia: string;
+  /** Natureza do take compartilhado: MOS, wild, playback… (ADR-029). */
+  natureza: string;
+  /** Julgamento da câmera sobre o take (ADR-010). */
+  julgamento: string;
+  motivoNG: string;
+  aprovado: boolean;
+  matteBox: boolean;
+  duracaoSeg: number | null;
+  nota: string;
+  /** Os campos de `CAMPOS_TECNICOS`, por nome de coluna. */
+  tecnica: Record<string, string>;
+}
+
+export interface FonteCamera {
+  cenas: LocalScene[];
+  setups: LocalSetup[];
+  takes: LocalTake[];
+  dadosCamera: LocalCameraTakeData[];
+  cameras: LocalCameraUnit[];
+}
+
+/**
+ * A diária inteira, take a take, na ordem em que foi rodada.
+ *
+ * Mesma ordem da tela e da folha — cena, bloco, plano, take —, porque é a ordem do dia e
+ * porque duas ordens fariam a planilha discordar do papel na primeira conferência.
+ *
+ * **Um take sem dado de câmera não vira linha.** Ele existe (o Som pode tê-lo criado para
+ * um wild track), mas não há clip nenhum para a pós conformar, e uma linha vazia num
+ * arquivo de câmera é ruído que alguém vai ter de explicar.
+ */
+export function linhasDoBoletim({
+  cenas,
+  setups,
+  takes,
+  dadosCamera,
+  cameras,
+}: FonteCamera): LinhaCamera[] {
+  const etiqueta = new Map(cameras.map((unidade) => [unidade.id, unidade.label]));
+
+  const porTake = new Map<string, LocalCameraTakeData[]>();
+  for (const dados of dadosCamera) {
+    porTake.set(dados.takeId, [...(porTake.get(dados.takeId) ?? []), dados]);
+  }
+
+  const linhas: LinhaCamera[] = [];
+
+  for (const cena of agrupaCenas(cenas)) {
+    for (const bloco of cena.blocos) {
+      const planos = setups
+        .filter((setup) => setup.sceneId === bloco.id)
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code));
+
+      for (const plano of planos) {
+        const takesDoPlano = takes
+          .filter((take) => take.setupId === plano.id)
+          .sort((a, b) => a.number - b.number);
+
+        for (const take of takesDoPlano) {
+          const dados = [...(porTake.get(take.id) ?? [])].sort((a, b) =>
+            (etiqueta.get(String(a.cameraUnitId ?? '')) ?? '').localeCompare(
+              etiqueta.get(String(b.cameraUnitId ?? '')) ?? '',
+              'pt-BR',
+              { numeric: true },
+            ),
+          );
+
+          for (const dado of dados) {
+            linhas.push({
+              takeId: take.id,
+              cena: cena.numero,
+              bloco: String(bloco.block ?? '').trim(),
+              plano: plano.code,
+              tipo: rotuloDoTipo(plano.kind) ?? '',
+              take: take.number,
+              camera: etiqueta.get(String(dado.cameraUnitId ?? '')) ?? '',
+              arquivo: texto(dado, 'fileName'),
+              cartao: texto(dado, 'card'),
+              roll: texto(dado, 'roll'),
+              volume: texto(dado, 'volume'),
+              notaMidia: texto(dado, 'mediaNotes'),
+              natureza: String(take.kind ?? '').trim(),
+              julgamento: String(dado.status ?? '').trim(),
+              motivoNG: texto(dado, 'ngReason'),
+              aprovado: dado.approved === true,
+              matteBox: dado.matteBox === true,
+              duracaoSeg: take.durationSec ?? null,
+              nota: [texto(dado, 'notes'), String(take.notes ?? '').trim()]
+                .filter(Boolean)
+                .join(' · '),
+              tecnica: Object.fromEntries(
+                CAMPOS_TECNICOS.map(({ field, coluna }) => [coluna, texto(dado, field)]),
+              ),
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return linhas;
 }
