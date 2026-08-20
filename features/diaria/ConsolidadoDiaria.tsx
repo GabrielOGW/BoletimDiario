@@ -8,16 +8,28 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SearchInput } from '@/components/ui/SearchInput';
-import { WifiOffIcon } from '@/components/ui/icons';
+import { DownloadIcon, PrinterIcon, WifiOffIcon, XIcon } from '@/components/ui/icons';
+import type { CabecalhoImpressao } from '@/features/camera/FolhaCamera';
 import { listCameraTakeData, listCameraUnits } from '@/lib/offline/repos/camera';
-import { listContinuityTakeData } from '@/lib/offline/repos/continuidade';
+import {
+  getDailyProgressReport,
+  listContinuityTakeData,
+  listEstado,
+} from '@/lib/offline/repos/continuidade';
 import { isPinned, listScenes, listSetups, listTakes } from '@/lib/offline/repos/diaria';
-import { listSoundTakeData } from '@/lib/offline/repos/som';
+import {
+  getSoundDayConfig,
+  listSoundTakeData,
+  listSoundTracks,
+} from '@/lib/offline/repos/som';
 import { fetchAndPin, startSync } from '@/lib/sync/engine';
 import { cn } from '@/utils/cn';
+import { baixaJSON } from '@/utils/download';
 
 import { filtraLinhas, lacunasDoDia, linhasConsolidadas } from './consolidado';
 import type { ColunaDoTake, LinhaConsolidada } from './consolidado';
+import { exportaDiaria, nomeDoArquivo } from './export';
+import { FolhaConsolidada } from './FolhaConsolidada';
 
 /**
  * A visão consolidada da diária — um take, os três departamentos, lado a lado.
@@ -33,14 +45,29 @@ import type { ColunaDoTake, LinhaConsolidada } from './consolidado';
 export function ConsolidadoDiaria({
   productionId,
   shootingDayId,
+  impressao,
 }: {
   productionId: string;
   shootingDayId: string;
+  /** Cabeçalho resolvido no servidor — o mesmo objeto que os três módulos imprimem. */
+  impressao: CabecalhoImpressao;
 }) {
   const [fixacao, setFixacao] = useState<'CARREGANDO' | 'PRONTA' | 'SEM_REDE'>(
     'CARREGANDO',
   );
   const [termo, setTermo] = useState('');
+  const [folha, setFolha] = useState(false);
+
+  // Fechar com Esc: a folha é uma camada sobre a diária, e sair dela não pode custar
+  // procurar um botão com a mão ocupada. Mesmo gesto dos três módulos.
+  useEffect(() => {
+    if (!folha) return;
+    const aoTeclar = (evento: KeyboardEvent) => {
+      if (evento.key === 'Escape') setFolha(false);
+    };
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, [folha]);
 
   useEffect(() => {
     const parar = startSync(productionId, 'DIARIA');
@@ -80,6 +107,47 @@ export function ConsolidadoDiaria({
   );
   const cameras = useLiveQuery(() => listCameraUnits(productionId), [productionId], []);
 
+  /*
+   * O que **só o arquivo** precisa: configuração de som, tracks, as quatro coleções de
+   * estado do set e o relatório de progresso. A tela não os mostra, e por isso eles não
+   * eram lidos aqui — mas um export que não os carrega exporta uma diária pela metade,
+   * e o dia em que alguém descobre isso é o dia em que o dado já não existe mais.
+   */
+  const idsDasCenas = useMemo(() => (cenas ?? []).map((cena) => cena.id), [cenas]);
+  const idsDosSetups = useMemo(() => (setups ?? []).map((setup) => setup.id), [setups]);
+
+  const somConfig = useLiveQuery(
+    () => getSoundDayConfig(shootingDayId),
+    [shootingDayId],
+    undefined,
+  );
+  const somTracks = useLiveQuery(() => listSoundTracks(idsDosTakes), [idsDosTakes], []);
+  const escopo = useMemo(
+    () => ({ sceneIds: idsDasCenas, setupIds: idsDosSetups, takeIds: idsDosTakes }),
+    [idsDasCenas, idsDosSetups, idsDosTakes],
+  );
+  const props = useLiveQuery(() => listEstado('continuityProp', escopo), [escopo], []);
+  const figurino = useLiveQuery(
+    () => listEstado('continuityWardrobe', escopo),
+    [escopo],
+    [],
+  );
+  const cabeloMaquiagem = useLiveQuery(
+    () => listEstado('continuityHairMakeup', escopo),
+    [escopo],
+    [],
+  );
+  const cenografia = useLiveQuery(
+    () => listEstado('continuitySetDressing', escopo),
+    [escopo],
+    [],
+  );
+  const relatorio = useLiveQuery(
+    () => getDailyProgressReport(shootingDayId),
+    [shootingDayId],
+    undefined,
+  );
+
   const linhas = useMemo(
     () =>
       linhasConsolidadas({
@@ -96,6 +164,32 @@ export function ConsolidadoDiaria({
 
   const filtradas = useMemo(() => filtraLinhas(linhas, termo), [linhas, termo]);
   const lacunas = useMemo(() => lacunasDoDia(linhas), [linhas]);
+
+  /** O JSON da diária: entidades cruas dos três departamentos, geradas no aparelho. */
+  const baixaArquivoDaDiaria = () => {
+    const arquivo = exportaDiaria(
+      {
+        cabecalho: impressao,
+        cenas: cenas ?? [],
+        setups: setups ?? [],
+        takes: takes ?? [],
+        cameras: cameras ?? [],
+        camera: camera ?? [],
+        somConfig,
+        som: som ?? [],
+        somTracks: somTracks ?? [],
+        continuidade: continuidade ?? [],
+        props: props ?? [],
+        figurino: figurino ?? [],
+        cabeloMaquiagem: cabeloMaquiagem ?? [],
+        cenografia: cenografia ?? [],
+        relatorio,
+      },
+      new Date().toISOString(),
+    );
+
+    baixaJSON(arquivo, nomeDoArquivo(impressao.producao.name, impressao.diaria.date));
+  };
 
   if (fixacao === 'CARREGANDO') {
     return (
@@ -119,45 +213,94 @@ export function ConsolidadoDiaria({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <SectionCard title="O que falta">
-        <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-          <Lacuna rotulo="Takes" valor={linhas.length} />
-          {/* MOS não é lacuna: é take que declaradamente não tem áudio (ADR-029). */}
-          <Lacuna rotulo="Sem som" valor={lacunas.semSom} alerta />
-          <Lacuna rotulo="Sem câmera" valor={lacunas.semCamera} alerta />
-          <Lacuna rotulo="Sem continuidade" valor={lacunas.semContinuidade} />
-        </dl>
-        <p className="mt-3 text-xs text-zinc-500">
-          Contado dos três departamentos, pelo mesmo <code>take_id</code>. Take MOS não
-          conta como &ldquo;sem som&rdquo; — ele foi rodado sem áudio de propósito.
-        </p>
-      </SectionCard>
+    <>
+      <div className={cn('flex flex-col gap-4', folha && 'no-print')}>
+        <SectionCard title="O que falta">
+          <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            <Lacuna rotulo="Takes" valor={linhas.length} />
+            {/* MOS não é lacuna: é take que declaradamente não tem áudio (ADR-029). */}
+            <Lacuna rotulo="Sem som" valor={lacunas.semSom} alerta />
+            <Lacuna rotulo="Sem câmera" valor={lacunas.semCamera} alerta />
+            <Lacuna rotulo="Sem continuidade" valor={lacunas.semContinuidade} />
+          </dl>
+          <p className="mt-3 text-xs text-zinc-500">
+            Contado dos três departamentos, pelo mesmo <code>take_id</code>. Take MOS não
+            conta como &ldquo;sem som&rdquo; — ele foi rodado sem áudio de propósito.
+          </p>
+        </SectionCard>
 
-      <SearchInput
-        value={termo}
-        onChange={setTermo}
-        placeholder="Buscar cartão, arquivo, cena, nota…"
-      />
+        <SearchInput
+          value={termo}
+          onChange={setTermo}
+          placeholder="Buscar cartão, arquivo, cena, nota…"
+        />
 
-      {linhas.length === 0 ? (
-        <p className="px-1 text-sm text-zinc-500">
-          Nenhum take nesta diária ainda. Assim que qualquer departamento registrar o
-          primeiro, ele aparece aqui.
-        </p>
-      ) : filtradas.length === 0 ? (
-        <p className="px-1 text-sm text-zinc-500">
-          Nada encontrado para “{termo}”. A busca é local: ela funciona sem rede, mas só
-          alcança esta diária.
-        </p>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {filtradas.map((linha) => (
-            <LinhaDoTake key={linha.takeId} linha={linha} />
-          ))}
+        {linhas.length === 0 ? (
+          <p className="px-1 text-sm text-zinc-500">
+            Nenhum take nesta diária ainda. Assim que qualquer departamento registrar o
+            primeiro, ele aparece aqui.
+          </p>
+        ) : filtradas.length === 0 ? (
+          <p className="px-1 text-sm text-zinc-500">
+            Nada encontrado para “{termo}”. A busca é local: ela funciona sem rede, mas só
+            alcança esta diária.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {filtradas.map((linha) => (
+              <LinhaDoTake key={linha.takeId} linha={linha} />
+            ))}
+          </div>
+        )}
+
+        {/* Os dois entregáveis da Fase 9 que nascem aqui: a folha que junta os três
+          departamentos numa página e o arquivo que guarda a diária inteira. Ambos sem
+          servidor — fechar o dia é o momento em que a locação está sem sinal. */}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            variant="secondary"
+            fullWidth
+            leftIcon={<PrinterIcon size={18} />}
+            disabled={linhas.length === 0}
+            onClick={() => setFolha(true)}
+          >
+            Ver relatório consolidado
+          </Button>
+          <Button
+            variant="secondary"
+            fullWidth
+            leftIcon={<DownloadIcon size={18} />}
+            onClick={baixaArquivoDaDiaria}
+          >
+            Baixar JSON da diária
+          </Button>
         </div>
-      )}
-    </div>
+      </div>
+
+      {folha ? (
+        <div className="print-overlay fixed inset-0 z-40 overflow-y-auto bg-ink/95 px-3 py-4 backdrop-blur-sm">
+          <div className="no-print mx-auto mb-3 flex w-full max-w-[820px] items-center gap-2">
+            <Button
+              variant="secondary"
+              leftIcon={<XIcon size={16} />}
+              onClick={() => setFolha(false)}
+            >
+              Fechar
+            </Button>
+            <span className="flex-1" />
+            <Button
+              variant="primary"
+              leftIcon={<PrinterIcon size={18} />}
+              onClick={() => window.print()}
+            >
+              Imprimir / PDF
+            </Button>
+          </div>
+
+          <FolhaConsolidada cabecalho={impressao} linhas={linhas} lacunas={lacunas} />
+        </div>
+      ) : null}
+    </>
   );
 }
 

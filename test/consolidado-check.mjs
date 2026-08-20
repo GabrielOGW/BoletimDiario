@@ -8,6 +8,7 @@ import {
   lacunasDoDia,
   linhasConsolidadas,
 } from '@/features/diaria/consolidado.ts';
+import { exportaDiaria, nomeDoArquivo } from '@/features/diaria/export.ts';
 
 const checks = [];
 const ok = (name, cond) => checks.push({ name, pass: !!cond });
@@ -169,6 +170,123 @@ const vazia = linhasConsolidadas({
 });
 ok('diária vazia não gera linha', vazia.length === 0);
 ok('lacunas de diária vazia são zero', lacunasDoDia(vazia).semSom === 0);
+
+// ---- O JSON da diária (Fase 9) ----
+//
+// O arquivo que sobra quando a produção acaba. Ele guarda entidades cruas, não a leitura
+// consolidada: resumo a gente refaz, dado perdido não.
+
+const cabecalho = {
+  producao: { name: 'Ação Entre Amigos', company: 'X Filmes', director: 'A', dop: 'B' },
+  diaria: {
+    date: '2026-08-19',
+    dayNumber: '12',
+    callTime: '07:00',
+    wrapTime: '19:00',
+    lunchStart: null,
+    lunchEnd: null,
+    location: 'Galpão',
+    unit: null,
+    notes: null,
+  },
+  equipe: [{ id: 'm1', nome: 'Ana', funcao: 'Câmera' }],
+  equipamentos: [
+    { id: 'e1', departamento: 'CAMERA', categoria: 'MEDIA', descricao: 'SanDisk' },
+  ],
+};
+
+const arquivo = exportaDiaria(
+  {
+    cabecalho,
+    cenas: fonte.cenas,
+    setups: fonte.setups,
+    takes: fonte.takes,
+    cameras: fonte.cameras,
+    camera: fonte.camera,
+    somConfig: { ...base, id: 'cfg', shootingDayId: 'd', sampleRate: '48000' },
+    som: fonte.som,
+    somTracks: [{ ...base, id: 'tr1', takeId: 't1', index: 1, name: 'Boom' }],
+    continuidade: fonte.continuidade,
+    props: [{ ...base, id: 'pr1', sceneId: 'c24a' }],
+    figurino: [],
+    cabeloMaquiagem: [],
+    cenografia: [],
+    relatorio: { ...base, id: 'rel', shootingDayId: 'd' },
+  },
+  '2026-08-19T22:00:00.000Z',
+);
+
+ok('o arquivo se identifica', arquivo.app === 'boletim-audiovisual');
+ok('o arquivo declara a versão do formato', arquivo.schemaVersion === 1);
+ok('a data da exportação é a informada', arquivo.exportedAt === '2026-08-19T22:00:00.000Z');
+ok('o cabeçalho da sala vai junto', arquivo.producao.name === 'Ação Entre Amigos');
+ok('a diária vai por inteiro', arquivo.diaria.date === '2026-08-19');
+ok('a equipe vai junto', arquivo.equipe.length === 1);
+ok('o equipamento alocado vai junto', arquivo.equipamentos.length === 1);
+
+// Entidades cruas: cena, plano e take saem como estão, não resumidos.
+ok('as cenas vão cruas', arquivo.cenas.length === fonte.cenas.length);
+ok('os planos vão crus', arquivo.setups.length === fonte.setups.length);
+ok('os takes vão crus', arquivo.takes.length === fonte.takes.length);
+ok('as câmeras cadastradas vão junto', arquivo.camera.unidades.length === 2);
+ok('os dados de câmera vão junto', arquivo.camera.takes.length === fonte.camera.length);
+ok('a configuração de som vai junto', arquivo.som.configuracao !== null);
+ok('as tracks vão junto', arquivo.som.tracks.length === 1);
+ok('a continuidade vai junto', arquivo.continuidade.takes.length === fonte.continuidade.length);
+ok('as coleções de estado vão junto', arquivo.continuidade.props.length === 1);
+ok('o relatório de progresso vai junto', arquivo.continuidade.relatorioDeProgresso !== null);
+
+// `_dirty` é contabilidade deste aparelho: fora dele, não significa nada.
+ok(
+  'o marcador de pendência local não sai no arquivo',
+  !JSON.stringify(arquivo).includes('_dirty'),
+);
+// `version` fica: ela é do servidor, e é o que permite reconhecer o registro depois.
+ok('a versão do servidor fica', 'version' in arquivo.takes[0]);
+
+ok(
+  'os totais conferem sem abrir o arquivo inteiro',
+  arquivo.totais.takes === fonte.takes.length && arquivo.totais.planos === fonte.setups.length,
+);
+
+// Diária que ninguém preencheu ainda exporta — o arquivo é do dia, não dos takes.
+const arquivoVazio = exportaDiaria(
+  {
+    cabecalho,
+    cenas: [],
+    setups: [],
+    takes: [],
+    cameras: [],
+    camera: [],
+    som: [],
+    somTracks: [],
+    continuidade: [],
+    props: [],
+    figurino: [],
+    cabeloMaquiagem: [],
+    cenografia: [],
+  },
+  '2026-08-19T22:00:00.000Z',
+);
+ok('diária vazia ainda exporta', arquivoVazio.totais.takes === 0);
+ok(
+  'sem configuração de som o campo é nulo, não ausente',
+  arquivoVazio.som.configuracao === null,
+);
+ok(
+  'sem relatório de progresso o campo é nulo',
+  arquivoVazio.continuidade.relatorioDeProgresso === null,
+);
+
+ok(
+  'o nome do arquivo perde acento e espaço',
+  nomeDoArquivo('Ação Entre Amigos', '2026-08-19') ===
+    'diaria-acao-entre-amigos-2026-08-19.json',
+);
+ok(
+  'produção sem nome não gera arquivo sem nome',
+  nomeDoArquivo('  ', '2026-08-19') === 'diaria-sem-titulo-2026-08-19.json',
+);
 
 let failed = 0;
 for (const c of checks) {

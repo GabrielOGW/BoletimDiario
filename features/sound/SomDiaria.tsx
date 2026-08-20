@@ -26,6 +26,7 @@ import { NovaCena } from '@/features/diaria/NovaCena';
 import { ConflictList } from '@/features/sync/ConflictList';
 import type { CabecalhoImpressao } from '@/features/camera/FolhaCamera';
 import { cn } from '@/utils/cn';
+import { baixaCSV } from '@/utils/download';
 
 import { CenaSom } from './CenaSom';
 import { ConfiguracaoSom } from './ConfiguracaoSom';
@@ -281,28 +282,6 @@ function Numero({
       </dd>
     </div>
   );
-}
-
-/**
- * Baixa o CSV sem servidor e sem biblioteca.
- *
- * `Blob` + `createObjectURL` é o que funciona offline: qualquer rota de download passaria
- * pelo servidor, e o fim da diária é exatamente quando a locação está sem sinal. O BOM vai
- * na frente porque sem ele o Excel em pt-BR abre "avião" como "avião".
- */
-function baixaCSV(conteudo: string, nome: string): void {
-  const BOM = String.fromCharCode(0xfeff);
-  const blob = new Blob([BOM, conteudo], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = nome;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  URL.revokeObjectURL(url);
 }
 
 /**

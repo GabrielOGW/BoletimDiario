@@ -335,11 +335,37 @@ em oitavos, minutagem, cobertura, cartões e rolls do dia).
 contra o Neon real). A fronteira offline **não mudou**: o equipamento chega às folhas
 impressas como props resolvidas no servidor, pela mesma via de produção, horários e equipe.
 
-## 📋 Fase 9 — Relatórios
+## ✅ Fase 9 — Relatórios
 
-- [ ] PDF dos três módulos e consolidado por cena/setup/take
-- [ ] CSV (som prioritário, câmera para a pós)
-- [ ] Export JSON da diária
+> **Fechada em `2026-08-19`.** Três entregáveis, três leitores diferentes: a **folha** é
+> para o set, o **CSV** é para a pós e o **JSON** é para guardar. Nenhum deles passa pelo
+> servidor — fechar a diária é justamente o momento em que a locação está sem sinal.
+
+- [x] **PDF dos três módulos e consolidado por cena/setup/take.** As três folhas de
+      departamento existem desde as Fases 5–7; o que faltava era a que **nenhuma delas
+      pode dar sozinha**: `features/diaria/FolhaConsolidada.tsx`, take a take, os três
+      departamentos na mesma linha, com as lacunas do dia no cabeçalho. Em sobreposição na
+      própria rota `/consolidado`, como as outras
+- [x] **CSV.** O do som já existia (Fase 6, prioritário); entrou o de **câmera para a pós**
+      — `features/camera/csv.ts`, lido de `linhasDoBoletim`. As colunas técnicas saem de
+      `CAMPOS_TECNICOS`, a mesma lista que desenha a linha do plano na tela e na folha:
+      acrescentar campo técnico passa a dar a coluna de graça. A linha do arquivo é
+      **completa** (valor herdado por extenso em cada take), ao contrário da folha, que é
+      diferencial — numa planilha, célula vazia lê-se como "ninguém anotou"
+- [x] **Export JSON da diária.** `features/diaria/export.ts`, no botão da tela consolidada:
+      entidades **cruas** dos três departamentos (mais tracks, coleções de estado e o
+      relatório de progresso), sem os campos de sincronização. Exportar o resumo seria
+      exportar uma interpretação — interpretação se refaz, dado perdido não
+
+**Verificado por** `npm run test:camera` (85 checks, +25) e `npm run test:consolidado`
+(56, +25). A fronteira offline **não mudou**: os três arquivos são gerados no cliente, do
+banco local, por `Blob` — a única função de download da plataforma agora mora em
+[`utils/download.ts`](../utils/download.ts), porque três cópias dela seriam três chances de
+uma delas esquecer o BOM que o Excel em pt-BR exige.
+
+**Pendência consciente:** CSV de continuidade. A continuidade entrega **texto** — ação,
+desvio de roteiro, estado do set —, e texto em planilha é onde ele deixa de ser lido. O
+relatório de progresso e a folha continuam sendo a entrega dela. Entra se alguém pedir.
 
 ## 📋 Fase 10 — Hardening
 

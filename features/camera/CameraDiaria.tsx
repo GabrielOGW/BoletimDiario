@@ -10,6 +10,7 @@ import { TextField } from '@/components/ui/TextField';
 import {
   CameraIcon,
   ClapperboardIcon,
+  DownloadIcon,
   FilmIcon,
   HardDriveIcon,
   PlusIcon,
@@ -29,10 +30,12 @@ import { fetchAndPin, startSync, syncNow } from '@/lib/sync/engine';
 import { NovaCena } from '@/features/diaria/NovaCena';
 import { ConflictList } from '@/features/sync/ConflictList';
 import { cn } from '@/utils/cn';
+import { baixaCSV } from '@/utils/download';
 
 import { CenaCard } from './CenaCard';
 import { FolhaCamera, type CabecalhoImpressao } from './FolhaCamera';
-import { agrupaCenas, resumoDeMidia } from './estrutura';
+import { agrupaCenas, linhasDoBoletim, resumoDeMidia } from './estrutura';
+import { montaCSV, nomeDoArquivo } from './csv';
 
 /**
  * O Boletim de Câmera na plataforma.
@@ -147,6 +150,20 @@ export function CameraDiaria({
       ),
     );
 
+  /** A diária achatada — o que o CSV da pós consome, na ordem em que o dia foi rodado. */
+  const linhas = linhasDoBoletim({
+    cenas: cenas ?? [],
+    setups: setups ?? [],
+    takes: takes ?? [],
+    dadosCamera: dadosCamera ?? [],
+    cameras: cameras ?? [],
+  });
+
+  const contexto = {
+    projeto: impressao.producao.name,
+    data: impressao.diaria.date,
+  };
+
   const totalTakes = (takes ?? []).length;
   const takesAprovados = (dadosCamera ?? []).filter((dado) => dado.approved).length;
 
@@ -228,14 +245,28 @@ export function CameraDiaria({
           </p>
         </SectionCard>
 
-        <Button
-          variant="secondary"
-          fullWidth
-          leftIcon={<PrinterIcon size={18} />}
-          onClick={() => setFolha(true)}
-        >
-          Ver boletim para impressão
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            variant="secondary"
+            fullWidth
+            leftIcon={<PrinterIcon size={18} />}
+            onClick={() => setFolha(true)}
+          >
+            Ver boletim para impressão
+          </Button>
+          {/* O CSV é o entregável da pós (Fase 9): a folha é para o set, este arquivo é
+              para quem vai procurar um clip três semanas depois. Gerado do mesmo
+              `linhasDoBoletim`, sem servidor — o fim da diária é sem sinal. */}
+          <Button
+            variant="secondary"
+            fullWidth
+            leftIcon={<DownloadIcon size={18} />}
+            disabled={linhas.length === 0}
+            onClick={() => baixaCSV(montaCSV(linhas, contexto), nomeDoArquivo(contexto))}
+          >
+            Baixar CSV
+          </Button>
+        </div>
       </div>
 
       {folha ? (
