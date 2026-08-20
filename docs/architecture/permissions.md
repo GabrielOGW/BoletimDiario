@@ -174,7 +174,9 @@ usuário autenticado insere o código
   instância ([ADR-038](../decisions.md#adr-038--o-limite-de-tentativas-mora-no-banco-rls-fica-de-fora-e-a-sessão-longa-se-paga-com-revogação)).
 
   O limite é cobrado **depois** da validação de formato: código malformado não é tentativa
-  de adivinhar, e gastar a cota de quem errou o hífen seria punir o engano.
+  de adivinhar, e gastar a cota de quem errou o hífen seria punir o engano. E **acertar
+  zera a cota** — quem entra em cinco salas numa tarde não é quem o limite existe para
+  pegar, e um acerto encerra a adivinhação em vez de continuá-la.
 
 - Convite direto por e-mail (com papel e departamento predefinidos) continua para depois —
   depende de haver envio de e-mail ([ADR-028](../decisions.md#adr-028--recuperação-de-senha-sem-provedor-de-e-mail)).

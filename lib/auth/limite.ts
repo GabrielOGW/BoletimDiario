@@ -41,6 +41,22 @@ export interface Regra {
  * nenhum — ninguém entra numa sala dez vezes por hora.
  */
 export async function consomeTentativa(chave: string, regra: Regra): Promise<Veredito> {
+  try {
+    return await conta(chave, regra);
+  } catch {
+    /**
+     * **Falha aberto**, e de propósito.
+     *
+     * O contador vive no mesmo Neon que o resto; um erro passageiro aqui derrubaria a
+     * entrada na sala inteira. Um limitador que tranca todo mundo quando ele próprio
+     * quebra transforma um defeito de contador em indisponibilidade — e a porta que ele
+     * guarda já exige sessão e um código secreto.
+     */
+    return { permitido: true, esperarSegundos: 0 };
+  }
+}
+
+async function conta(chave: string, regra: Regra): Promise<Veredito> {
   const agora = Date.now();
   const janelaMs = regra.janelaSegundos * 1000;
 
@@ -59,17 +75,10 @@ export async function consomeTentativa(chave: string, regra: Regra): Promise<Ver
     returning count, last_request
   `);
 
+  // `returning` sempre devolve uma linha; se não devolveu, quem decide é o `catch` de
+  // cima, com a mesma política.
   const linha = rows[0];
-
-  /**
-   * Sem linha, deixa passar.
-   *
-   * `returning` sempre devolve uma; isto é o caminho impossível. Ele **falha aberto** de
-   * propósito: um limitador que tranca todo mundo quando ele próprio quebra transforma um
-   * defeito de contador em indisponibilidade da sala inteira. A porta que ele guarda já
-   * exige sessão e um código secreto.
-   */
-  if (!linha) return { permitido: true, esperarSegundos: 0 };
+  if (!linha) throw new Error('O contador não devolveu linha.');
 
   const contagem = Number(linha.count);
   const inicioDaJanela = Number(linha.last_request);
@@ -91,16 +100,15 @@ export async function consomeTentativa(chave: string, regra: Regra): Promise<Ver
 /**
  * Uma linha por chave, e chave nova a cada IP: sem poda, a tabela só cresce.
  *
- * Vinte e quatro horas cobrem com folga a janela mais longa em uso (uma hora), e a linha
- * podada não perdoa ninguém — quem passou do limite há um dia já teria recomeçado a
- * contagem de qualquer jeito.
+ * A Better Auth também poda esta tabela — e o corte dela vem de `rateLimit.window`, não
+ * das janelas de cada regra (ver `config.ts`). Esta poda aqui é a rede de segurança para
+ * quando ninguém tocar em `/api/auth`: aí a limpeza da biblioteca simplesmente não roda.
  *
- * Roda junto do resgate de código, que é raro, e não a cada requisição de `/api/auth`:
- * é uma faxina, não um caminho quente. O `delete` é uma varredura de índice que quase
- * sempre não acha nada.
+ * Vinte e quatro horas cobrem com folga a janela mais longa em uso, e a linha podada não
+ * perdoa ninguém — quem passou do limite há um dia já teria recomeçado a contagem.
  *
  * Se um dia a tabela crescer a ponto de isso não bastar, o lugar certo é um cron — não
- * uma poda mais agressiva aqui dentro.
+ * uma poda mais agressiva no caminho da requisição.
  */
 const RETENCAO_MS = 24 * 60 * 60 * 1000;
 
@@ -122,7 +130,25 @@ export const LIMITE_DE_ENTRADA: Regra = { janelaSegundos: 60 * 60, maximo: 10 };
 
 export const chaveDeEntrada = (userId: string) => `entrar-por-codigo:${userId}`;
 
-/** "Espere 12 minutos" é acionável; "espere 743 segundos" não é. */
+/**
+ * Zera a cota de quem acertou.
+ *
+ * Contar toda tentativa protege contra adivinhação, mas puniria o caso legítimo que se
+ * parece com ela: o assistente de produção que entra em cinco salas numa tarde, ou quem
+ * errou o código dez vezes antes de alguém ditar o certo. A propriedade contra força
+ * bruta continua de pé — um acerto **encerra** o ataque, não o continua —, e o falso
+ * positivo some.
+ */
+export async function esqueceTentativas(chave: string): Promise<void> {
+  try {
+    await db.execute(sql`delete from rate_limits where key = ${chave}`);
+  } catch {
+    // Falhar aqui só significa que a cota da pessoa segue contada. Não é motivo para
+    // derrubar uma entrada que já deu certo.
+  }
+}
+
+/** "Espere 13 minutos" é acionável; "espere 743 segundos" não é. */
 export function emLinguagemDeGente(segundos: number): string {
   if (segundos < 60) return `${segundos} segundo${segundos === 1 ? '' : 's'}`;
   const minutos = Math.ceil(segundos / 60);

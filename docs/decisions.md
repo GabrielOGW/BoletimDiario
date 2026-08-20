@@ -998,7 +998,29 @@ esquecer de limpar.
 
 A chave é o **usuário**, não o IP. A ação exige sessão, então ganhar paralelismo custa muitas
 contas — e criar conta já é limitado. Por IP puniria a equipe inteira atrás do roteador da base,
-que é o caso normal e não o suspeito.
+que é o caso normal e não o suspeito. **Acertar o código zera a cota**: quem entra em cinco
+salas numa tarde não é quem o limite existe para pegar, e um acerto encerra a adivinhação em
+vez de continuá-la.
+
+#### A armadilha da janela global, que não tem sintoma
+
+Dividir a tabela com a Better Auth cobra um preço que só se vê lendo a implementação dela: ela
+**poda `rate_limits` sozinha**, e o corte é `agora - max(rateLimit.window, 10, 60)`, aplicado a
+**todas** as linhas, sem olhar a chave — as janelas de `customRules` não entram nessa conta.
+
+Com a janela global em 60 s, que foi a primeira escrita, qualquer rolagem de janela de login
+apagava a tabela inteira a cada minuto. As regras de uma hora — cadastro, redefinição, e o
+resgate de código, que divide a mesma tabela — valiam, na prática, **um minuto**. Sessenta
+vezes mais fracas do que o que estava escrito, e sem nada quebrar: os testes passavam, a tela
+funcionava, o `429` aparecia na hora certa dentro do minuto.
+
+**A regra que ficou: a janela global é a maior janela em uso.** Quem acrescentar uma regra mais
+longa precisa subir a global junto. Subir a janela obriga a subir o teto (200 por hora e por
+rota, em vez de 100 por minuto), e isso é folgado porque **nenhuma sessão é lida por HTTP**
+aqui — o servidor chama `auth.api.getSession` direto, sem passar pelo limitador, então o que
+sobra em `/api/auth` é entrar, sair, cadastrar e redefinir.
+
+`npm run test:sala` guarda a invariante, e uma mutação confirmou que ela pega o retorno.
 
 #### RLS: **não** entra, e a razão não é preguiça
 
@@ -1062,9 +1084,12 @@ gatilhos de frescor e nenhum dos dois existe neste app; se um dia existirem, a e
   tentativa: preso à tentativa, quem estivesse sendo barrado faria o servidor varrer a tabela
   a cada batida — trabalho feito em nome de quem já foi recusado. Não é cron porque não
   precisa ser ainda; quando precisar, é cron, e não uma poda mais agressiva por requisição.
-- O limitador **falha aberto**. Se o próprio contador quebrar, a entrada passa: um limitador
-  que tranca todo mundo quando ele falha transforma um defeito de contador em indisponibilidade
-  da sala inteira, e a porta que ele guarda já exige sessão e um código secreto.
+- O limitador **falha aberto**, e agora de verdade: a primeira versão prometia isso num
+  comentário e num ramo inalcançável, enquanto o erro que de fato acontece — uma falha
+  passageira do Neon — subia como erro de Server Action na tela de entrar. Um limitador que
+  tranca todo mundo quando ele próprio falha transforma um defeito de contador em
+  indisponibilidade da sala inteira, e a porta que ele guarda já exige sessão e um código
+  secreto.
 - A §7 de `database.md` deixa de prometer RLS e passa a explicar por que não.
 
 ---

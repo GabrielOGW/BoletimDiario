@@ -177,12 +177,30 @@ export const auth = betterAuth({
    * - **redefinir** aceita mais que pedir porque o link já é secreto: o que se limita ali
    *   é adivinhar o token, não incomodar o dono da conta.
    *
-   * O limite global de 100/min continua valendo para todo o resto de `/api/auth`.
+   * **A janela global não é só o limite genérico — ela decide a poda da tabela**, e essa
+   * é a armadilha desta configuração.
+   *
+   * A Better Auth limpa `rate_limits` sozinha, e o corte é
+   * `agora - max(rateLimit.window, 10, 60)`, aplicado a **todas** as linhas, sem olhar a
+   * chave. As janelas de `customRules` não entram nessa conta. Com o `window: 60` que
+   * estava aqui, qualquer rolagem de janela de login apagava a tabela inteira a cada
+   * minuto — e as regras de uma hora (cadastro, redefinição, e o resgate de código de
+   * convite em `limite.ts`, que divide a mesma tabela) valiam, na prática, um minuto.
+   * Sessenta vezes mais fracas do que o que está escrito, e sem sintoma nenhum.
+   *
+   * Por isso **a janela global é a maior janela em uso**. Quem acrescentar uma regra mais
+   * longa que uma hora precisa subir esta junto, ou ela volta a ser destruída em silêncio.
+   *
+   * Subir a janela obriga a subir o teto — 200 por hora e por rota, contra os 100 por
+   * minuto de antes. Continua folgado: nenhuma sessão é lida por HTTP aqui (o servidor
+   * chama `auth.api.getSession` direto, sem passar pelo limitador), então o que sobra em
+   * `/api/auth` é entrar, sair, cadastrar e redefinir — punhado de requisições por pessoa
+   * por dia, mesmo com a equipe inteira atrás do roteador da base.
    */
   rateLimit: {
     storage: 'database',
-    window: 60,
-    max: 100,
+    window: 60 * 60,
+    max: 200,
     customRules: {
       '/sign-in/email': { window: 60, max: 5 },
       '/sign-up/email': { window: 60 * 60, max: 10 },

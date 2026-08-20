@@ -443,7 +443,18 @@ existir é teste que nunca é escrito.
 > porque a sessão vive no banco e não num JWT — uma capacidade que o schema já tinha e que não
 > tinha tela.
 >
-> **Achado na revisão, e o pior tipo — o que só aparece depois de um dia:** a Better Auth exige
+> **Dois achados da revisão, e os dois do tipo que não dá sintoma.**
+>
+> O primeiro é o mais grave da fase: **dividir `rate_limits` com a Better Auth quase anulou os
+> limites de uma hora.** Ela poda a tabela sozinha, e o corte é
+> `agora - max(rateLimit.window, 10, 60)` — sobre **todas** as linhas, sem olhar a chave e sem
+> consultar as janelas de `customRules`. Com a janela global em 60 s, qualquer rolagem de
+> janela de login apagava a tabela inteira a cada minuto, e as regras de uma hora valiam um
+> minuto: sessenta vezes mais fracas do que o escrito, com os testes passando e o `429`
+> aparecendo na hora certa dentro do minuto. A janela global passou a ser a maior janela em
+> uso, e `npm run test:sala` guarda a invariante — conferido por mutação.
+>
+> O segundo: a Better Auth exige
 > sessão "fresca" para **listar** sessões, e o padrão dela de frescor é 24 h. Com sessão de 90
 > dias que nunca é reverificada, isso significa que `/conta` funcionaria só no primeiro dia de
 > cada login — a tela que existe para derrubar um telefone perdido seria justamente a que não

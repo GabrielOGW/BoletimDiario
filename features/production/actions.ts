@@ -29,6 +29,7 @@ import {
   chaveDeEntrada,
   consomeTentativa,
   emLinguagemDeGente,
+  esqueceTentativas,
 } from '@/lib/auth/limite';
 import { requireUser } from '@/lib/auth/session';
 import {
@@ -145,7 +146,8 @@ export async function entrarPorCodigoAction(
    * é a consulta que se quer tornar cara: são 32⁴ sufixos, e sem limite o espaço inteiro
    * cabe numa tarde.
    */
-  const veredito = await consomeTentativa(chaveDeEntrada(user.id), LIMITE_DE_ENTRADA);
+  const chave = chaveDeEntrada(user.id);
+  const veredito = await consomeTentativa(chave, LIMITE_DE_ENTRADA);
   if (!veredito.permitido) {
     return {
       error: `Muitas tentativas. Tente de novo em ${emLinguagemDeGente(veredito.esperarSegundos)}.`,
@@ -166,6 +168,10 @@ export async function entrarPorCodigoAction(
   if (result.status === 'CLOSED') {
     return { error: 'Esta sala está fechada para novas entradas.' };
   }
+
+  // Acertou: a cota volta ao começo. Quem entra em cinco salas numa tarde não é quem o
+  // limite existe para pegar, e um acerto **encerra** a adivinhação em vez de continuá-la.
+  await esqueceTentativas(chave);
 
   revalidatePath('/producoes');
   redirect(`/p/${result.productionId}`);

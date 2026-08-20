@@ -43,9 +43,14 @@ const {
   listEquipment,
 } = await import('@/lib/db/queries/equipment');
 const { descreveEquipamento } = await import('@/features/production/labels');
-const { consomeTentativa, chaveDeEntrada, emLinguagemDeGente } = await import(
-  '@/lib/auth/limite'
-);
+const {
+  consomeTentativa,
+  chaveDeEntrada,
+  emLinguagemDeGente,
+  esqueceTentativas,
+  LIMITE_DE_ENTRADA,
+} = await import('@/lib/auth/limite');
+const { auth } = await import('@/lib/auth/config');
 const { searchProduction } = await import('@/lib/db/queries/search');
 
 let passed = 0;
@@ -537,6 +542,47 @@ async function run() {
     select count(*)::int as total from rate_limits where key = ${chave}
   `;
   check('a poda não leva junto quem ainda está na janela', viva.total === 1);
+
+  // Acertar o código zera a cota: quem entra em cinco salas numa tarde não é quem o
+  // limite existe para pegar, e um acerto encerra a adivinhação em vez de continuá-la.
+  await consomeTentativa(chave, regra);
+  await esqueceTentativas(chave);
+  const [aposAcerto] = await sql`
+    select count(*)::int as total from rate_limits where key = ${chave}
+  `;
+  check('acertar o código zera a cota', aposAcerto.total === 0);
+  check(
+    'e a tentativa seguinte recomeça permitida',
+    (await consomeTentativa(chave, regra)).permitido,
+  );
+
+  /**
+   * A armadilha que a revisão pegou, e que não tem sintoma nenhum quando volta.
+   *
+   * A Better Auth poda `rate_limits` sozinha, e o corte dela é
+   * `agora - max(rateLimit.window, 10, 60)` — aplicado a **todas** as linhas, sem olhar a
+   * chave, e sem consultar as janelas de `customRules`. Se a janela global for menor que
+   * qualquer janela em uso, as linhas dessas regras são apagadas antes de a janela delas
+   * fechar: o limite de uma hora passa a valer o tamanho da janela global.
+   *
+   * Era o caso com `window: 60`. As regras de uma hora valiam um minuto — sessenta vezes
+   * mais fracas do que o que estava escrito, sem nada quebrar.
+   */
+  const limiteConfigurado = auth.options.rateLimit;
+  const janelasEmUso = [
+    ...Object.values(limiteConfigurado.customRules ?? {}).map((r) => r.window),
+    LIMITE_DE_ENTRADA.janelaSegundos,
+  ];
+
+  check(
+    'a janela global cobre a maior janela em uso',
+    limiteConfigurado.window >= Math.max(...janelasEmUso),
+    ` (global ${limiteConfigurado.window}s vs maior ${Math.max(...janelasEmUso)}s)`,
+  );
+  check('o contador do rate limit mora no banco', limiteConfigurado.storage === 'database');
+  // Frescor de sessão desligado: com 90 dias sem reverificação, exigir sessão "fresca"
+  // fecharia justamente a tela que derruba um aparelho perdido.
+  check('a sessão não precisa ser fresca', auth.options.session.freshAge === 0);
 
   await sql`delete from rate_limits where key like ${'entrar-por-codigo:%'}`;
   await sql`delete from rate_limits where key = ${'fossil-de-ontem'}`;

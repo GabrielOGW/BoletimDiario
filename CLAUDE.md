@@ -18,7 +18,7 @@ npm run format         # Prettier --write
 npm run format:check
 npm run icons          # regenerate PWA PNG icons from public/icons/icon.svg
 npm run check:env      # what the build needs before it starts (runs on prebuild)
-npm test               # the nine .mjs check suites (540 assertions) + Vitest (57 tests)
+npm test               # the ten .mjs check suites (555 assertions) + Vitest (57 tests)
 npm run test:migration # a real v1 boletim through v2 normalization (22 assertions)
 npm run test:platform  # domain/platform set rules: inheritance, take axes, page eighths (91)
 npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-to-end (87)
