@@ -1049,3 +1049,54 @@ tentando derrubar o outro.
   fora do caminho quente. Não é cron porque não precisa ser ainda; quando precisar, é cron, e
   não uma poda mais agressiva por requisição.
 - A §7 de `database.md` deixa de prometer RLS e passa a explicar por que não.
+
+---
+
+### ADR-039 · O design system tem duas superfícies, e o cinza que serve numa cega a outra
+
+`2026-08-20` · **Aceita** · fecha a [Fase 10](roadmap.md#-fase-10--hardening) ·
+**complementa** [ADR-024](#adr-024--design-system-único-o-do-boletim-de-câmera)
+
+A auditoria de acessibilidade encontrou uma coisa que ninguém tinha notado em cinco fases: o
+cinza dominante do texto secundário — `zinc-500`, em 218 lugares — dá **3,2:1 a 4,1:1** sobre
+os fundos escuros do tema. O mínimo de AA para texto pequeno é 4,5:1.
+
+Isso não é conformidade. **É um telefone segurado ao sol, numa locação, por quem precisa ler o
+cartão da câmera entre dois takes.** Contraste baixo aqui é a diferença entre conferir e
+adivinhar.
+
+**Decisão: no escuro, cor de texto é `zinc-400` ou mais clara.** Sobre `ink`, `surface`,
+`surface-raised` e `surface-hover`, `zinc-400` fica entre 6,0:1 e 7,8:1; `zinc-500` e
+`zinc-600` deixam de ser cores de texto. A hierarquia visual não some junto, porque ela nunca
+dependeu de apagar o texto — depende de tamanho, de peso e do branco dos títulos.
+
+#### A parte que quase deu errado
+
+A substituição óbvia é global, e teria quebrado o produto no lugar mais caro: **as folhas
+impressas são a superfície oposta**. `FolhaCamera`, `FolhaSom`, `FolhaContinuidade`,
+`FolhaConsolidada` e a folha do boletim legado são `bg-white text-zinc-900`. Ali o mesmo
+`zinc-500` é escuro sobre branco e passa com folga (4,83:1). Trocá-lo por `zinc-400` daria
+2,3:1 — texto quase invisível **no papel**, que é o entregável do fim da diária.
+
+O defeito não apareceria em nenhuma tela. Apareceria na impressora de alguém, às 22h, com a
+equipe indo embora.
+
+Então o design system tem **duas** superfícies declaradas, e a regra é diferente em cada uma:
+
+| Superfície             | Onde                               | Texto secundário            |
+| ---------------------- | ---------------------------------- | --------------------------- |
+| Escura (app)           | tudo, exceto as folhas             | `zinc-400` ou mais claro    |
+| Clara (folha impressa) | as cinco `Folha*` + a folha legada | `zinc-500`/`zinc-600`, dark |
+
+**Consequências:**
+
+- `npm run test:acessibilidade` guarda **as duas metades** — nada de cinza fraco no escuro, e
+  as folhas mantendo o cinza escuro. Uma regra só pegaria metade do erro e daria confiança
+  onde não devia.
+- `placeholder:` fica de fora da conta: dica dentro do campo não é conteúdo, e clareá-la a
+  faria parecer valor preenchido.
+- Componente novo herda a superfície de onde vive. Se um dia existir um terceiro contexto (um
+  tema claro de tela, por exemplo), ele entra nesta tabela **antes** de entrar no código.
+- Os tamanhos `sm` de `Button` (38 px) e `OptionChips` (32 px) **não** subiram para 44 px. A
+  regra dos 44 px é dos alvos principais, que a cumprem; esses são controles densos e
+  secundários de uma tela validada em set, e mudá-los mudaria a densidade de algo que funciona.

@@ -137,7 +137,7 @@ export function ContinuidadeDiaria({
 
   if (fixacao === 'CARREGANDO') {
     return (
-      <p className="px-1 py-8 text-center text-sm text-zinc-500">Abrindo o boletim…</p>
+      <p className="px-1 py-8 text-center text-sm text-zinc-400">Abrindo o boletim…</p>
     );
   }
 
@@ -171,7 +171,7 @@ export function ContinuidadeDiaria({
           action={canEdit ? <NovaCena productionId={productionId} /> : null}
         >
           {agrupadas.length === 0 ? (
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-zinc-400">
               Nenhuma cena nesta diária ainda. Crie a primeira — os metadados de cena são
               preenchidos aqui e lidos pelos outros departamentos.
             </p>

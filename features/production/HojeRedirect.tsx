@@ -22,7 +22,7 @@ export function HojeRedirect() {
   }, [router]);
 
   return (
-    <p className="px-1 py-8 text-center text-sm text-zinc-500">
+    <p className="px-1 py-8 text-center text-sm text-zinc-400">
       Abrindo a diária de hoje…
     </p>
   );

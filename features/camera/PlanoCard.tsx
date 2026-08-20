@@ -151,7 +151,7 @@ export function PlanoCard({
         ) : null}
         {aprovados > 0 ? <Badge tone="approved">{aprovados}</Badge> : null}
         <span className="flex-1" />
-        <span className="truncate text-xs text-zinc-500">
+        <span className="truncate text-xs text-zinc-400">
           {[
             tecnica.lens,
             tecnica.tStop,
@@ -264,7 +264,7 @@ export function PlanoCard({
             }
           />
 
-          <p className="text-xs leading-relaxed text-zinc-500">
+          <p className="text-xs leading-relaxed text-zinc-400">
             Mudar um campo técnico aqui acompanha os takes que ainda tinham o valor
             anterior. Um take ajustado individualmente não é alterado.
           </p>

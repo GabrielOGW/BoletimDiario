@@ -84,7 +84,7 @@ function MemberCard({
         </span>
       }
     >
-      <p className="mb-4 break-all text-xs text-zinc-500">{member.email}</p>
+      <p className="mb-4 break-all text-xs text-zinc-400">{member.email}</p>
 
       {canManage ? (
         <form action={save} className="flex flex-col gap-4">
@@ -120,16 +120,16 @@ function MemberCard({
       ) : (
         <dl className="flex flex-col gap-1 text-sm text-zinc-400">
           <div className="flex gap-2">
-            <dt className="text-zinc-500">Papel:</dt>
+            <dt className="text-zinc-400">Papel:</dt>
             <dd>{ROLE_LABEL[member.role]}</dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-zinc-500">Departamento:</dt>
+            <dt className="text-zinc-400">Departamento:</dt>
             <dd>{DEPARTMENT_LABEL[member.department]}</dd>
           </div>
           {member.jobTitle ? (
             <div className="flex gap-2">
-              <dt className="text-zinc-500">Função:</dt>
+              <dt className="text-zinc-400">Função:</dt>
               <dd>{member.jobTitle}</dd>
             </div>
           ) : null}

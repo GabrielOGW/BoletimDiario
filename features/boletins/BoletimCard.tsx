@@ -81,7 +81,7 @@ export function BoletimCard({
           <Badge tone="neutral">{stats.totalPlanos} planos</Badge>
           <Badge tone="neutral">{stats.totalTakes} takes</Badge>
         </div>
-        <p className="mt-2.5 text-[11px] text-zinc-600">
+        <p className="mt-2.5 text-[11px] text-zinc-400">
           Atualizado em {formatDateTimeBR(boletim.updatedAt)}
         </p>
       </Link>

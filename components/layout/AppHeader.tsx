@@ -33,7 +33,7 @@ export function AppHeader({ title, subtitle, backHref, right }: AppHeaderProps) 
           <h1 className="truncate text-base font-semibold leading-tight text-white">
             {title}
           </h1>
-          {subtitle ? <p className="truncate text-xs text-zinc-500">{subtitle}</p> : null}
+          {subtitle ? <p className="truncate text-xs text-zinc-400">{subtitle}</p> : null}
         </div>
         {right ? <div className="flex shrink-0 items-center gap-1">{right}</div> : null}
       </PageContainer>

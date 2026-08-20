@@ -98,7 +98,7 @@ export function ConfiguracaoSom({
             onCommit={(valor) => void altera({ boomOperator: valor || null })}
           />
         </div>
-        <p className="mt-3 text-xs text-zinc-500">
+        <p className="mt-3 text-xs text-zinc-400">
           O resto da equipe vem da sala. Aqui ficam só os dois nomes que o sound report
           imprime no cabeçalho.
         </p>
@@ -174,7 +174,7 @@ export function ConfiguracaoSom({
               onCommit={(valor) => void altera({ roll: valor || null })}
             />
           </div>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-zinc-400">
             O roll do dia é o ponto de partida do primeiro take de cada plano. Trocá-lo no
             meio da diária não reescreve o que já foi anotado.
           </p>
@@ -211,7 +211,7 @@ export function ConfiguracaoSom({
           <div className="flex items-center gap-3 rounded-xl border border-line bg-surface px-3.5 py-3">
             <div className="min-w-0 flex-1">
               <p className="text-[15px] font-medium text-zinc-100">Jam de timecode</p>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-zinc-400">
                 {horaDoJam(config?.tcJamAt)
                   ? `Último jam às ${horaDoJam(config?.tcJamAt)}`
                   : 'Ainda não registrado hoje'}

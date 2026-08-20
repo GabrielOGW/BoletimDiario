@@ -43,7 +43,7 @@ export function JoinCodePanel({
         </Badge>
       </div>
 
-      <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+      <p className="mt-2 text-xs leading-relaxed text-zinc-400">
         Quem entra por código entra como membro, no departamento que escolher.
       </p>
 
@@ -66,7 +66,7 @@ export function JoinCodePanel({
             </form>
           </div>
 
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-zinc-400">
             Gerar um novo código invalida o anterior na hora. Fechar a sala mantém o
             código e recusa novas entradas.
           </p>

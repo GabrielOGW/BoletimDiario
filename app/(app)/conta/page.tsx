@@ -24,7 +24,7 @@ export default async function ContaPage() {
     <>
       <AppHeader title="Minha conta" subtitle={user.email} backHref="/producoes" />
 
-      <PageContainer className="flex flex-col gap-4 py-4 pb-16">
+      <PageContainer as="main" className="flex flex-col gap-4 py-4 pb-16">
         <SectionCard title="Aparelhos conectados" icon={<HardDriveIcon size={18} />}>
           <div className="flex flex-col gap-3">
             <p className="text-sm text-zinc-400">

@@ -18,7 +18,7 @@ export function SearchInput({
 }: SearchInputProps) {
   return (
     <div className={cn('relative', className)}>
-      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500">
+      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400">
         <SearchIcon size={18} />
       </span>
       <input
@@ -38,7 +38,7 @@ export function SearchInput({
           type="button"
           aria-label="Limpar busca"
           onClick={() => onChange('')}
-          className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-400 hover:bg-surface-hover hover:text-white"
+          className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-400 hover:bg-surface-hover hover:text-white"
         >
           <XIcon size={18} />
         </button>

@@ -76,7 +76,7 @@ export function BackupControls({ count }: BackupControlsProps) {
           {feedback.message}
         </p>
       ) : (
-        <p className="mt-2 text-center text-[11px] text-zinc-600">
+        <p className="mt-2 text-center text-[11px] text-zinc-400">
           Backup local em JSON — restaure ao limpar o navegador ou trocar de aparelho.
         </p>
       )}

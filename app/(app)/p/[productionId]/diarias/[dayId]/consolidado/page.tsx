@@ -60,7 +60,7 @@ export default async function ConsolidadoPage({
         right={<SyncIndicator />}
       />
 
-      <PageContainer className="flex flex-col gap-4 py-4 pb-8">
+      <PageContainer as="main" className="flex flex-col gap-4 py-4 pb-8">
         <ConsolidadoDiaria
           productionId={productionId}
           shootingDayId={dayId}

@@ -164,7 +164,7 @@ export function BoletimView({ id }: { id: string | null }) {
 
   if (!mounted) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-ink text-sm text-zinc-500">
+      <div className="flex min-h-dvh items-center justify-center bg-ink text-sm text-zinc-400">
         Carregando…
       </div>
     );

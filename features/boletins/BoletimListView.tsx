@@ -75,11 +75,11 @@ export function BoletimListView() {
               <span className="block text-sm font-medium text-zinc-100">
                 Trabalhar com a equipe
               </span>
-              <span className="block text-xs leading-relaxed text-zinc-500">
+              <span className="block text-xs leading-relaxed text-zinc-400">
                 Produções sincronizadas, com Som e Continuidade na mesma diária.
               </span>
             </span>
-            <ArrowLeftIcon size={16} className="shrink-0 rotate-180 text-zinc-500" />
+            <ArrowLeftIcon size={16} className="shrink-0 rotate-180 text-zinc-400" />
           </Link>
 
           {all.length > 0 ? (
@@ -92,11 +92,11 @@ export function BoletimListView() {
                 <span className="block text-sm font-medium text-zinc-100">
                   Levar estes boletins para a plataforma
                 </span>
-                <span className="block text-xs leading-relaxed text-zinc-500">
+                <span className="block text-xs leading-relaxed text-zinc-400">
                   Opcional. Nada é apagado daqui, e importar de novo não duplica.
                 </span>
               </span>
-              <ArrowLeftIcon size={16} className="shrink-0 rotate-180 text-zinc-500" />
+              <ArrowLeftIcon size={16} className="shrink-0 rotate-180 text-zinc-400" />
             </Link>
           ) : null}
 

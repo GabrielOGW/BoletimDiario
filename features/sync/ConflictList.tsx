@@ -48,21 +48,21 @@ export function ConflictList({ productionId }: { productionId: string }) {
       <ul className="flex flex-col gap-4">
         {conflitos.map((conflito) => (
           <li key={conflito.id} className="rounded-xl border border-line bg-surface p-3">
-            <p className="text-xs uppercase tracking-wide text-zinc-500">
+            <p className="text-xs uppercase tracking-wide text-zinc-400">
               {ROTULO[conflito.field] ?? conflito.field}
             </p>
 
             <dl className="mt-2 flex flex-col gap-1 text-sm">
               <div className="flex gap-2">
-                <dt className="text-zinc-500">Seu valor:</dt>
+                <dt className="text-zinc-400">Seu valor:</dt>
                 <dd className="text-zinc-100">{mostra(conflito.meuValor)}</dd>
               </div>
               <div className="flex gap-2">
-                <dt className="text-zinc-500">Valor atual:</dt>
+                <dt className="text-zinc-400">Valor atual:</dt>
                 <dd className="text-zinc-100">
                   {mostra(conflito.valorRemoto)}
                   {conflito.remotoPor ? (
-                    <span className="text-zinc-500"> · {conflito.remotoPor}</span>
+                    <span className="text-zinc-400"> · {conflito.remotoPor}</span>
                   ) : null}
                 </dd>
               </div>

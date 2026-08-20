@@ -6,7 +6,7 @@ import { BoletimView } from '@/features/boletins/BoletimView';
 
 function Loading() {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-ink text-sm text-zinc-500">
+    <div className="flex min-h-dvh items-center justify-center bg-ink text-sm text-zinc-400">
       Carregando…
     </div>
   );

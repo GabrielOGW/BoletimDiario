@@ -208,7 +208,7 @@ function MidiaDoTake({
         type="button"
         aria-expanded={aberto}
         onClick={() => setAberto((valor) => !valor)}
-        className="flex min-h-[32px] w-full items-center gap-2 text-xs text-zinc-500 hover:text-zinc-300"
+        className="flex min-h-[32px] w-full items-center gap-2 text-xs text-zinc-400 hover:text-zinc-300"
       >
         <ChevronDownIcon size={14} className={cn('transition', aberto && 'rotate-180')} />
         Mídia

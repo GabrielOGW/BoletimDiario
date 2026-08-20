@@ -35,7 +35,18 @@ export function SectionCard({
   const [open, setOpen] = useState(defaultOpen);
   const showBody = !collapsible || open;
 
-  // Dentro de <button> não pode haver <h2> (conteúdo não-phrasing) → usa <span>.
+  /**
+   * Recolhível, o `<h2>` **envolve** o botão em vez de sumir.
+   *
+   * Dentro de `<button>` não cabe `<h2>` — botão só aceita conteúdo de frase —, e a
+   * primeira solução foi trocar por `<span>`. O efeito colateral era caro e invisível:
+   * um cartão recolhível deixava de ser um cabeçalho, e a tela de diária, que é feita
+   * quase só deles, virava uma lista sem estrutura para quem navega por cabeçalhos.
+   *
+   * O padrão certo é o inverso — cabeçalho por fora, botão por dentro (Fase 10). O
+   * `<span>` continua existindo para o caso não recolhível, onde o `<h2>` é o próprio
+   * título.
+   */
   const Title = collapsible ? 'span' : 'h2';
 
   const headerContent = (
@@ -47,7 +58,7 @@ export function SectionCard({
       {collapsible ? (
         <>
           {!open && summary ? (
-            <span className="text-xs font-normal normal-case text-zinc-500">
+            <span className="text-xs font-normal normal-case text-zinc-400">
               {summary}
             </span>
           ) : null}
@@ -70,17 +81,19 @@ export function SectionCard({
       )}
     >
       {collapsible ? (
-        <button
-          type="button"
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-          className={cn(
-            'flex w-full items-center gap-2.5 px-4 py-3 text-left transition hover:bg-surface-hover active:bg-surface-hover',
-            showBody && 'border-b border-line',
-          )}
-        >
-          {headerContent}
-        </button>
+        <h2>
+          <button
+            type="button"
+            aria-expanded={open}
+            onClick={() => setOpen((value) => !value)}
+            className={cn(
+              'flex w-full items-center gap-2.5 px-4 py-3 text-left transition hover:bg-surface-hover active:bg-surface-hover',
+              showBody && 'border-b border-line',
+            )}
+          >
+            {headerContent}
+          </button>
+        </h2>
       ) : (
         <div className="flex items-center gap-2.5 border-b border-line px-4 py-3">
           {headerContent}

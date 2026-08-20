@@ -28,6 +28,7 @@ npm run test:som       # sound report: ordering, MOS, day summary, CSV escaping 
 npm run test:continuidade # verdicts, action fields, progress-report counts (45)
 npm run test:consolidado  # departments joined by take_id, gaps, search, day JSON (56)
 npm run test:atalhos   # short path: department route, today/tomorrow pinning, expiry (29)
+npm run test:acessibilidade # contrast math, <main>, live region, 44px targets (14)
 npm run test:db        # schema/triggers/enums against the real Neon (35) — needs DATABASE_URL
 npm run test:sala      # room rules, equipment, search vs the real Neon (51) — needs DATABASE_URL
 npm run test:sync      # compare-and-set, idempotency, cursor, registry (67) — needs DATABASE_URL
@@ -101,7 +102,8 @@ Hand-written service worker, **registered only in production** ([components/pwa/
 - **Path alias:** `@/*` → repo root (e.g. `@/lib/storage`, `@/types/boletim`).
 - **TypeScript strict, no `any`** (ESLint error). Strong domain typing throughout.
 - **Zero runtime dependencies for the camera app** beyond `next`/`react`/`react-dom` — icons are inline SVG ([components/ui/icons.tsx](components/ui/icons.tsx)), ids via `crypto.randomUUID` ([utils/id.ts](utils/id.ts)), no PDF/state/UI libraries. The platform adds exactly four, each a registered exception: `drizzle-orm` + `@neondatabase/serverless` (ADR-005), `better-auth` (ADR-004), `zod` (contracts) and `dexie` (ADR-003). State stays library-free: `useSyncExternalStore` and `useLiveQuery`.
-- **Dark-mode, mobile-first** (built for use on phones in the field); touch targets ≥ 44px, `aria-*` on interactive controls.
+- **Dark-mode, mobile-first** (built for use on phones in the field); touch targets ≥ 44px on the primary controls, `aria-*` on interactive controls.
+- **Text contrast is a field requirement, not a checkbox.** On the dark surfaces only `zinc-400` and lighter clear WCAG AA for small text — `zinc-500` sits at 3.2–4.1:1 and is not a text color there. The **printed sheets are the opposite surface** (`bg-white text-zinc-900`): the same `zinc-500` is dark on white and correct, so a blanket find-and-replace across them would make the paper unreadable. `npm run test:acessibilidade` enforces both halves.
 
 ### Adding a field to the domain model
 

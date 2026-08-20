@@ -369,7 +369,7 @@ uma delas esquecer o BOM que o Excel em pt-BR exige.
 desvio de roteiro, estado do set —, e texto em planilha é onde ele deixa de ser lido. O
 relatório de progresso e a folha continuam sendo a entrega dela. Entra se alguém pedir.
 
-## ⏳ Fase 10 — Hardening
+## ✅ Fase 10 — Hardening
 
 Contínua **a partir da Fase 4**, não um bloco no fim: teste de sync escrito depois de o sync
 existir é teste que nunca é escrito.
@@ -378,7 +378,7 @@ existir é teste que nunca é escrito.
 - [x] **Playwright** incluindo o fluxo offline completo — `2026-08-20`
 - [x] Rate limit, sessões por dispositivo, avaliação de RLS — `2026-08-20`
 - [x] Performance com produção grande (40 diárias, 2000 takes) — `2026-08-20`
-- [ ] Auditoria de PWA, acessibilidade e UX mobile
+- [x] Auditoria de PWA, acessibilidade e UX mobile — `2026-08-20`
 
 > **Os dois runners entraram em `2026-08-20`**, e o recorte de cada um foi escolhido pelo
 > buraco que existia, não pelo que dá um número bonito de cobertura.
@@ -480,6 +480,58 @@ existir é teste que nunca é escrito.
 > O resto não precisou de nada: busca na produção inteira 114 ms, lista de diárias 29 ms,
 > dashboard 26 ms, pull incremental 70 ms. E a fixação continua trazendo **60 takes de 2400** —
 > o recorte por diária é o que impede o aparelho de baixar o filme inteiro para anotar um dia.
+
+> **Auditoria de PWA, acessibilidade e UX mobile em `2026-08-20`** — a última da fase.
+>
+> **O PWA já estava certo** e não precisou de nada: manifesto completo, ícones maskable,
+> `start_url` que abre sem rede, atalhos do ícone (Fase 11), `viewport-fit=cover`,
+> `theme-color`, Service Worker com aviso de atualização em vez de troca sob os dedos. Os
+> ícones já vinham com `aria-hidden`, o `IconButton` já tinha 44 px, o `Toggle` já tinha a
+> linha inteira como alvo de toque, e os campos já associavam erro por `aria-describedby`.
+>
+> **O achado grande foi contraste, e ele não é conformidade — é conseguir ler.** O cinza
+> dominante do texto secundário (`zinc-500`, 218 ocorrências) dá **3,2:1 a 4,1:1** sobre os
+> fundos do tema. O mínimo de AA para texto pequeno é 4,5:1, e o contexto aqui é um telefone
+> segurado ao sol, numa locação, por quem precisa ler o cartão da câmera entre dois takes.
+> Passou a `zinc-400` — 6,0:1 a 7,8:1 — e a hierarquia continua de pé, porque ela nunca
+> dependeu de apagar o texto: depende de tamanho, peso e do branco dos títulos.
+>
+> **A armadilha, que quase custou caro:** as folhas impressas são superfície **clara**
+> (`bg-white text-zinc-900`). Nelas o mesmo `zinc-500` é escuro sobre branco e passa com
+> folga (4,83:1); uma substituição cega teria deixado o papel ilegível — e o defeito só
+> apareceria na impressora de alguém, no fim de uma diária. As cinco folhas ficaram de fora,
+> e o teste guarda **as duas** regras: nada de cinza fraco no escuro, e as folhas mantendo o
+> cinza escuro.
+>
+> **O resto dos consertos**, todos pequenos e todos reais:
+>
+> - **`<main>` em toda tela da plataforma.** As telas do boletim legado sempre tiveram; as da
+>   plataforma nasceram sem, e sem elas quem navega por leitor de tela cai no topo e percorre
+>   o cabeçalho de novo a cada troca de rota.
+> - **Cartão recolhível voltou a ser cabeçalho.** `<h2>` não cabe dentro de `<button>`, e a
+>   solução tinha sido trocar por `<span>` — com isso a tela de diária, que é quase só cartões
+>   recolhíveis, virava uma lista sem estrutura. O padrão certo é o inverso: cabeçalho por
+>   fora, botão por dentro.
+> - **O indicador de sync passou a ser anunciado** (`role="status"`, `aria-live="polite"` — e
+>   não `alert`, que interromperia a leitura no meio de um take para dizer que o Wi-Fi caiu).
+>   Os símbolos `● ▲ ⟳ ✕ ⬆` ganharam `aria-hidden`: sem isso o leitor de tela lê "círculo
+>   preto pequeno sincronizado", com o enfeite na frente da informação.
+> - **`prefers-reduced-motion`**, que não existia. Para parte das pessoas as transições não
+>   são polimento, são enjoo.
+> - **O botão de limpar a busca** tinha 36 px, contra os 44 px que a regra do projeto exige e
+>   que o resto da interface cumpre.
+>
+> **Não mexido, e de propósito:** os tamanhos `sm` de `Button` (38 px) e `OptionChips` (32 px).
+> São controles densos e secundários de uma tela validada em set, e a regra dos 44 px foi
+> escrita para os alvos principais — que a cumprem. Subi-los mudaria a densidade de uma
+> interface que funciona.
+>
+> **Verificado por** `npm run test:acessibilidade` (14 checks, dentro do `npm test`): ele
+> calcula os contrastes, varre os `.tsx` atrás de cinza reprovado fora das folhas, confere o
+> `<main>` em todas as telas e trava os quatro detalhes que somem numa refatoração distraída.
+> E olhado nas duas superfícies — a tela escura e a folha branca. A regra das duas
+> superfícies virou [ADR-039](decisions.md#adr-039--o-design-system-tem-duas-superfícies-e-o-cinza-que-serve-numa-cega-a-outra),
+> porque é o tipo de armadilha que só se evita se estiver escrita.
 
 ---
 

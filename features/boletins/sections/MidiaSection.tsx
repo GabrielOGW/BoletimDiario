@@ -25,7 +25,7 @@ export function MidiaSection({ items, onAdd, onChange, onRemove }: MidiaSectionP
       summary={`${items.length} ${items.length === 1 ? 'cartão' : 'cartões'}`}
     >
       {items.length === 0 ? (
-        <p className="mb-3 text-sm text-zinc-500">
+        <p className="mb-3 text-sm text-zinc-400">
           Nenhum cartão registrado. Adicione os cartões/SSDs usados no dia.
         </p>
       ) : (

@@ -39,7 +39,7 @@ export default async function ProducoesPage() {
         }
       />
 
-      <PageContainer className="flex flex-col gap-4 py-4 pb-16">
+      <PageContainer as="main" className="flex flex-col gap-4 py-4 pb-16">
         {/* Os dois caminhos curtos (Fase 11), antes da lista: "continuar" é local e
             aparece só quando há para onde voltar; "hoje" pergunta ao servidor e resolve
             no destino. A lista continua aqui embaixo, inteira — atalho que esconde o
@@ -55,7 +55,7 @@ export default async function ProducoesPage() {
               <span className="min-w-0 flex-1 text-sm font-medium text-zinc-100">
                 Diária de hoje
               </span>
-              <span aria-hidden className="text-zinc-500">
+              <span aria-hidden className="text-zinc-400">
                 →
               </span>
             </Link>
@@ -80,7 +80,7 @@ export default async function ProducoesPage() {
                     <p className="truncate text-[15px] font-semibold text-zinc-100">
                       {producao.name}
                     </p>
-                    <p className="truncate text-xs text-zinc-500">
+                    <p className="truncate text-xs text-zinc-400">
                       {producao.company ?? 'Sem produtora'} ·{' '}
                       {DEPARTMENT_LABEL[producao.department]}
                     </p>
@@ -96,7 +96,7 @@ export default async function ProducoesPage() {
 
         <ProductionsForms />
 
-        <p className="mt-2 text-center text-xs leading-relaxed text-zinc-600">
+        <p className="mt-2 text-center text-xs leading-relaxed text-zinc-400">
           O boletim de câmera local continua funcionando sem conta em{' '}
           <Link href="/legado" className="text-zinc-400 underline underline-offset-2">
             boletins locais

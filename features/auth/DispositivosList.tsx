@@ -41,7 +41,7 @@ export function DispositivosList({ dispositivos }: { dispositivos: Dispositivo[]
                 <span className="truncate">{dispositivo.descricao}</span>
                 {dispositivo.atual ? <Badge tone="brand">este aparelho</Badge> : null}
               </p>
-              <p className="truncate text-xs text-zinc-500">
+              <p className="truncate text-xs text-zinc-400">
                 {dispositivo.ip ? `${dispositivo.ip} · ` : ''}
                 entrou em {formata(dispositivo.criadoEm)} · vale até{' '}
                 {formata(dispositivo.expiraEm)}

@@ -55,7 +55,7 @@ export function HorariosSection({ value, onChange }: HorariosSectionProps) {
         />
       </div>
       {showLegacy ? (
-        <p className="mt-2 text-xs text-zinc-500">
+        <p className="mt-2 text-xs text-zinc-400">
           Valor anterior de almoço: <span className="text-zinc-300">{value.almoco}</span>{' '}
           — preencha início/fim acima.
         </p>

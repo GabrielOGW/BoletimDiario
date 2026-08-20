@@ -42,7 +42,7 @@ export default async function HojePage({
     return (
       <>
         <AppHeader title="Diária de hoje" backHref="/producoes" />
-        <PageContainer className="py-4">
+        <PageContainer as="main" className="py-4">
           <HojeRedirect />
         </PageContainer>
       </>
@@ -71,7 +71,7 @@ export default async function HojePage({
         backHref="/producoes"
       />
 
-      <PageContainer className="flex flex-col gap-4 py-4 pb-8">
+      <PageContainer as="main" className="flex flex-col gap-4 py-4 pb-8">
         {diarias.length === 0 ? (
           <>
             <EmptyState
@@ -93,7 +93,7 @@ export default async function HojePage({
           <>
             {/* Duas produções rodando no mesmo dia é raro, mas acontece — e escolher
                 errado por conta do app é pior do que escolher na mão. */}
-            <p className="px-1 text-sm text-zinc-500">
+            <p className="px-1 text-sm text-zinc-400">
               Você tem diária em {diarias.length} produções hoje.
             </p>
             <ul className="flex flex-col gap-2">
@@ -111,7 +111,7 @@ export default async function HojePage({
                       <span className="block truncate text-[15px] font-semibold text-zinc-100">
                         {diaria.producao}
                       </span>
-                      <span className="block truncate text-xs text-zinc-500">
+                      <span className="block truncate text-xs text-zinc-400">
                         {diaria.dayNumber ? `Diária ${diaria.dayNumber} · ` : ''}
                         {DEPARTMENT_LABEL[diaria.department]}
                         {diaria.location ? ` · ${diaria.location}` : ''}

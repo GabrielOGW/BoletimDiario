@@ -152,7 +152,7 @@ export function SomDiaria({
 
   if (fixacao === 'CARREGANDO') {
     return (
-      <p className="px-1 py-8 text-center text-sm text-zinc-500">Abrindo o boletim…</p>
+      <p className="px-1 py-8 text-center text-sm text-zinc-400">Abrindo o boletim…</p>
     );
   }
 
@@ -199,7 +199,7 @@ export function SomDiaria({
           action={canEdit ? <NovaCena productionId={productionId} /> : null}
         >
           {agrupadas.length === 0 ? (
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-zinc-400">
               Nenhuma cena nesta diária ainda. Elas aparecem aqui assim que a Câmera (ou
               você) registrar a primeira — o take é o mesmo para os dois departamentos.
             </p>
@@ -232,7 +232,7 @@ export function SomDiaria({
             <Numero rotulo="Circled" valor={resumo.circled} destaque="approved" />
             <Numero rotulo="MOS" valor={resumo.mos} destaque="warning" />
           </dl>
-          <p className="mt-3 text-xs text-zinc-500">
+          <p className="mt-3 text-xs text-zinc-400">
             Contados a partir dos takes — não há dois números divergentes na mesma tela.
             MOS é take rodado sem som, e conta como registrado, não como esquecido.
           </p>
@@ -282,7 +282,7 @@ function Numero({
 }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-zinc-500">{rotulo}</dt>
+      <dt className="text-xs uppercase tracking-wide text-zinc-400">{rotulo}</dt>
       <dd
         className={cn(
           'text-lg font-semibold text-zinc-100',

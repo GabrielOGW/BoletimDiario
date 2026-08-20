@@ -54,7 +54,7 @@ export function OptionChips({
       aria-label={label}
     >
       {showLabel ? (
-        <span aria-hidden className="text-xs text-zinc-500">
+        <span aria-hidden className="text-xs text-zinc-400">
           {label}:
         </span>
       ) : null}

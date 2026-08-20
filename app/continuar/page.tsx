@@ -39,9 +39,9 @@ export default function ContinuarPage() {
     <div className="flex min-h-dvh flex-col bg-ink">
       <AppHeader title="Continuar" backHref="/" />
 
-      <PageContainer className="flex-1 py-4">
+      <PageContainer as="main" className="flex-1 py-4">
         {estado === 'ABRINDO' ? (
-          <p className="px-1 py-8 text-center text-sm text-zinc-500">
+          <p className="px-1 py-8 text-center text-sm text-zinc-400">
             Abrindo a última diária…
           </p>
         ) : (

@@ -120,7 +120,7 @@ export function TakeContinuidade({
       {/* Lido dos outros departamentos, nunca digitado aqui. Some quando não há o que
           mostrar: uma linha "— · —" só ocuparia espaço no alto do cartão. */}
       {tecnica || audio ? (
-        <p className="mt-1 font-mono text-xs text-zinc-500">
+        <p className="mt-1 font-mono text-xs text-zinc-400">
           {[tecnica, audio].filter(Boolean).join('  ·  ')}
         </p>
       ) : null}
@@ -201,7 +201,7 @@ function MaisCampos({
         type="button"
         aria-expanded={aberto}
         onClick={() => setAberto((valor) => !valor)}
-        className="flex min-h-[32px] w-full items-center gap-2 text-xs text-zinc-500 hover:text-zinc-300"
+        className="flex min-h-[32px] w-full items-center gap-2 text-xs text-zinc-400 hover:text-zinc-300"
       >
         <ChevronDownIcon size={14} className={cn('transition', aberto && 'rotate-180')} />
         Mais campos
@@ -214,7 +214,7 @@ function MaisCampos({
         <dl className="mt-1.5 flex flex-col gap-1 text-xs">
           {preenchidos.map((campo) => (
             <div key={campo.rotulo} className="flex gap-2">
-              <dt className="shrink-0 text-zinc-500">{campo.rotulo}:</dt>
+              <dt className="shrink-0 text-zinc-400">{campo.rotulo}:</dt>
               <dd className="min-w-0 flex-1 truncate text-zinc-300">{campo.valor}</dd>
             </div>
           ))}
@@ -225,7 +225,7 @@ function MaisCampos({
         <div className="mt-2 flex flex-col gap-4">
           {CAMPOS_DE_ACAO.map((grupo) => (
             <div key={grupo.grupo} className="flex flex-col gap-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
                 {grupo.grupo}
               </p>
               {grupo.campos.map((campo) => (

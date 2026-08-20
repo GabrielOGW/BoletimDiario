@@ -138,7 +138,7 @@ export function TakeSom({
         <span className="text-sm font-semibold text-zinc-100">Take {take.number}</span>
         {mos ? <Badge tone="warning">MOS</Badge> : null}
         {dados?.soundRoll ? (
-          <span className="font-mono text-xs text-zinc-500">Roll {dados.soundRoll}</span>
+          <span className="font-mono text-xs text-zinc-400">Roll {dados.soundRoll}</span>
         ) : null}
         {take._dirty || dados?._dirty ? <Badge tone="muted">não enviado</Badge> : null}
         <span className="flex-1" />
@@ -188,7 +188,7 @@ export function TakeSom({
           disabled={!canEdit}
           onChange={(valor) => void alteraNatureza(valor)}
         />
-        <p className="mt-2 text-xs text-zinc-500">
+        <p className="mt-2 text-xs text-zinc-400">
           Vale para os três departamentos: um take MOS é MOS para todo mundo, e é isso que
           a montagem procura quando abre a diária atrás do áudio que não existe.
         </p>
@@ -299,7 +299,7 @@ function Dobra({
         type="button"
         aria-expanded={aberto}
         onClick={() => setAberto((valor) => !valor)}
-        className="flex min-h-[32px] w-full items-center gap-2 text-xs text-zinc-500 hover:text-zinc-300"
+        className="flex min-h-[32px] w-full items-center gap-2 text-xs text-zinc-400 hover:text-zinc-300"
       >
         <ChevronDownIcon size={14} className={cn('transition', aberto && 'rotate-180')} />
         {titulo}
@@ -340,7 +340,7 @@ function TracksDoTake({
   return (
     <div className="flex flex-col gap-2">
       {tracks.length === 0 ? (
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-zinc-400">
           Nenhum canal ainda. O primeiro que você cadastrar é herdado por todos os takes
           seguintes.
         </p>

@@ -36,7 +36,7 @@ export function Toggle({
       <span className="flex flex-col">
         <span className="text-[15px] font-medium text-zinc-100">{label}</span>
         {description ? (
-          <span className="text-xs text-zinc-500">{description}</span>
+          <span className="text-xs text-zinc-400">{description}</span>
         ) : null}
       </span>
       <button
