@@ -4,6 +4,7 @@ import type { LocalSoundDayConfig } from '@/lib/offline/db';
 import { cn } from '@/utils/cn';
 
 import type { CabecalhoImpressao } from '@/features/camera/FolhaCamera';
+import { equipamentosDoDepartamento } from '@/features/diaria/equipamentos';
 
 import { resumoDeTracks, resumoDoDia, type LinhaSom } from './estrutura';
 
@@ -68,9 +69,7 @@ export function FolhaSom({ cabecalho, config, linhas }: FolhaSomProps) {
   const resumo = resumoDoDia(linhas);
 
   /** Só o equipamento de Som: o boom não interessa ao cabeçalho da câmera, nem o contrário. */
-  const equipamentos = (cabecalho.equipamentos ?? []).filter(
-    (item) => item.departamento === 'SOUND',
-  );
+  const equipamentos = equipamentosDoDepartamento(cabecalho.equipamentos, 'SOUND');
 
   const titulo = producao.name.trim() || 'Sem título';
 

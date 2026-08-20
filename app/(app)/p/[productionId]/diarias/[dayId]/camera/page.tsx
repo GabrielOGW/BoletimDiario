@@ -91,6 +91,7 @@ export default async function CameraPage({
             equipamentos: equipamentos.map((linha) => ({
               id: linha.id,
               departamento: linha.department,
+              categoria: linha.category,
               descricao: descreveEquipamento(linha),
             })),
             equipe: equipeCamera.map((membro) => ({

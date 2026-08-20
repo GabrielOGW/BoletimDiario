@@ -18,12 +18,12 @@ npm run format         # Prettier --write
 npm run format:check
 npm run icons          # regenerate PWA PNG icons from public/icons/icon.svg
 npm run check:env      # what the build needs before it starts (runs on prebuild)
-npm test               # all eight check suites below (439 assertions)
+npm test               # all eight check suites below (461 assertions)
 npm run test:migration # a real v1 boletim through v2 normalization (22 assertions)
 npm run test:platform  # domain/platform set rules: inheritance, take axes, page eighths (91)
 npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-to-end (87)
 npm run test:folha     # legacy print sheet: day standard, per-plano deltas, take strip (62)
-npm run test:camera    # camera sheet structure: grouping, print line, take judgment (38)
+npm run test:camera    # camera sheet: grouping, print line, take judgment, mídia (60)
 npm run test:som       # sound report: ordering, MOS, day summary, CSV escaping (63)
 npm run test:continuidade # verdicts, action fields, progress-report counts (45)
 npm run test:consolidado  # the three departments joined by take_id, gaps, local search (31)
@@ -176,7 +176,8 @@ auto-save with no save button, an A4 sheet overlaid **on the same route** (navig
 need the network, and the sheet is printed when the location has no signal).
 
 - What the three departments **share** lives outside all of them: `features/diaria/cenas.ts`
-  (`agrupaCenas` — Cena → Bloco is `Scene`, ADR-002), `features/diaria/NovaCena.tsx`,
+  (`agrupaCenas` — Cena → Bloco is `Scene`, ADR-002), `features/diaria/equipamentos.ts`
+  (the day's equipment allocation, one slice per department), `features/diaria/NovaCena.tsx`,
   `components/ui/DebouncedTextField.tsx` (the auto-save contract) and
   `components/ui/OptionChips.tsx` (one-tap judgment row). Copy any of them into a module and
   the same day starts rendering differently per department.

@@ -8,9 +8,14 @@ import {
   assinaturaDoPlano,
   diferencasDoPlano,
   partesTecnicas,
+  resumoDeMidia,
   rotuloDoJulgamento,
   rotuloDoTipo,
 } from '@/features/camera/estrutura.ts';
+import {
+  equipamentosDoDepartamento,
+  suportesDeMidia,
+} from '@/features/diaria/equipamentos.ts';
 
 const checks = [];
 const ok = (name, cond) => checks.push({ name, pass: !!cond });
@@ -138,6 +143,97 @@ ok('CIRCLE não duplica o selo de aprovado', rotuloDoJulgamento('CIRCLE') === nu
 ok('sem julgamento não imprime nada', rotuloDoJulgamento(null) === null);
 // Os valores que mudam de eixo na Fase 6 (ADR-029) ainda não têm apresentação própria.
 ok('WILD ainda não é impresso como julgamento', rotuloDoJulgamento('WILD') === null);
+
+// ---- Mídia / Suporte (Fase 5, fechada com o catálogo da Fase 8) ----
+//
+// A seção que o boletim local pedia digitada à mão. Aqui ela é derivada: o cartão vem do
+// take, onde é anotado no instante em que a câmera roda, e o suporte vem do catálogo da
+// produção alocado na diária. Testar aqui é testar tela e folha ao mesmo tempo.
+
+const dado = (id, card, roll, volume) => ({ id, card, roll, volume });
+
+const midia = resumoDeMidia(
+  [
+    dado('d1', 'A002', 'R1', 'CAM_A'),
+    dado('d2', 'A002', 'R1', 'CAM_A'),
+    dado('d3', 'A010', 'R2', null),
+    dado('d4', '  A002  ', ' R2 ', ''),
+    dado('d5', '', '', ''),
+    dado('d6', null, null, null),
+  ],
+  [
+    { id: 'e1', departamento: 'CAMERA', categoria: 'MEDIA', descricao: 'SanDisk 128GB' },
+    { id: 'e2', departamento: 'DIT', categoria: 'MEDIA', descricao: 'SSD Samsung T7' },
+    { id: 'e3', departamento: 'SOUND', categoria: 'MEDIA', descricao: 'SD do gravador' },
+    { id: 'e4', departamento: 'CAMERA', categoria: 'LENS', descricao: 'Cooke S4 32mm' },
+  ],
+);
+
+ok('cartões distintos viram uma linha cada', midia.cartoes.length === 2);
+ok(
+  'a ordem dos cartões é natural, não alfabética',
+  midia.cartoes.map((c) => c.cartao).join(',') === 'A002,A010',
+);
+ok('o cartão conta quantos takes gravou', midia.cartoes[0].takes === 3);
+// Espaço em volta do número é digitação, não outro cartão — dois chips iguais na folha
+// fariam o DIT procurar um cartão que não existe.
+ok('espaço em volta não cria um segundo cartão', midia.cartoes[0].cartao === 'A002');
+ok(
+  'o cartão lembra em que rolls apareceu',
+  midia.cartoes[0].rolls.join(',') === 'R1,R2',
+);
+ok('roll repetido não duplica dentro do cartão', midia.cartoes[0].rolls.length === 2);
+ok('os rolls do dia saem sem repetição e em ordem', midia.rolls.join(',') === 'R1,R2');
+ok('volume vazio não vira volume', midia.volumes.join(',') === 'CAM_A');
+// A lacuna que a tabela manual nunca respondia: o take existe e ninguém disse onde gravou.
+ok('take sem cartão é contado como lacuna', midia.takesSemCartao === 2);
+ok(
+  'take sem cartão não entra em nenhum cartão',
+  midia.cartoes.reduce((soma, c) => soma + c.takes, 0) === 4,
+);
+
+// O suporte é do catálogo: cartão e SSD saem no boletim de câmera mesmo cadastrados no
+// DIT, mas o cartão do gravador de som responde pelo sound report, não por este.
+ok('o suporte de mídia vem do catálogo', midia.suportes.length === 2);
+ok(
+  'mídia do DIT entra no boletim de câmera',
+  midia.suportes.some((item) => item.descricao === 'SSD Samsung T7'),
+);
+ok(
+  'mídia do Som fica fora do boletim de câmera',
+  !midia.suportes.some((item) => item.departamento === 'SOUND'),
+);
+ok(
+  'lente não é suporte de mídia',
+  !midia.suportes.some((item) => item.categoria === 'LENS'),
+);
+
+// Uma produção que nunca cadastrou equipamento imprime como imprimia antes.
+const semCatalogo = resumoDeMidia([dado('d1', 'A001', '', '')]);
+ok('sem catálogo a seção continua existindo', semCatalogo.cartoes.length === 1);
+ok('sem catálogo não há suporte', semCatalogo.suportes.length === 0);
+
+const vazio = resumoDeMidia([], []);
+ok('diária vazia não inventa cartão', vazio.cartoes.length === 0);
+ok('diária vazia não inventa lacuna', vazio.takesSemCartao === 0);
+
+// ---- A fatia de cada departamento ----
+
+const alocacao = [
+  { id: 'e1', departamento: 'CAMERA', categoria: 'MEDIA', descricao: 'SanDisk' },
+  { id: 'e2', departamento: 'SOUND', categoria: 'MICROPHONE', descricao: 'MKH 50' },
+];
+
+ok(
+  'cada departamento lê só a sua fatia',
+  equipamentosDoDepartamento(alocacao, 'SOUND').length === 1,
+);
+ok(
+  'departamento sem equipamento devolve lista vazia',
+  equipamentosDoDepartamento(alocacao, 'ART').length === 0,
+);
+ok('lista ausente não quebra o filtro', equipamentosDoDepartamento(undefined, 'CAMERA').length === 0);
+ok('lista ausente não quebra o suporte', suportesDeMidia(undefined).length === 0);
 
 let failed = 0;
 for (const c of checks) {

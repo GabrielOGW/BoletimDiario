@@ -25,10 +25,10 @@ E, desde `2026-08-10`, a regra tem uma segunda metade
 > A tela `/takes` continua existindo enquanto Som e Continuidade não têm módulo — para eles
 > é a única porta. Ela nunca foi o boletim de ninguém.
 >
-> **Falta para fechar a fase:** só Mídia/Suporte, que depende do catálogo de equipamentos
-> da Fase 8. As lacunas de paridade que sobraram estão listadas em §1, cada uma com dono
-> declarado — e uma delas, a câmera do plano, é uma **decisão de modelo em aberto** (§7.1),
-> não um item de implementação.
+> **Fase 5 fechada em `2026-08-19`**, com Mídia/Suporte (§8) — a última pendência, que
+> esperava o catálogo de equipamentos da Fase 8. As lacunas de paridade que sobraram estão
+> listadas em §1, cada uma com dono declarado — e uma delas, a câmera do plano, é uma
+> **decisão de modelo em aberto** (§7.1), não um item de implementação.
 
 ---
 
@@ -76,7 +76,7 @@ conferir "item a item"; o que está `⚠️` tem justificativa e dono.
 | Horários · Equipe · Produção                                 | ✅ somente leitura, dado de sala (ADR-016)        |
 | Observações gerais                                           | ✅ `ShootingDay.notes`, editável na sala          |
 | PDF A4 com aprovados destacados                              | ✅ §6                                             |
-| Mídia/Suporte                                                | ⚠️ Fase 8 (depende do catálogo de equipamentos)   |
+| Mídia/Suporte                                                | ✅ derivada do take + kit da diária — §8          |
 | Autocomplete aprendido + presets                             | ⚠️ ainda não — ver abaixo                         |
 | Duplicar plano / cena / take                                 | ⚠️ ainda não — ver abaixo                         |
 | Backup JSON                                                  | — próprio do modo local; a plataforma sincroniza  |
@@ -306,9 +306,8 @@ assim o take 4, que herdou o valor novo, também o mostra, em vez de parecer ter
 pela folha. Duplicar o agrupamento nos dois lugares acabaria em um PDF que mostra a diária
 diferente de como ela foi preenchida. Coberto por `npm run test:camera` (25 checks).
 
-O que a folha ainda não tem, por depender de outra fase: Mídia/Suporte (equipamentos,
-Fase 8) e o CSV para a pós (Fase 9). A seção "Cartões usados" já sai, derivada dos takes,
-com a lista de rolls quando houver.
+A seção **Mídia/Suporte** saiu com a Fase 8 e substituiu "Cartões usados" na folha (§8).
+O que ainda falta, por depender de outra fase: o CSV para a pós (Fase 9).
 
 ---
 
@@ -361,3 +360,60 @@ possíveis depois, com dado real para justificar qual.
 **Por que não foi decidido aqui:** a resposta depende de como o multicam é usado de verdade
 nas produções deste app — se plano é por câmera ou se um plano é rodado por duas ao mesmo
 tempo. Isso é conhecimento de set, não de código.
+
+---
+
+## 8. Mídia/Suporte — Fase 5, fechada em `2026-08-19`
+
+Era a última pendência do módulo. Não entrou antes porque dependia do catálogo de
+equipamentos da Fase 8: sem catálogo, "suporte" não tinha de onde vir.
+
+### O que ela era, e por que não voltou como era
+
+No boletim local, **Mídia/Suporte** é uma tabela digitada à mão — tipo de mídia, nº do
+cartão, quantidade, responsável — e o número do cartão ainda é **digitado outra vez** em
+cada take. Duas fontes para o mesmo dado, que divergem no primeiro dia corrido: a tabela diz
+que rodaram três cartões e os takes mostram quatro, e ninguém sabe qual das duas está certa.
+
+Na plataforma a seção voltou **derivada**, com as duas metades vindo de onde já existem:
+
+| Metade                   | De onde vem                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------ |
+| **O uso** — o que gravou | `CameraTakeData.{card,roll,volume}` de cada take, anotado no instante em que a câmera roda |
+| **O suporte** — o que é  | `Equipment` de categoria `MEDIA` alocado na diária (`EquipmentAssignment`, Fase 8)         |
+
+Ninguém redigita nada, e por isso a seção é **somente leitura**: ela é consequência do que
+já foi preenchido. O cadastro do suporte é na sala, com sinal — o catálogo está fora da
+fronteira offline (ADR-016) — e o cartão tem link para lá.
+
+### O que ela mostra
+
+`resumoDeMidia()` em [`features/camera/estrutura.ts`](../../features/camera/estrutura.ts) é
+a leitura única, lida pela tela **e** pela folha, como o resto do módulo:
+
+- **cartões**, cada um com quantos takes gravou e em que rolls apareceu — ordem natural
+  (`A2` antes de `A10`), e espaço em volta do número não cria um cartão fantasma;
+- **rolls** e **volumes** do dia, sem repetição;
+- **suporte alocado** na diária, nos departamentos `CAMERA` e `DIT` — cartão e SSD costumam
+  estar cadastrados no DIT, mas é o boletim de câmera que responde por eles no fim do dia.
+  O cartão do gravador de som fica de fora: ele responde pelo sound report;
+- **takes sem cartão anotado** — a pergunta que o DIT faz no fim do dia e que a tabela
+  manual nunca respondeu. É lacuna, não erro: some quando alguém preenche.
+
+Na folha, a seção substituiu "Cartões usados" no bloco de resumo, e o equipamento de câmera
+que **não** é mídia continua na linha de "Equipamento" — repetir o mesmo SSD em duas linhas
+da mesma folha é como o leitor passa a achar que são dois.
+
+A filtragem por departamento e a seleção do suporte moram em
+[`features/diaria/equipamentos.ts`](../../features/diaria/equipamentos.ts), fora do módulo,
+porque a alocação é da **diária**: os três departamentos recebem a mesma lista e cada um lê
+a sua fatia. Três filtros copiados seriam três respostas para "o que estamos usando hoje".
+
+Coberto por `npm run test:camera` (60 checks, +22).
+
+### Efeito colateral: um link que não existia
+
+`SectionCard` recolhível descartava a `action` em silêncio — dentro de um `<button>` não
+pode haver link, e o componente simplesmente não a renderizava. As três telas de diária
+passavam um "Editar na sala" que **nunca aparecia**. Agora a ação desce para o fim do corpo
+do cartão, e os links de equipe de Câmera, Som e Continuidade passaram a existir.
