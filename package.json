@@ -16,7 +16,11 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "test": "npm run test:migration && npm run test:platform && npm run test:mapping && npm run test:folha && npm run test:camera && npm run test:som && npm run test:continuidade && npm run test:consolidado && npm run test:atalhos",
+    "test": "npm run test:migration && npm run test:platform && npm run test:mapping && npm run test:folha && npm run test:camera && npm run test:som && npm run test:continuidade && npm run test:consolidado && npm run test:atalhos && npm run test:vitest",
+    "test:vitest": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "test:migration": "node --no-warnings --experimental-strip-types --loader ./test/alias-loader.mjs test/migration-check.mjs",
     "test:platform": "node --no-warnings --experimental-strip-types --loader ./test/alias-loader.mjs test/platform-domain-check.mjs",
     "test:mapping": "node --no-warnings --experimental-strip-types --loader ./test/alias-loader.mjs test/platform-mapping-check.mjs",
@@ -45,6 +49,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^20.17.10",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
@@ -54,10 +59,12 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "^15.1.0",
     "eslint-config-prettier": "^9.1.0",
+    "fake-indexeddb": "^6.2.5",
     "postcss": "^8.4.49",
     "prettier": "^3.4.2",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.11"
   }
 }

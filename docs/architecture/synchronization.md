@@ -373,8 +373,8 @@ regra "informa, nunca bloqueia" estão em
 ## 8. Testes obrigatórios
 
 Da Fase 4 em diante, nenhuma dessas pode regredir. `S` = `npm run test:sync` · `H` = exercício
-HTTP contra o build de produção · `P` = Playwright, Fase 10 (precisa de IndexedDB e de duas
-abas de verdade).
+HTTP contra o build de produção · `V` = `npm run test:vitest` (IndexedDB real, `fetch` sob
+controle) · `P` = `npm run test:e2e`, Playwright contra o build de produção.
 
 - [x] Offline → 50 operações → volta a rede → todas sincronizam, na ordem — **S**
 - [x] Mesma operação enviada duas vezes → aplicada uma vez (idempotência) — **S**
@@ -388,9 +388,21 @@ abas de verdade).
 - [x] Protocolo incompatível → `426` antes de qualquer consulta — **H**
 - [x] Sessão expirada durante o push → `401`, fila preservada com o payload — **H** + **S**
 - [x] Perda de permissão com fila pendente → `403` → `FAILED` com motivo — **H**
-- [ ] Offline → cria take → fecha o PWA → reabre → dado presente — **P**
-- [ ] Duas abas: `liveQuery` propaga sem recarregar — **P**
+- [x] Offline → cria take → fecha o PWA → reabre → dado presente — **P**
+- [x] Duas abas: `liveQuery` propaga sem recarregar — **P**
+- [x] O que o cliente faz com a resposta: `426` sem gastar tentativa, `401`/`403` viram
+      `FAILED` com o payload intacto, conflito converge e vira pendência, o cursor só
+      avança depois de aplicar, campo com operação na fila não é sobrescrito — **V**
+- [x] Escrita local e enfileiramento na **mesma** transação: falhar o segundo desfaz o
+      primeiro — **V**
 
-O que **S** não cobre é o que roda no navegador: as duas primeiras pendentes exigem IndexedDB
-real. A lógica pura que sustenta as duas — coalescência e normalização — está testada; o que
-falta provar é o ciclo de vida do PWA, e isso é Playwright, não harness de Node.
+O que **S** cobre é o que o **servidor** decide. O que o cliente faz com a resposta era o
+buraco, e é o que **V** fechou na Fase 10: o motor inteiro contra IndexedDB de verdade, com o
+`fetch` substituído por um roteador de mentira. Errar ali é mudo — quase todo defeito termina
+do mesmo jeito, a fila esvazia sem o dado ter chegado, ou o dado chega e some da tela.
+
+As duas linhas de **P** ficaram por último porque exigem mais de uma página viva e o ciclo de
+vida do PWA, que nenhum harness de Node simula. O teste abre a diária com rede, **recarrega**
+(a primeiríssima navegação de um aparelho acontece antes de o Service Worker assumir o
+controle, então ela não entra no cache de runtime), fica offline, anota, fecha a página e
+reabre. Cortar o `runtime.put` do Service Worker derruba o teste — foi verificado.

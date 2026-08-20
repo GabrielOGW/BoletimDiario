@@ -369,16 +369,50 @@ uma delas esquecer o BOM que o Excel em pt-BR exige.
 desvio de roteiro, estado do set —, e texto em planilha é onde ele deixa de ser lido. O
 relatório de progresso e a folha continuam sendo a entrega dela. Entra se alguém pedir.
 
-## 📋 Fase 10 — Hardening
+## ⏳ Fase 10 — Hardening
 
 Contínua **a partir da Fase 4**, não um bloco no fim: teste de sync escrito depois de o sync
 existir é teste que nunca é escrito.
 
-- [ ] **Vitest** cobrindo domínio, sync e conflitos
-- [ ] **Playwright** incluindo o fluxo offline completo
+- [x] **Vitest** cobrindo o cliente do sync — `2026-08-20`
+- [x] **Playwright** incluindo o fluxo offline completo — `2026-08-20`
 - [ ] Rate limit, sessões por dispositivo, avaliação de RLS
 - [ ] Performance com produção grande (40 diárias, 2000 takes)
 - [ ] Auditoria de PWA, acessibilidade e UX mobile
+
+> **Os dois runners entraram em `2026-08-20`**, e o recorte de cada um foi escolhido pelo
+> buraco que existia, não pelo que dá um número bonito de cobertura.
+>
+> **Vitest (57 testes, `npm run test:vitest`, dentro do `npm test`).** As nove suítes `.mjs`
+> provam o domínio puro e as três folhas; `npm run test:sync` prova o que o **servidor**
+> decide, contra o Neon real. Ninguém provava **o que o cliente faz com a resposta** — e é ali
+> que o erro é mudo, porque quase todo defeito termina do mesmo jeito: a fila esvazia sem o
+> dado ter chegado, ou o dado chega e some da tela. Entraram a fila de saída contra IndexedDB
+> de verdade (`fake-indexeddb`, não dublê), o repositório da fronteira e o motor inteiro —
+> `426` sem gastar tentativa, `401`/`403` virando `FAILED` com o payload intacto, o conflito
+> que converge e vira pendência, o cursor que só avança depois de aplicar, o campo com
+> operação na fila que não é sobrescrito.
+>
+> A prova mais importante do lote é a menor: **falhar o enfileiramento desfaz a escrita
+> local**. É a regra do ADR-016 que, quebrada, não faz barulho nenhum — a tela mostra o dado,
+> o assistente segue anotando, e a falta só aparece na montagem no dia seguinte.
+>
+> **Playwright (`npm run test:e2e`, fora do `npm test`).** Fecha as duas últimas caixas de
+> [synchronization.md §8](architecture/synchronization.md#8-testes-obrigatórios), abertas desde
+> a Fase 4 por um motivo honesto: exigem IndexedDB real e mais de uma página viva. Roda contra
+> o **build de produção**, porque o Service Worker só é registrado lá e sem ele a navegação
+> offline não tem o que servir; cria conta, produção e diária **pela interface** e apaga tudo
+> no fim.
+>
+> Ele encontrou uma coisa que o teste manual esconde: a **primeiríssima** navegação de um
+> aparelho acontece antes de o Service Worker assumir o controle, então ela não entra no cache
+> de runtime. Quem abre a diária e vai direto para o modo avião cai no app shell — que é o
+> boletim local, não a diária. Na prática o segundo acesso resolve, e é isso que o teste
+> reproduz; mas está escrito, e não descoberto de novo em locação.
+>
+> As três suítes foram conferidas por mutação: cortar a proteção de campo pendente no `pull`,
+> baixar o limiar de "servidor inalcançável" para uma falha e remover o `runtime.put` do
+> Service Worker derrubam exatamente o teste que deveriam derrubar.
 
 ---
 
