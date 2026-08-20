@@ -136,6 +136,38 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24 * 7,
   },
 
+  /**
+   * Rate limit **em tabela**, não em memória (Fase 10).
+   *
+   * O padrão da biblioteca conta em memória, e em memória o limite quase não existe num
+   * deploy serverless: cada instância tem o seu contador, então "cinco tentativas por
+   * minuto" vira cinco por minuto **por instância** — e quem está tentando adivinhar uma
+   * senha ganha o paralelismo de graça. Com `database` o contador é um só
+   * (`rate_limits`, migration `0008`).
+   *
+   * Os limites por rota saem do custo de errar, não de um número redondo:
+   *
+   * - **entrar** é o alvo de força bruta de senha, e cinco por minuto não atrapalha quem
+   *   digitou errado duas vezes no escuro do set;
+   * - **cadastrar** e **pedir redefinição** são caros para quem está do outro lado (conta
+   *   nova, e-mail enviado) e raros para quem é de verdade — a janela é de uma hora;
+   * - **redefinir** aceita mais que pedir porque o link já é secreto: o que se limita ali
+   *   é adivinhar o token, não incomodar o dono da conta.
+   *
+   * O limite global de 100/min continua valendo para todo o resto de `/api/auth`.
+   */
+  rateLimit: {
+    storage: 'database',
+    window: 60,
+    max: 100,
+    customRules: {
+      '/sign-in/email': { window: 60, max: 5 },
+      '/sign-up/email': { window: 60 * 60, max: 10 },
+      '/request-password-reset': { window: 60 * 60, max: 3 },
+      '/reset-password': { window: 60 * 60, max: 10 },
+    },
+  },
+
   /** Precisa ser o último: escreve os cookies de sessão nas Server Actions do Next. */
   plugins: [nextCookies()],
 });

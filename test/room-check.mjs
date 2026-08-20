@@ -43,6 +43,9 @@ const {
   listEquipment,
 } = await import('@/lib/db/queries/equipment');
 const { descreveEquipamento } = await import('@/features/production/labels');
+const { consomeTentativa, chaveDeEntrada, emLinguagemDeGente } = await import(
+  '@/lib/auth/limite'
+);
 const { searchProduction } = await import('@/lib/db/queries/search');
 
 let passed = 0;
@@ -67,6 +70,7 @@ async function cleanup() {
   if (productionId) await sql`delete from productions where id = ${productionId}`;
   for (const pessoa of [dono, membro, terceiro]) {
     await sql`delete from users where id = ${pessoa.id}`;
+    await sql`delete from rate_limits where key = ${chaveDeEntrada(pessoa.id)}`;
   }
 }
 
@@ -466,6 +470,72 @@ async function run() {
     'take apagado não aparece na busca',
     (await searchProduction({ productionId, termo: 'A023' })).length === 1,
   );
+
+  // ---- Fase 10: o limite de tentativas no resgate de código ----
+
+  // O código tem quatro caracteres sobre um alfabeto de 32 e o prefixo vem do nome da
+  // produção. Sem limite, o espaço inteiro cabe numa tarde.
+  const regra = { janelaSegundos: 3600, maximo: 3 };
+  const chave = chaveDeEntrada(terceiro.id);
+
+  const vereditos = [];
+  for (let i = 0; i < 5; i += 1) {
+    vereditos.push(await consomeTentativa(chave, regra));
+  }
+
+  check(
+    'as três primeiras tentativas passam',
+    vereditos.slice(0, 3).every((veredito) => veredito.permitido),
+  );
+  check(
+    'da quarta em diante é barrado',
+    vereditos.slice(3).every((veredito) => !veredito.permitido),
+  );
+  check(
+    'quem foi barrado sabe quanto esperar',
+    vereditos[3].esperarSegundos > 0 && vereditos[3].esperarSegundos <= 3600,
+  );
+
+  const [linhaDoLimite] = await sql`
+    select count from rate_limits where key = ${chave}
+  `;
+  // A contagem mora no banco, não em memória: em serverless, memória é por instância —
+  // e o limite passaria a valer por instância, que é o mesmo que não valer.
+  check('a contagem fica no banco', Number(linhaDoLimite?.count) === 5);
+
+  const deOutraPessoa = await consomeTentativa(chaveDeEntrada(membro.id), regra);
+  check('o limite é por pessoa, não global', deOutraPessoa.permitido);
+
+  // Janela vencida recomeça do zero: quem esperou não continua de castigo.
+  await sql`
+    update rate_limits set last_request = ${Date.now() - 3600 * 1000 - 1}
+     where key = ${chave}
+  `;
+  const depoisDaJanela = await consomeTentativa(chave, regra);
+  const [recontado] = await sql`select count from rate_limits where key = ${chave}`;
+  check('janela vencida recomeça a contagem', depoisDaJanela.permitido);
+  check('e a contagem volta a 1', Number(recontado?.count) === 1);
+
+  check('90 segundos viram "2 minutos"', emLinguagemDeGente(90) === '2 minutos');
+  check('40 segundos continuam segundos', emLinguagemDeGente(40) === '40 segundos');
+
+  // Uma linha por chave e chave nova a cada IP: sem poda, a tabela só cresce.
+  await sql`
+    insert into rate_limits (key, count, last_request)
+    values (${'fossil-de-ontem'}, 9, ${Date.now() - 25 * 3600 * 1000})
+  `;
+  await consomeTentativa(chaveDeEntrada(terceiro.id), regra);
+  const [fossil] = await sql`
+    select count(*)::int as total from rate_limits where key = ${'fossil-de-ontem'}
+  `;
+  check('linha vencida há mais de um dia é podada', fossil.total === 0);
+
+  const [viva] = await sql`
+    select count(*)::int as total from rate_limits where key = ${chave}
+  `;
+  check('a poda não leva junto quem ainda está na janela', viva.total === 1);
+
+  await sql`delete from rate_limits where key like ${'entrar-por-codigo:%'}`;
 }
 
 async function papel(userId) {

@@ -376,7 +376,7 @@ existir é teste que nunca é escrito.
 
 - [x] **Vitest** cobrindo o cliente do sync — `2026-08-20`
 - [x] **Playwright** incluindo o fluxo offline completo — `2026-08-20`
-- [ ] Rate limit, sessões por dispositivo, avaliação de RLS
+- [x] Rate limit, sessões por dispositivo, avaliação de RLS — `2026-08-20`
 - [ ] Performance com produção grande (40 diárias, 2000 takes)
 - [ ] Auditoria de PWA, acessibilidade e UX mobile
 
@@ -413,6 +413,38 @@ existir é teste que nunca é escrito.
 > As três suítes foram conferidas por mutação: cortar a proteção de campo pendente no `pull`,
 > baixar o limiar de "servidor inalcançável" para uma falha e remover o `runtime.put` do
 > Service Worker derrubam exatamente o teste que deveriam derrubar.
+
+> **Rate limit, dispositivos e RLS em `2026-08-20`**
+> ([ADR-038](decisions.md#adr-038--o-limite-de-tentativas-mora-no-banco-rls-fica-de-fora-e-a-sessão-longa-se-paga-com-revogação)),
+> em duas passagens: `banco` (migration `0008`, tabela `rate_limits`) e `plataforma`.
+>
+> **O rate limit da Better Auth existia e quase não valia.** O padrão dela conta em memória, e
+> em memória o limite é **por instância** num deploy serverless: "cinco por minuto" vira cinco
+> por minuto vezes o número de instâncias, e quem está adivinhando ganha o paralelismo de
+> graça. Com `storage: 'database'` o contador é um só. Verificado contra o build de produção:
+> a sexta tentativa de entrar responde `429`, e a linha aparece em `rate_limits`.
+>
+> **O resgate do código de convite** — a pendência registrada lá na Fase 3 — não passa por rota
+> da Better Auth e era o alvo que mais compensava: quatro caracteres sobre um alfabeto de 32,
+> com o prefixo saindo do nome da produção. Agora são 10 tentativas por hora **por usuário**
+> (por IP puniria a equipe inteira atrás do roteador da base), cobradas depois da validação de
+> formato, porque código malformado não é tentativa de adivinhar.
+>
+> **RLS foi avaliada e recusada, com o motivo escrito.** Ela protege contra uma conexão que
+> chega ao banco com identidade de usuário, e não é o que existe aqui — o driver serverless usa
+> uma conexão de aplicação única e o `user_id` chega como argumento da query. Ligá-la assim
+> daria uma política que aceita tudo: segurança de fachada, que é pior que nenhuma porque muda
+> o que as pessoas acham que está protegido.
+>
+> **`/conta` é a contrapartida da sessão de 90 dias.** A sessão longa não é folga, é o que
+> sustenta o offline — sessão expirada em locação sem sinal não tem como ser renovada. O preço
+> é o telefone perdido que continua entrando por três meses, e a resposta não é encurtar a
+> sessão de todo mundo por causa do aparelho de um: é poder derrubar aquele. Só é possível
+> porque a sessão vive no banco e não num JWT — uma capacidade que o schema já tinha e que não
+> tinha tela.
+>
+> **Verificado por** `npm run test:db` (41, +6) e `npm run test:sala` (60, +9), e por exercício
+> HTTP contra o build de produção.
 
 ---
 

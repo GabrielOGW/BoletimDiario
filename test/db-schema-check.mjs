@@ -353,6 +353,44 @@ async function verificaEixos() {
        and operation = 'DELETE'
   `;
   check('o soft delete do relatório vira DELETE no log', logDelete.total === 1);
+
+  // ---- Fase 10: o contador do rate limit ----
+
+  const colunasDoLimite = await sql`
+    select column_name, data_type from information_schema.columns
+     where table_name = 'rate_limits'
+     order by column_name
+  `;
+  const tipoDe = (nome) =>
+    colunasDoLimite.find((coluna) => coluna.column_name === nome)?.data_type;
+
+  check('a tabela rate_limits existe', colunasDoLimite.length === 4);
+  check('a chave do limite é texto', tipoDe('key') === 'text');
+  check('a contagem é inteira', tipoDe('count') === 'integer');
+  // A Better Auth grava epoch em milissegundos. `integer` estouraria em 1970+24 dias, e
+  // `timestamptz` obrigaria a traduzir nos dois sentidos a cada requisição.
+  check('last_request é bigint, não timestamp', tipoDe('last_request') === 'bigint');
+
+  const [chaveUnica] = await sql`
+    select count(*)::int as total
+      from information_schema.table_constraints c
+      join information_schema.key_column_usage k
+        on k.constraint_name = c.constraint_name
+     where c.table_name = 'rate_limits'
+       and c.constraint_type = 'UNIQUE'
+       and k.column_name = 'key'
+  `;
+  // Sem a unicidade, duas requisições simultâneas criariam duas linhas para a mesma
+  // chave — e o limite passaria a valer o dobro exatamente sob carga, que é quando ele
+  // precisa valer.
+  check('a chave do limite é única', chaveUnica.total === 1);
+
+  const [limiteSemSync] = await sql`
+    select count(distinct trigger_name)::int as total from information_schema.triggers
+     where event_object_table = 'rate_limits'
+  `;
+  // Não é tabela de domínio: contador de tentativa não sincroniza para aparelho nenhum.
+  check('rate_limits não tem trigger de sync nem de version', limiteSemSync.total === 0);
 }
 
 try {

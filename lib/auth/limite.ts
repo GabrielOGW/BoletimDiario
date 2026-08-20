@@ -1,0 +1,118 @@
+/**
+ * Rate limit para o que **não** passa pelas rotas da Better Auth.
+ *
+ * A biblioteca limita `/api/auth/**` sozinha. O que ficou de fora é o resgate de código de
+ * convite, que é Server Action — e é exatamente o lugar onde a força bruta compensa: o
+ * código tem quatro caracteres depois do hífen sobre um alfabeto de 32, e o prefixo vem do
+ * nome da produção, que quem quer entrar geralmente conhece. Sem limite, o espaço inteiro
+ * cabe numa tarde ([permissions.md §4](../../docs/architecture/permissions.md#4-entrada-na-sala)).
+ *
+ * Usa a **mesma tabela** da Better Auth (`rate_limits`, migration `0008`), e não uma
+ * paralela: um contador só é um lugar só para olhar quando alguém reclamar de ter sido
+ * barrado — e um lugar só para limpar.
+ *
+ * Janela fixa ancorada na primeira tentativa contada. Não é a mais sofisticada; é a que
+ * cabe num `insert … on conflict` só, e uma leitura seguida de uma escrita deixaria a
+ * janela entre as duas — que é justamente onde o paralelismo entra.
+ */
+
+import 'server-only';
+
+import { sql } from 'drizzle-orm';
+
+import { db } from '@/lib/db/client';
+
+export interface Veredito {
+  permitido: boolean;
+  /** Quanto falta para a janela virar. `0` quando permitido. */
+  esperarSegundos: number;
+}
+
+export interface Regra {
+  janelaSegundos: number;
+  maximo: number;
+}
+
+/**
+ * Conta uma tentativa e diz se ela passa.
+ *
+ * Contar **antes** de saber se deu certo é deliberado: contar só o fracasso deixaria a
+ * porta aberta para quem acerta de vez em quando, e o custo para quem é de verdade é
+ * nenhum — ninguém entra numa sala dez vezes por hora.
+ */
+export async function consomeTentativa(chave: string, regra: Regra): Promise<Veredito> {
+  const agora = Date.now();
+  const janelaMs = regra.janelaSegundos * 1000;
+
+  const { rows } = await db.execute<{ count: number; last_request: string }>(sql`
+    insert into rate_limits (key, count, last_request)
+    values (${chave}, 1, ${agora})
+    on conflict (key) do update set
+      count = case
+        when ${agora} - rate_limits.last_request >= ${janelaMs} then 1
+        else rate_limits.count + 1
+      end,
+      last_request = case
+        when ${agora} - rate_limits.last_request >= ${janelaMs} then ${agora}
+        else rate_limits.last_request
+      end
+    returning count, last_request
+  `);
+
+  const linha = rows[0];
+  if (!linha) return { permitido: true, esperarSegundos: 0 };
+
+  await podaVencidos(agora);
+
+  const contagem = Number(linha.count);
+  const inicioDaJanela = Number(linha.last_request);
+
+  if (contagem <= regra.maximo) return { permitido: true, esperarSegundos: 0 };
+
+  const restanteMs = inicioDaJanela + janelaMs - agora;
+  return {
+    permitido: false,
+    esperarSegundos: Math.max(1, Math.ceil(restanteMs / 1000)),
+  };
+}
+
+/**
+ * Uma linha por chave, e chave nova a cada IP: sem poda, a tabela só cresce.
+ *
+ * Vinte e quatro horas cobrem com folga a janela mais longa em uso (uma hora), e a linha
+ * podada não perdoa ninguém — quem passou do limite há um dia já teria recomeçado a
+ * contagem de qualquer jeito.
+ *
+ * Roda junto do resgate de código, que é raro, e não a cada requisição de `/api/auth`:
+ * é uma faxina, não um caminho quente. O `delete` é uma varredura de índice que quase
+ * sempre não acha nada.
+ *
+ * Se um dia a tabela crescer a ponto de isso não bastar, o lugar certo é um cron — não
+ * uma poda mais agressiva aqui dentro.
+ */
+const RETENCAO_MS = 24 * 60 * 60 * 1000;
+
+async function podaVencidos(agora: number): Promise<void> {
+  await db.execute(sql`
+    delete from rate_limits where last_request < ${agora - RETENCAO_MS}
+  `);
+}
+
+/**
+ * Entrada por código: dez tentativas por hora, **por usuário**.
+ *
+ * Por usuário e não por IP porque a ação exige sessão: para ganhar paralelismo, quem
+ * estiver adivinhando precisa de muitas contas — e criar conta já é limitado pela Better
+ * Auth. Por IP puniria a equipe inteira atrás do mesmo roteador da base, que é o caso
+ * normal e não o suspeito.
+ */
+export const LIMITE_DE_ENTRADA: Regra = { janelaSegundos: 60 * 60, maximo: 10 };
+
+export const chaveDeEntrada = (userId: string) => `entrar-por-codigo:${userId}`;
+
+/** "Espere 12 minutos" é acionável; "espere 743 segundos" não é. */
+export function emLinguagemDeGente(segundos: number): string {
+  if (segundos < 60) return `${segundos} segundo${segundos === 1 ? '' : 's'}`;
+  const minutos = Math.ceil(segundos / 60);
+  return `${minutos} minuto${minutos === 1 ? '' : 's'}`;
+}

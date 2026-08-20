@@ -24,15 +24,15 @@ Lembrando a decisão de modelagem: **sala não é uma tabela**. É a projeção 
 
 ```
 LOGIN → MINHAS PRODUÇÕES → FILME X → SALA
-                                       ├── Diária 12
-                                       │     ├── Câmera
-                                       │     ├── Som
-                                       │     ├── Continuidade
-                                       │     └── Consolidado
-                                       ├── Equipamentos
-                                       ├── Membros
-                                       ├── Busca
-                                       └── Relatórios
+          │                            ├── Diária 12
+          │                            │     ├── Câmera
+          │                            │     ├── Som
+          │                            │     ├── Continuidade
+          │                            │     └── Consolidado
+          │                            ├── Equipamentos
+          │                            ├── Membros
+          │                            ├── Busca
+          └── CONTA                    └── Relatórios
 ```
 
 ## 2. Entrar e sair
@@ -55,7 +55,9 @@ João    — Som           Carlos — Direção
 ```
 
 Regras do código de convite em
-[../architecture/permissions.md §4](../architecture/permissions.md#4-entrada-na-sala).
+[../architecture/permissions.md §4](../architecture/permissions.md#4-entrada-na-sala) —
+incluindo o limite de **10 tentativas por hora, por usuário**, que entrou na Fase 10 e é o
+que impede alguém de adivinhar o código de fora.
 
 O código fica visível para **todo membro**, não só para o administrador: quem chegou atrasado
 no set precisa entrar sem depender de o `ADMIN` estar por perto. Rotacionar e fechar a sala
@@ -66,6 +68,24 @@ botão que não funcionaria.
 pode editar vê o mesmo conteúdo sem formulário. Duas unidades no mesmo dia são duas diárias —
 a unidade entra na chave. O id é derivado de `(produção, data, unidade)`, o que faz criar a
 mesma diária duas vezes convergir para o mesmo registro em vez de duplicar (ADR-019).
+
+### A conta e os aparelhos — Fase 10, `2026-08-20`
+
+`/conta`, no cabeçalho de "Minhas produções", ao lado de "Sair". Ela mostra **onde a conta
+está aberta** — navegador, sistema, IP e desde quando — e derruba qualquer aparelho, ou todos
+os outros de uma vez.
+
+Ela existe por causa do offline, não apesar dele. A sessão dura 90 dias e nunca é reverificada
+para editar, porque em locação sem sinal uma sessão expirada não tem como ser renovada
+(ADR-025). O preço é que um telefone perdido continua entrando na produção por três meses — e
+a resposta certa não é encurtar a sessão de todo mundo, é **poder revogar a de um**
+([ADR-038](../decisions.md#adr-038--o-limite-de-tentativas-mora-no-banco-rls-fica-de-fora-e-a-sessão-longa-se-paga-com-revogação)).
+
+O aparelho atual não tem botão de desconectar: ele tem "Sair", no cabeçalho. São coisas
+diferentes, e juntá-las faria alguém se deslogar tentando derrubar o outro.
+
+Não é uma aba da sala: entrar na conta é raro, e uma aba permanente custaria espaço na barra
+de quem só quer chegar na diária.
 
 ## 3. Dashboard (§24)
 

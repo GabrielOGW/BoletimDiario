@@ -24,7 +24,19 @@ export default async function ProducoesPage() {
       <AppHeader
         title="Minhas produções"
         subtitle={user.name}
-        right={<SignOutButton />}
+        right={
+          <>
+            {/* A conta mora aqui e não numa aba própria: entrar nela é raro, e uma aba
+                permanente custaria espaço na barra de quem só quer chegar na diária. */}
+            <Link
+              href="/conta"
+              className="flex h-11 items-center rounded-xl px-3 text-sm text-zinc-300 hover:bg-surface-hover hover:text-white"
+            >
+              Conta
+            </Link>
+            <SignOutButton />
+          </>
+        }
       />
 
       <PageContainer className="flex flex-col gap-4 py-4 pb-16">

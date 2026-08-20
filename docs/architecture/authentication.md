@@ -131,7 +131,10 @@ Mecanismos:
    papéis, atualizado a cada sync bem-sucedido. É o que permite a UI renderizar "você é
    MEMBER/CAMERA nesta produção" sem rede.
    **Esse snapshot é conveniência de UI, jamais autorização.** O servidor revalida tudo.
-3. **Sessão longa (30 dias)** para que uma diária inteira sem sinal não expire ninguém.
+3. **Sessão longa (90 dias na implementação)** para que uma diária inteira sem sinal não
+   expire ninguém. O preço — um aparelho perdido continua entrando por três meses — é pago
+   em `/conta`, que lista os dispositivos conectados e derruba qualquer um deles
+   (ADR-038), e não encurtando a sessão de todo mundo.
 4. **Falha de auth no sync não é destrutiva**: um `401` no push marca a fila como
    `PENDING` com motivo `AUTH`, exibe "reconecte sua conta" e **mantém as operações
    enfileiradas**. Nada é descartado.
@@ -201,12 +204,36 @@ Hoje o app continua não exigindo nenhuma.
 
 ## 6. Hardening (Fase 10)
 
-- Rate limit em login, cadastro e recuperação (por IP e por e-mail).
-- Bloqueio progressivo após tentativas falhas.
-- Registro de sessões ativas por dispositivo + revogação individual.
-- Rotação de `BETTER_AUTH_SECRET` documentada.
-- 2FA opcional para papéis `OWNER`/`ADMIN`.
-- Enumeração de conta: respostas idênticas para e-mail existente e inexistente na recuperação.
+Feito em `2026-08-20` ([ADR-038](../decisions.md#adr-038--o-limite-de-tentativas-mora-no-banco-rls-fica-de-fora-e-a-sessão-longa-se-paga-com-revogação)):
+
+- [x] **Rate limit com contador no banco.** `rateLimit.storage: 'database'`, tabela
+      `rate_limits` (migration `0008`). Guardá-lo em memória — o padrão da biblioteca —
+      seria contar **por instância** num deploy serverless: "cinco por minuto" viraria
+      cinco por minuto vezes o número de instâncias, e quem está adivinhando ganharia o
+      paralelismo de graça.
+- [x] **Limites por rota, tirados do custo de errar**, não de um número redondo: entrar
+      5/min (é o alvo de força bruta, e cinco não atrapalha quem errou duas vezes no
+      escuro do set); cadastrar 10/h e pedir redefinição 3/h (caros do outro lado, raros
+      para quem é de verdade); redefinir 10/h (o link já é secreto — ali se limita
+      adivinhar o token, não incomodar o dono da conta). O global de 100/min cobre o resto
+      de `/api/auth`.
+- [x] **Entrada por código de convite também limitada** — 10/h **por usuário**, em
+      `lib/auth/limite.ts`, na mesma tabela. Não passa por rota da Better Auth e era o
+      alvo que mais compensava (`permissions.md` §4).
+- [x] **Sessões por dispositivo, com revogação** — `/conta`. É a contrapartida da sessão
+      de 90 dias: encurtá-la quebraria o offline para todo mundo por causa do aparelho de
+      um, então o que se ganha não é expiração curta, é **poder derrubar**. Só existe
+      porque a sessão vive no banco e não num JWT.
+- [x] **RLS avaliada e recusada**, com o motivo escrito em
+      [database.md §7](database.md#7-segurança).
+
+Continuam abertos, e nenhum é bloqueio para a v1:
+
+- [ ] Bloqueio progressivo após tentativas falhas (hoje o limite é janela fixa).
+- [ ] Rotação de `BETTER_AUTH_SECRET` documentada.
+- [ ] 2FA opcional para papéis `OWNER`/`ADMIN`.
+- [ ] Enumeração de conta: respostas idênticas para e-mail existente e inexistente na
+      recuperação. Depende de haver envio de e-mail ([ADR-028](../decisions.md#adr-028--recuperação-de-senha-sem-provedor-de-e-mail)).
 
 ---
 

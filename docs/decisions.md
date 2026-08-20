@@ -967,3 +967,85 @@ mostra, e se a fixação falhar nada na tela muda.
   caminho longo é o certo.
 - O primeiro dia num aparelho novo continua custando o caminho completo — não há o que
   lembrar antes de a pessoa ter estado em algum lugar. É o preço de não adivinhar.
+
+---
+
+### ADR-038 · O limite de tentativas mora no banco; RLS fica de fora, e a sessão longa se paga com revogação
+
+`2026-08-20` · **Aceita** · implementa a [Fase 10](roadmap.md#-fase-10--hardening) ·
+**revisita** [ADR-025](#adr-025--conta-obrigatória-na-plataforma-legado-sem-conta) e o item 4 da
+[§7 de database.md](architecture/database.md#7-segurança), que prometia "avaliar RLS na Fase 10"
+
+Três perguntas de endurecimento que pareciam independentes e não são: as três são sobre o que
+acontece quando o atacante tem **tempo**, e as três respondem à mesma pressão vinda do
+offline-first.
+
+#### O contador do rate limit é tabela, não memória
+
+A Better Auth já limita `/api/auth/**`. O padrão dela é contar **em memória** — e em memória o
+limite quase não existe num deploy serverless: cada instância tem o seu contador, então "cinco
+tentativas por minuto" vira cinco por minuto **por instância**. Quem está adivinhando ganha o
+paralelismo de graça, e o gráfico de segurança fica bonito enquanto a porta está aberta.
+
+**Decisão: `storage: 'database'`**, tabela `rate_limits` (migration `0008`). O contador é um só,
+e é um lugar só para olhar quando alguém reclamar de ter sido barrado.
+
+O resgate do **código de convite** não passa por rota da Better Auth — é Server Action — e ficou
+de fora até aqui. É o alvo que mais compensa: o código tem quatro caracteres sobre um alfabeto
+de 32 e o prefixo vem do nome da produção, que quem quer entrar geralmente conhece. Entra em
+`lib/auth/limite.ts`, **na mesma tabela**: duas tabelas de contador seriam dois lugares para
+esquecer de limpar.
+
+A chave é o **usuário**, não o IP. A ação exige sessão, então ganhar paralelismo custa muitas
+contas — e criar conta já é limitado. Por IP puniria a equipe inteira atrás do roteador da base,
+que é o caso normal e não o suspeito.
+
+#### RLS: **não** entra, e a razão não é preguiça
+
+Row Level Security do Postgres protege contra uma conexão que chega ao banco com identidade de
+usuário. **Não é o que existe aqui**: o driver serverless usa uma conexão de aplicação única, e
+o `user_id` não atravessa a conexão — chega como argumento da query. Ligar RLS assim significa
+ou rodar `set local app.user_id` a cada requisição (que o driver HTTP, sem transação interativa,
+não sustenta), ou uma política que aceita tudo — segurança de fachada, que é pior que nenhuma
+porque muda o que as pessoas acham que está protegido.
+
+**Decisão: a autorização continua sendo da aplicação**, em `lib/db/queries` e `lib/auth/guards`,
+onde ela é legível, testável (`npm run test:sala`) e já cobre a regra que RLS não expressaria de
+qualquer jeito — "não é membro recebe 404, não 403".
+
+RLS volta à mesa no dia em que houver acesso direto ao banco por identidade: cliente falando com
+o Postgres, ou uma segunda aplicação com credencial própria. Nenhum dos dois está no roadmap.
+
+#### A sessão de 90 dias se paga com revogação, não com expiração curta
+
+A sessão longa não é folga: é o que sustenta o offline (ADR-025). Em locação sem sinal, sessão
+expirada não tem como ser renovada — e o assistente fica sem preencher a diária, que é a única
+coisa que o produto promete nunca acontecer.
+
+O preço é real: um telefone perdido continua entrando na produção por três meses. **A resposta
+não é encurtar a sessão** — encurtar quebra o offline para todo mundo por causa do aparelho de
+um. A resposta é **poder revogar**, e isso só existe porque a sessão vive no banco e não num
+JWT: um JWT não tem como ser cancelado antes de expirar. Era uma capacidade que o schema já
+tinha e que não tinha tela.
+
+`/conta` lista os aparelhos conectados — navegador, sistema, IP e desde quando — e derruba
+qualquer um deles, ou todos os outros de uma vez. O aparelho atual **não** tem botão de
+desconectar: ele tem "Sair", que é outra coisa, e misturar os dois faria alguém se deslogar
+tentando derrubar o outro.
+
+**Consequências:**
+
+- Uma migration nova (`0008`) e uma tabela que **não** segue as convenções de domínio: sem
+  `production_id`, sem auditoria, sem soft delete, sem `version`, sem trigger de `sync_log`. É
+  schema da Better Auth, como `sessions` — e contador de tentativa não sincroniza para aparelho
+  nenhum.
+- O limite passa a valer em produção e **não** em desenvolvimento (o padrão da biblioteca), o
+  que é deliberado: um limite que dispara no `npm run dev` é um limite que se aprende a
+  contornar.
+- Quem for barrado vê "tente de novo em 12 minutos", não "espere 743 segundos". Mensagem que
+  não é acionável vira ticket de suporte.
+- A tabela ganha **poda**: é uma linha por chave e chave nova a cada IP, então sem limpeza ela
+  só cresce. Some o que passou de 24 h, junto do resgate de código — operação rara, faxina
+  fora do caminho quente. Não é cron porque não precisa ser ainda; quando precisar, é cron, e
+  não uma poda mais agressiva por requisição.
+- A §7 de `database.md` deixa de prometer RLS e passa a explicar por que não.
