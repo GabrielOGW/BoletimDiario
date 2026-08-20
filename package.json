@@ -34,6 +34,7 @@
     "test:sala": "node --no-warnings --experimental-strip-types --conditions=react-server --loader ./test/alias-loader.mjs test/room-check.mjs",
     "test:sync": "node --no-warnings --experimental-strip-types --conditions=react-server --loader ./test/alias-loader.mjs test/sync-check.mjs",
     "test:import": "node --no-warnings --experimental-strip-types --conditions=react-server --loader ./test/alias-loader.mjs test/import-check.mjs",
+    "test:carga": "node --no-warnings --experimental-strip-types --conditions=react-server --loader ./test/alias-loader.mjs test/carga-check.mjs",
     "check:env": "node scripts/check-env.mjs"
   },
   "dependencies": {

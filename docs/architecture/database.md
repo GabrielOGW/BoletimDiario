@@ -544,7 +544,26 @@ create index on continuity_take_data (production_id, take_id);
 -- busca global (§35)
 create index on scenes using gin (to_tsvector('portuguese',
         coalesce(number,'')||' '||coalesce(block,'')||' '||coalesce(description,'')));
+
+-- As quatro coleções de estado (migration 0009, Fase 10). Nasceram na Fase 7 com a
+-- `check` de escopo e nada além da PK; o snapshot as lê por produção + escopo, no
+-- caminho da fixação da diária.
+create index on continuity_props           (production_id, scene_id);
+create index on continuity_props           (production_id, take_id);
+create index on continuity_wardrobe        (production_id, scene_id);
+create index on continuity_wardrobe        (production_id, take_id);
+create index on continuity_hair_makeup     (production_id, scene_id);
+create index on continuity_hair_makeup     (production_id, take_id);
+create index on continuity_set_dressing    (production_id, scene_id);
+create index on continuity_set_dressing    (production_id, take_id);
 ```
+
+**Duas tabelas de conteúdo não lideram por `production_id`, e é intencional**:
+`sound_take_tracks` é lida pelos takes da diária (quatro linhas por take) e
+`daily_progress_report` é uma linha por diária. Um índice por produção nelas seria escrita
+mais cara em toda anotação de som para acelerar uma consulta que ninguém faz. `test:db`
+guarda a lista de qual coluna cada tabela é lida — mudar o recorte de leitura obriga a
+mudar a linha, e a mudança fica visível na revisão.
 
 ### 4.8 Contador de rate limit (migration `0008`, Fase 10)
 

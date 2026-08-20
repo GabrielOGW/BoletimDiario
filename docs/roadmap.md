@@ -377,7 +377,7 @@ existir é teste que nunca é escrito.
 - [x] **Vitest** cobrindo o cliente do sync — `2026-08-20`
 - [x] **Playwright** incluindo o fluxo offline completo — `2026-08-20`
 - [x] Rate limit, sessões por dispositivo, avaliação de RLS — `2026-08-20`
-- [ ] Performance com produção grande (40 diárias, 2000 takes)
+- [x] Performance com produção grande (40 diárias, 2000 takes) — `2026-08-20`
 - [ ] Auditoria de PWA, acessibilidade e UX mobile
 
 > **Os dois runners entraram em `2026-08-20`**, e o recorte de cada um foi escolhido pelo
@@ -445,6 +445,41 @@ existir é teste que nunca é escrito.
 >
 > **Verificado por** `npm run test:db` (41, +6) e `npm run test:sala` (60, +9), e por exercício
 > HTTP contra o build de produção.
+
+> **Produção grande em `2026-08-20`** — `npm run test:carga`: 40 diárias, 200 cenas, 2400
+> takes, 4800 linhas de câmera, 9600 tracks e 24 mil linhas de `sync_log`, semeadas, medidas e
+> apagadas. A pergunta não era "quantos milissegundos" e sim **onde a curva vira**: o que é
+> recortado por diária continua barato para sempre, e o que é recortado por produção cresce o
+> filme inteiro. A fixação carrega os dois.
+>
+> **Três achados, e nenhum deles era o esperado.**
+>
+> 1. **As quatro coleções de estado da continuidade não tinham índice nenhum além da PK.**
+>    Nasceram na Fase 7 com a `check` de escopo e nada mais, e o snapshot as lê por
+>    `production_id` + escopo — no caminho da fixação, que é a primeira coisa que acontece de
+>    manhã e a única requisição obrigatória da fronteira offline. Migration `0009`.
+> 2. **A fixação fazia dezessete idas ao banco, uma de cada vez.** As consultas sempre foram
+>    independentes; só faltava mandá-las juntas. 613 ms com o banco a 40 ms de distância — e
+>    esse número é aritmética de **latência**, não de dados: com os 200 ms de um 4G fraco de
+>    locação as mesmas dezessete idas passariam de três segundos para abrir a diária. Com
+>    `db.batch`, uma requisição e 253 ms.
+> 3. **Dois testes meus mediam a coisa errada, e o teste é que estava errado.** O primeiro
+>    comparava o tempo do pull incremental com o do pull do zero: nesta escala as duas
+>    consultas são dominadas pela ida e volta, então a razão entre elas é ruído de latência —
+>    passaria ou falharia conforme o minuto. O segundo exigia que o plano de execução usasse
+>    índice: com as 600 linhas de **uma** produção o planejador escolhe varredura porque ela é
+>    de fato mais barata, e o teste acusaria um defeito inexistente. Viraram, respectivamente,
+>    uma afirmação sobre o **recorte** do cursor e uma sobre a **existência** do índice (esta
+>    em `test:db`, onde não depende de volume).
+>
+> O que a suíte afirma da fixação passou a ser **estrutural**: ela conta as requisições ao
+> banco e exige **uma**. Teto de tempo não pegaria a regressão que importa — desfazer o
+> `db.batch` mal mexe no relógio de quem está perto do banco, e triplica o tempo de quem está
+> na serra.
+>
+> O resto não precisou de nada: busca na produção inteira 114 ms, lista de diárias 29 ms,
+> dashboard 26 ms, pull incremental 70 ms. E a fixação continua trazendo **60 takes de 2400** —
+> o recorte por diária é o que impede o aparelho de baixar o filme inteiro para anotar um dia.
 
 ---
 

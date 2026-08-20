@@ -83,6 +83,20 @@ const continuityScope = () => ({
 const atLeastOneScope = (name: string) =>
   check(name, sql`num_nonnulls(scene_id, setup_id, take_id) >= 1`);
 
+/**
+ * Sobre os índices das quatro coleções (migration `0009`, Fase 10).
+ *
+ * Elas nasceram na Fase 7 com a `check` de escopo e **sem índice nenhum além da PK**, e o
+ * defeito só aparece com volume: o snapshot as lê por `production_id` + escopo, e com dez
+ * cenas ninguém nota a varredura sequencial. Com duzentas — o tamanho de um longa no meio
+ * das filmagens — ela entra no caminho da **fixação da diária**, que é a primeira coisa
+ * que acontece de manhã e a única requisição obrigatória da fronteira offline.
+ *
+ * Dois índices por tabela, e não três: `setup_id` não é recorte de nenhuma consulta de
+ * servidor (o snapshot corta por cena da produção ou por take da diária), e índice que
+ * ninguém usa é escrita mais cara em toda anotação de continuidade.
+ */
+
 export const continuityProps = pgTable(
   'continuity_props',
   {
@@ -99,7 +113,11 @@ export const continuityProps = pgTable(
     notes: text('notes'),
     ...audit(),
   },
-  () => [atLeastOneScope('continuity_props_scope')],
+  (t) => [
+    atLeastOneScope('continuity_props_scope'),
+    index('continuity_props_production_scene').on(t.productionId, t.sceneId),
+    index('continuity_props_production_take').on(t.productionId, t.takeId),
+  ],
 );
 
 export const continuityWardrobe = pgTable(
@@ -113,7 +131,11 @@ export const continuityWardrobe = pgTable(
     notes: text('notes'),
     ...audit(),
   },
-  () => [atLeastOneScope('continuity_wardrobe_scope')],
+  (t) => [
+    atLeastOneScope('continuity_wardrobe_scope'),
+    index('continuity_wardrobe_production_scene').on(t.productionId, t.sceneId),
+    index('continuity_wardrobe_production_take').on(t.productionId, t.takeId),
+  ],
 );
 
 export const continuityHairMakeup = pgTable(
@@ -126,7 +148,11 @@ export const continuityHairMakeup = pgTable(
     notes: text('notes'),
     ...audit(),
   },
-  () => [atLeastOneScope('continuity_hair_makeup_scope')],
+  (t) => [
+    atLeastOneScope('continuity_hair_makeup_scope'),
+    index('continuity_hair_makeup_production_scene').on(t.productionId, t.sceneId),
+    index('continuity_hair_makeup_production_take').on(t.productionId, t.takeId),
+  ],
 );
 
 export const continuitySetDressing = pgTable(
@@ -139,5 +165,9 @@ export const continuitySetDressing = pgTable(
     notes: text('notes'),
     ...audit(),
   },
-  () => [atLeastOneScope('continuity_set_dressing_scope')],
+  (t) => [
+    atLeastOneScope('continuity_set_dressing_scope'),
+    index('continuity_set_dressing_production_scene').on(t.productionId, t.sceneId),
+    index('continuity_set_dressing_production_take').on(t.productionId, t.takeId),
+  ],
 );

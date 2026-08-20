@@ -39,6 +39,11 @@ vida do PWA e mais de uma página viva. Roda contra o **build de produção**, p
 Worker só é registrado lá. Exige `DATABASE_URL`: cria conta, produção e diária pela interface
 (`preparo.ts`) e apaga tudo no fim (`limpeza.ts`).
 
+**Carga** (`npm run test:carga`, fora do `npm test`) — a pergunta é outra: não "está correto",
+e sim "onde a curva vira". Semeia 40 diárias e 2400 takes no Neon, mede, confere e apaga. Os
+tetos são generosos de propósito: existem para pegar regressão de **ordem de grandeza**, nunca
+para cravar milissegundo — número apertado ali vira teste que se aprende a ignorar.
+
 **Restrição do type-stripping** — vale para todo código alcançável a partir de um teste:
 
 - ❌ `enum`, `namespace`, parameter properties (`constructor(private x)`)
@@ -110,3 +115,10 @@ acima ficou sem cobertura.
 Antes de declarar pronta uma suíte que passou de primeira: **mute o código de produção** no
 ponto que ela alega proteger e confirme que ela quebra. Depois reverta. Teste que passa dos
 dois jeitos não é cobertura, é ruído com aparência de segurança.
+
+E antes de escrever asserção de desempenho, pergunte o que ela está medindo de verdade. Duas
+da Fase 10 tiveram de ser refeitas: comparar o tempo de duas consultas rápidas mede a latência
+da rede, não o trabalho; exigir que o plano use índice mede a escolha do planejador, que com
+pouco volume acerta ao varrer. As duas viraram afirmações que não dependem de volume nem de
+latência — o **recorte** do resultado, a **existência** do índice, o **número de requisições**
+ao banco. Prefira sempre a afirmação estrutural ao cronômetro.
