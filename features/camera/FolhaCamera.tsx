@@ -12,10 +12,16 @@ import { formatDateTimeBR } from '@/utils/date';
 import { cn } from '@/utils/cn';
 
 import {
+  equipamentosDoDepartamento,
+  type EquipamentoDaDiaria,
+} from '@/features/diaria/equipamentos';
+
+import {
   agrupaCenas,
   assinaturaDoPlano,
   diferencasDoPlano,
   partesTecnicas,
+  resumoDeMidia,
   rotuloDoJulgamento,
   rotuloDoTipo,
 } from './estrutura';
@@ -63,7 +69,7 @@ export interface CabecalhoImpressao {
    * Opcional: uma produção que não cadastrou equipamento imprime o boletim sem a seção,
    * exatamente como imprimia antes.
    */
-  equipamentos?: { id: string; departamento: string; descricao: string }[];
+  equipamentos?: EquipamentoDaDiaria[];
 }
 
 export interface FolhaCameraProps {
@@ -123,10 +129,15 @@ export function FolhaCamera({
 }: FolhaCameraProps) {
   const { producao, diaria, equipe } = cabecalho;
 
-  /** Só o equipamento de Câmera: o boom não interessa a este cabeçalho. */
-  const equipamentos = (cabecalho.equipamentos ?? []).filter(
-    (item) => item.departamento === 'CAMERA',
-  );
+  /**
+   * Só o equipamento de Câmera, e sem a mídia: o boom não interessa a este cabeçalho, e
+   * o cartão tem seção própria — repetir o mesmo SSD em duas linhas da mesma folha é
+   * como o leitor passa a achar que são dois.
+   */
+  const equipamentos = equipamentosDoDepartamento(
+    cabecalho.equipamentos,
+    'CAMERA',
+  ).filter((item) => item.categoria !== 'MEDIA');
 
   const agrupadas = agrupaCenas(cenas);
   const takesDoSetup = (setupId: string) =>
@@ -150,18 +161,8 @@ export function FolhaCamera({
 
   const aprovados = dadosCamera.filter((dado) => dado.approved).length;
 
-  const distintos = (campo: 'card' | 'roll') =>
-    [
-      ...new Set(
-        dadosCamera.flatMap((dado) => {
-          const valor = String(dado[campo] ?? '').trim();
-          return valor ? [valor] : [];
-        }),
-      ),
-    ].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
-
-  const cartoes = distintos('card');
-  const rolls = distintos('roll');
+  /** Cartões, rolls, volumes e o suporte do dia — a mesma leitura que a tela faz. */
+  const midia = resumoDeMidia(dadosCamera, cabecalho.equipamentos);
 
   const titulo = producao.name.trim() || 'Sem título';
   const data = dataBR(diaria.date);
@@ -234,32 +235,59 @@ export function FolhaCamera({
               </ul>
             </div>
           ) : null}
+          {/* Mídia / Suporte: a seção que o boletim local pedia digitada. O cartão vem
+              dos takes — onde é anotado no instante em que a câmera roda — e o suporte
+              vem do catálogo da produção alocado nesta diária (Fase 8). */}
           <div>
             <p className="text-[9px] font-semibold uppercase tracking-wide text-zinc-500">
-              Cartões usados ({cartoes.length})
+              Mídia / Suporte ({midia.cartoes.length}{' '}
+              {midia.cartoes.length === 1 ? 'cartão' : 'cartões'})
             </p>
-            {cartoes.length === 0 ? (
+            {midia.cartoes.length === 0 ? (
               <p className="mt-0.5 text-xs text-zinc-400">—</p>
             ) : (
               <div className="mt-1 flex flex-wrap gap-1">
-                {cartoes.map((cartao) => (
+                {midia.cartoes.map((item) => (
                   <span
-                    key={cartao}
+                    key={item.cartao}
                     className="rounded border border-zinc-300 bg-zinc-50 px-1.5 py-0.5 font-mono text-[11px] text-zinc-800"
                   >
-                    {cartao}
+                    {item.cartao}
+                    <span className="ml-1 font-sans text-zinc-500">
+                      {item.takes} {item.takes === 1 ? 'take' : 'takes'}
+                    </span>
                   </span>
                 ))}
               </div>
             )}
-            {rolls.length > 0 ? (
+            {midia.rolls.length > 0 ? (
               <p className="mt-1.5 text-[11px] text-zinc-600">
                 <span className="font-semibold text-zinc-500">Rolls: </span>
-                {rolls.join(' · ')}
+                {midia.rolls.join(' · ')}
               </p>
             ) : null}
-            {/* O equipamento alocado na diária, vindo da sala (Fase 8). Só o de Câmera:
-                o boom não interessa a este cabeçalho. */}
+            {midia.volumes.length > 0 ? (
+              <p className="mt-1.5 text-[11px] text-zinc-600">
+                <span className="font-semibold text-zinc-500">Volumes: </span>
+                {midia.volumes.join(' · ')}
+              </p>
+            ) : null}
+            {midia.suportes.length > 0 ? (
+              <p className="mt-1.5 text-[11px] text-zinc-600">
+                <span className="font-semibold text-zinc-500">Suporte: </span>
+                {midia.suportes.map((item) => item.descricao).join(' · ')}
+              </p>
+            ) : null}
+            {/* Lacuna, não erro: o take existe e ninguém anotou em que cartão gravou.
+                É a pergunta que o DIT faz no fim do dia, e o papel passa a fazê-la. */}
+            {midia.takesSemCartao > 0 ? (
+              <p className="mt-1.5 text-[11px] text-zinc-600">
+                <span className="font-semibold text-zinc-500">Sem cartão anotado: </span>
+                {midia.takesSemCartao} {midia.takesSemCartao === 1 ? 'take' : 'takes'}
+              </p>
+            ) : null}
+            {/* O restante do equipamento de Câmera do dia, vindo da sala (Fase 8). Só o
+                de Câmera: o boom não interessa a este cabeçalho. */}
             {equipamentos.length > 0 ? (
               <p className="mt-1.5 text-[11px] text-zinc-600">
                 <span className="font-semibold text-zinc-500">Equipamento: </span>

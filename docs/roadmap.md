@@ -59,14 +59,15 @@ Neon, Drizzle, migrations, auth, produções, membros, permissões.
 - [x] `lib/contracts/` — schemas Zod compartilhados (inclui validação de UUID)
 - [x] `lib/db/queries/` — produções, membros, código de convite (com `import 'server-only'`)
 - [x] Rotas `(public)`: login, cadastro, recuperar senha, redefinir senha
-- [ ] **Deploy na Vercel** — **falhando desde `2026-08-10`**, e a causa está diagnosticada:
-      o ambiente **Production** do projeto não tem `DATABASE_URL` nem `BETTER_AUTH_SECRET`.
-      Todo deploy de Preview passa e todo deploy de Production falha, sempre no mesmo
-      ponto. Reproduzido localmente escondendo o `.env`: o build morre em
-      `Failed to collect page data for /api/sync/snapshot`, que **parece** defeito de
-      código. Desde `2026-08-11` o `prebuild` roda `scripts/check-env.mjs` e a falta
-      aparece no topo do log, com o nome da variável. Resolver exige marcar as variáveis
-      para Production no painel da Vercel — é ação de quem tem a conta.
+- [x] **Deploy na Vercel** — **resolvido em `2026-08-19`**. Ficou falhando de `2026-08-10`
+      a `2026-08-19` por uma causa só: o ambiente **Production** do projeto não tinha
+      `DATABASE_URL` nem `BETTER_AUTH_SECRET`. Todo deploy de Preview passava e todo
+      deploy de Production falhava, sempre no mesmo ponto — o build morria em
+      `Failed to collect page data for /api/sync/snapshot`, que **parecia** defeito de
+      código. Com as variáveis marcadas para Production no painel e um redeploy, a
+      produção subiu e o banco responde. O `prebuild` roda `scripts/check-env.mjs` desde
+      `2026-08-11`: se faltar variável de novo, o nome dela aparece no topo do log, e não
+      um erro de página.
 
 **Entregue:** cadastro devolve id UUID, sessão de 90 dias, o ciclo completo de reset de senha
 funciona, e o id da Better Auth serve de `created_by` no domínio com o trigger de `sync_log`
@@ -118,7 +119,8 @@ sessão de quem não é membro, `/p/<id>` responde **404**, não 403.
 - Equipamentos, busca global e visão consolidada continuam nas Fases 8–9.
 - Convite direto por e-mail e rate limit no resgate do código: Fase 10
   ([permissions.md §4](architecture/permissions.md#4-entrada-na-sala)).
-- Deploy na Vercel segue pendente desde a Fase 2 — causa diagnosticada, ver Fase 2.
+- Deploy na Vercel: resolvido em `2026-08-19` (ver Fase 2). Enquanto esteve pendente, o
+  que foi verificado contra o build de produção rodou local.
 
 O app de câmera continua intacto.
 
@@ -167,12 +169,19 @@ de câmera. Ela é substituída pelo módulo real na Fase 5.
 
 ---
 
-## ⏳ Fase 5 — Câmera na plataforma
+## ✅ Fase 5 — Câmera na plataforma
 
 A fase mais sensível: migrar o módulo que está em uso. **Migração, não redesenho.**
 
-> **`2026-08-11`:** tudo entregue **menos Mídia/Suporte**, que depende do catálogo de
-> equipamentos da Fase 8 — não é dívida desta fase, é ordem de dependência. Quatro lacunas
+> **Fechada em `2026-08-19`** com a última pendência: **Mídia/Suporte**. Ela esperava o
+> catálogo de equipamentos da Fase 8 — não era dívida desta fase, era ordem de
+> dependência —, e agora existe na tela e na folha, **derivada**: o cartão vem do take,
+> onde é anotado no instante em que a câmera roda, e o suporte vem do kit da produção
+> alocado na diária. A tabela de quatro campos digitada à mão não voltou, e não vai
+> voltar: ela pedia o mesmo número duas vezes
+> ([features/camera.md §8](features/camera.md#8-mídiasuporte--fase-5-fechada-em-2026-08-19)).
+>
+> **`2026-08-11`:** tudo entregue **menos Mídia/Suporte**. Quatro lacunas
 > de paridade ficaram com dono declarado em
 > [features/camera.md §1](features/camera.md#o-que-falta-e-por-quê): `Plano.tipo` e a
 > câmera do plano pedem uma passagem da skill `banco`; autocomplete e duplicação são
@@ -195,7 +204,10 @@ A fase mais sensível: migrar o módulo que está em uso. **Migração, não red
       observações do plano, número da cena e letra do bloco editáveis. Quatro lacunas
       ficaram com dono declarado — `Plano.tipo` e a câmera do plano precisam de uma
       passagem de `banco`; autocomplete e duplicação são módulos novos
-- [ ] Mídia/Suporte (depende de equipamentos, Fase 8)
+- [x] Mídia/Suporte — seção própria na tela e na folha, derivada do take (cartão, roll,
+      volume, takes sem cartão anotado) e do kit alocado na diária. `resumoDeMidia` em
+      [`features/camera/estrutura.ts`](../features/camera/estrutura.ts) é lido pelos dois,
+      como o resto do módulo, e coberto por `npm run test:camera`
 - [x] Novos campos de [features/camera.md §3](features/camera.md#3-organização-dos-campos-10)
       — focal, aspect ratio, VFX, nº de série do corpo, roll, volume e observações de
       mídia. Falta só `Plano.tipo`, que não tem coluna; os demais itens de §3 não são

@@ -86,7 +86,15 @@ export function SectionCard({
           {headerContent}
         </div>
       )}
-      {showBody ? <div className={cn('p-4', bodyClassName)}>{children}</div> : null}
+      {showBody ? (
+        <div className={cn('p-4', bodyClassName)}>
+          {children}
+          {/* Recolhível, o cabeçalho inteiro é um <button> — e link dentro de botão é
+              HTML inválido. Em vez de a ação sumir em silêncio (era o que acontecia com
+              os "Editar na sala" das telas de diária), ela desce para o fim do corpo. */}
+          {collapsible && action ? <div className="mt-3">{action}</div> : null}
+        </div>
+      ) : null}
     </section>
   );
 }

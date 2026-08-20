@@ -12,6 +12,10 @@
  * Som lê as mesmas cenas. Continua reexportado daqui para quem já o importava.
  */
 
+import {
+  suportesDeMidia,
+  type EquipamentoDaDiaria,
+} from '@/features/diaria/equipamentos';
 import type { LocalCameraTakeData } from '@/lib/offline/db';
 
 export { agrupaCenas, type CenaAgrupada } from '@/features/diaria/cenas';
@@ -123,4 +127,82 @@ export function assinaturaDoPlano(
   kind?: string | null,
 ): string {
   return JSON.stringify([camera, rotuloDoTipo(kind), partesTecnicas(dados)]);
+}
+
+// ---- Mídia / Suporte ----
+
+/** Um cartão que gravou hoje, com o quanto gravou e em que rolls apareceu. */
+export interface CartaoUsado {
+  cartao: string;
+  takes: number;
+  rolls: string[];
+}
+
+/**
+ * A seção **Mídia/Suporte** do boletim, reconstruída na plataforma.
+ *
+ * No boletim local ela era uma tabela digitada à mão (tipo de mídia, número do cartão,
+ * quantidade, responsável) — e digitada duas vezes, porque o número do cartão também ia
+ * no take. Aqui as duas metades vêm de onde já existem: o **suporte** é o catálogo de
+ * equipamentos da produção alocado nesta diária (Fase 8), e o **uso** é derivado dos
+ * takes, que é onde o cartão é anotado no momento em que a câmera roda.
+ *
+ * O resultado é o que a antiga tabela tentava dizer, sem ninguém redigitar: quais cartões
+ * gravaram, quanto cada um gravou, em que roll, e quantos takes ainda estão sem cartão —
+ * a pergunta que o DIT faz no fim do dia e que a tabela manual nunca respondia.
+ */
+export interface ResumoDeMidia {
+  cartoes: CartaoUsado[];
+  rolls: string[];
+  volumes: string[];
+  /** O suporte alocado na diária, vindo da sala. Vazio numa produção sem catálogo. */
+  suportes: EquipamentoDaDiaria[];
+  /** Takes anotados sem cartão — lacuna, não erro: some quando alguém preenche. */
+  takesSemCartao: number;
+}
+
+const ordemNatural = (a: string, b: string) =>
+  a.localeCompare(b, 'pt-BR', { numeric: true });
+
+export function resumoDeMidia(
+  dadosCamera: readonly LocalCameraTakeData[],
+  equipamentos?: readonly EquipamentoDaDiaria[],
+): ResumoDeMidia {
+  const porCartao = new Map<string, { takes: number; rolls: Set<string> }>();
+  const rolls = new Set<string>();
+  const volumes = new Set<string>();
+  let takesSemCartao = 0;
+
+  for (const dados of dadosCamera) {
+    const cartao = texto(dados, 'card');
+    const roll = texto(dados, 'roll');
+    const volume = texto(dados, 'volume');
+
+    if (roll) rolls.add(roll);
+    if (volume) volumes.add(volume);
+
+    if (!cartao) {
+      takesSemCartao++;
+      continue;
+    }
+
+    const entrada = porCartao.get(cartao) ?? { takes: 0, rolls: new Set<string>() };
+    entrada.takes++;
+    if (roll) entrada.rolls.add(roll);
+    porCartao.set(cartao, entrada);
+  }
+
+  return {
+    cartoes: [...porCartao.entries()]
+      .map(([cartao, { takes, rolls: rollsDoCartao }]) => ({
+        cartao,
+        takes,
+        rolls: [...rollsDoCartao].sort(ordemNatural),
+      }))
+      .sort((a, b) => ordemNatural(a.cartao, b.cartao)),
+    rolls: [...rolls].sort(ordemNatural),
+    volumes: [...volumes].sort(ordemNatural),
+    suportes: suportesDeMidia(equipamentos),
+    takesSemCartao,
+  };
 }

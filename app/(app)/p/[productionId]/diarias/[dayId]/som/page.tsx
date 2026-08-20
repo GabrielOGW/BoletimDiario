@@ -91,6 +91,7 @@ export default async function SomPage({
             equipamentos: equipamentos.map((linha) => ({
               id: linha.id,
               departamento: linha.department,
+              categoria: linha.category,
               descricao: descreveEquipamento(linha),
             })),
             equipe: equipeSom.map((membro) => ({

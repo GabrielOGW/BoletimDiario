@@ -11,6 +11,7 @@ import {
   CameraIcon,
   ClapperboardIcon,
   FilmIcon,
+  HardDriveIcon,
   PlusIcon,
   PrinterIcon,
   WifiOffIcon,
@@ -22,7 +23,7 @@ import {
   listCameraUnits,
   patchCameraUnit,
 } from '@/lib/offline/repos/camera';
-import type { LocalCameraUnit } from '@/lib/offline/db';
+import type { LocalCameraTakeData, LocalCameraUnit } from '@/lib/offline/db';
 import { isPinned, listScenes, listSetups, listTakes } from '@/lib/offline/repos/diaria';
 import { fetchAndPin, startSync, syncNow } from '@/lib/sync/engine';
 import { NovaCena } from '@/features/diaria/NovaCena';
@@ -31,7 +32,7 @@ import { cn } from '@/utils/cn';
 
 import { CenaCard } from './CenaCard';
 import { FolhaCamera, type CabecalhoImpressao } from './FolhaCamera';
-import { agrupaCenas } from './estrutura';
+import { agrupaCenas, resumoDeMidia } from './estrutura';
 
 /**
  * O Boletim de Câmera na plataforma.
@@ -195,6 +196,12 @@ export function CameraDiaria({
           )}
         </SectionCard>
 
+        <MidiaSection
+          productionId={productionId}
+          dadosCamera={dadosCamera ?? []}
+          equipamentos={impressao.equipamentos}
+        />
+
         <SectionCard title="Cenas do dia" icon={<FilmIcon size={18} />}>
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <div>
@@ -276,6 +283,113 @@ function FolhaImpressa({
 
       <FolhaCamera {...dados} />
     </div>
+  );
+}
+
+/**
+ * Mídia / Suporte — a mesma seção do boletim, sem ninguém redigitar.
+ *
+ * No editor local isto era uma tabela de quatro campos preenchida à mão (tipo de mídia,
+ * nº do cartão, quantidade, responsável) — e o número do cartão ainda era digitado de
+ * novo em cada take. Aqui as duas metades vêm de onde já existem: o **uso** é derivado
+ * dos takes, que é onde o cartão é anotado no instante em que a câmera roda, e o
+ * **suporte** é o catálogo da produção alocado nesta diária (Fase 8).
+ *
+ * Por isso a seção é somente leitura: o que ela mostrava é agora consequência do que já
+ * foi preenchido. Editar o catálogo é na sala, com sinal — ele está fora da fronteira
+ * offline (ADR-016) —, e o link fica no corpo do cartão porque a seção é recolhível.
+ */
+function MidiaSection({
+  productionId,
+  dadosCamera,
+  equipamentos,
+}: {
+  productionId: string;
+  dadosCamera: LocalCameraTakeData[];
+  equipamentos: CabecalhoImpressao['equipamentos'];
+}) {
+  const midia = resumoDeMidia(dadosCamera, equipamentos);
+  const vazia =
+    midia.cartoes.length === 0 &&
+    midia.suportes.length === 0 &&
+    midia.takesSemCartao === 0;
+
+  return (
+    <SectionCard
+      title="Mídia / Suporte"
+      icon={<HardDriveIcon size={18} />}
+      collapsible
+      defaultOpen={false}
+      summary={`${midia.cartoes.length} ${midia.cartoes.length === 1 ? 'cartão' : 'cartões'}`}
+      action={
+        /* `<a>` e não `<Link>`: o prefetch buscaria o servidor a partir de uma tela que
+           precisa funcionar em modo avião. Aqui a navegação é do usuário, consciente e
+           com sinal — o catálogo está fora da fronteira (ADR-016). */
+        <a
+          href={`/p/${productionId}/equipamentos`}
+          className="text-xs font-medium text-brand underline underline-offset-2"
+        >
+          Cadastrar mídia no kit da produção
+        </a>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        {vazia ? (
+          <p className="text-sm text-zinc-500">
+            Nenhum cartão anotado ainda. O cartão de cada take aparece aqui sozinho.
+          </p>
+        ) : null}
+
+        {midia.cartoes.length > 0 ? (
+          <ul className="flex flex-col gap-2">
+            {midia.cartoes.map((item) => (
+              <li
+                key={item.cartao}
+                className="flex items-baseline justify-between gap-3 rounded-xl border border-line bg-surface-raised px-3 py-2"
+              >
+                <span className="font-mono text-sm text-zinc-100">{item.cartao}</span>
+                <span className="text-right text-xs text-zinc-500">
+                  {item.takes} {item.takes === 1 ? 'take' : 'takes'}
+                  {item.rolls.length > 0 ? ` · ${item.rolls.join(' · ')}` : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {midia.volumes.length > 0 ? (
+          <Resumo rotulo="Volumes" valor={midia.volumes.join(' · ')} />
+        ) : null}
+
+        {midia.suportes.length > 0 ? (
+          <Resumo
+            rotulo="Suporte do dia"
+            valor={midia.suportes.map((item) => item.descricao).join(' · ')}
+          />
+        ) : null}
+
+        {/* Lacuna, não erro: o take existe e ninguém anotou em que cartão gravou. É a
+            pergunta que o DIT faz no fim do dia — e ela some quando alguém preenche. */}
+        {midia.takesSemCartao > 0 ? (
+          <p className="text-xs text-zinc-500">
+            <span className="text-zinc-400">
+              {midia.takesSemCartao}{' '}
+              {midia.takesSemCartao === 1 ? 'take sem cartão' : 'takes sem cartão'}
+            </span>{' '}
+            anotado. O cartão fica no take, junto do clip.
+          </p>
+        ) : null}
+      </div>
+    </SectionCard>
+  );
+}
+
+function Resumo({ rotulo, valor }: { rotulo: string; valor: string }) {
+  return (
+    <p className="text-xs text-zinc-500">
+      <span className="uppercase tracking-wide text-zinc-400">{rotulo}: </span>
+      {valor}
+    </p>
   );
 }
 

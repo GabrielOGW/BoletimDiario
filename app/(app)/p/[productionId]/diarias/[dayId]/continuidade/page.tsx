@@ -93,6 +93,7 @@ export default async function ContinuidadePage({
             equipamentos: equipamentos.map((linha) => ({
               id: linha.id,
               departamento: linha.department,
+              categoria: linha.category,
               descricao: descreveEquipamento(linha),
             })),
             equipe: equipeContinuidade.map((membro) => ({
