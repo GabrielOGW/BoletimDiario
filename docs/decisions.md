@@ -892,3 +892,78 @@ pessoas já aprenderam.
 - O resultado tem teto (`LIMITE_DE_BUSCA`, 60) e a tela diz quando bateu nele. Uma lista sem
   fim é uma lista que ninguém lê — e o remédio, acrescentar uma palavra, é a mesma regra que
   a busca já ensina.
+
+---
+
+### ADR-037 · O caminho curto é o atalho que lembra, e `/` continua sendo o boletim
+
+`2026-08-20` · **Aceita** · implementa a [Fase 11](roadmap.md#-fase-11--caminho-curto-até-a-anotação) ·
+**revisita** [ADR-032](#adr-032--legado-recebe-as-rotas-do-boletim-mas--continua-sendo-o-boletim),
+que previa "quando `/` passar a ser sensível à sessão, será na Fase 11"
+
+Do ícone do app até marcar um take eram **cinco toques**: abrir, "trabalhar com a equipe",
+produção, diárias, a diária, o departamento. Todo dia. Em set isso não é incômodo de
+interface — é o motivo pelo qual alguém volta para o caderno.
+
+A saída óbvia seria fazer `/` decidir para onde ir conforme a sessão. **Ela está errada por
+dois motivos**, e os dois só aparecem quando se olha o aparelho de verdade:
+
+1. `/` é o `start_url` do PWA instalado e **precisa abrir sem rede**. Uma raiz sensível à
+   sessão é uma raiz que consulta o servidor: em modo avião ela cairia no `/offline`, e o
+   app que se vende como offline-first passaria a não abrir justamente onde precisa.
+2. Usar o boletim **sem conta** continua sendo um modo suportado (ADR-025 / camera.md §7).
+   Redirecionar `/` para a plataforma cobraria um toque a mais, todo dia, de quem só quer
+   os boletins que já estão no aparelho — a regressão que a regra número um do roadmap
+   proíbe.
+
+**Decisão: `/` continua sendo o Boletim de Câmera local, e ganha em cima um botão que só
+existe quando há para onde voltar.** Quem nunca abriu uma diária vê a tela de sempre, sem
+um pixel a mais.
+
+#### O ponteiro mora no `localStorage`
+
+`lib/atalhos.ts` guarda produção, diária, módulo e os **rótulos** — e é lido por `/`, pela
+barra da sala e pela rota `/continuar`.
+
+- **Não é do servidor.** "Onde eu estava" é fato deste aparelho, não da produção: o
+  continuísta que abre o celular não quer voltar para onde o assistente de câmera parou.
+- **Não é do Dexie.** É lido em `/`, que é o boletim local, não conhece a camada da
+  plataforma e precisa abrir instantaneamente; abrir o IndexedDB para ler seis campos
+  custaria um `await` antes do primeiro pixel.
+- **Os rótulos vão junto** porque quem lê o atalho pode estar sem rede — a tela inicial
+  escreve "Diária 12 · 19/08/2026" sem perguntar nada.
+- **Envelhece em sete dias.** Depois disso o atalho vira palpite: a diária acabou, a
+  produção virou outra, e o botão levaria alguém para um dia encerrado achando que é o de
+  hoje. Some sozinho em vez de mentir.
+
+#### Quem sabe que dia é hoje é o aparelho
+
+`/hoje` é a outra ponta — o atalho do ícone do app — e **exige rede**, porque é a primeira
+porta do dia, quando ainda se está saindo de casa. Ela recebe a data por `?d=`, preenchida
+pelo relógio do celular, e nunca pergunta `current_date` ao banco: a diária é dia civil e
+nunca vira UTC (R9), e às 21h de Brasília o servidor já está no dia seguinte. Uma diária a
+mais de distância, e o atalho abriria o dia errado — em que alguém anotaria o take de hoje.
+
+Havendo **uma** diária hoje, `/hoje` não é uma tela: redireciona direto para o módulo do
+departamento da pessoa. Havendo duas, pergunta — escolher errado por conta do app é pior do
+que escolher na mão.
+
+#### A fixação automática é a condição, não o enfeite
+
+Sem fixar hoje e amanhã em segundo plano, o atalho levaria a uma tela que **precisa de
+rede** — e quem usa o atalho está saindo às 5h para uma locação sem cobertura. A fixação
+acontece ao abrir a sala, a partir da lista de diárias que a página já carregou, escolhendo
+hoje e amanhã pelo relógio do aparelho. É a ponte entre a sala e a fronteira offline, e por
+isso mora em `features/diaria/`: a sala continua sem depender de Dexie para desenhar o que
+mostra, e se a fixação falhar nada na tela muda.
+
+**Consequências:**
+
+- Os toques caíram de **cinco para um** no caminho diário (medição em
+  [roadmap §Fase 11](roadmap.md#-fase-11--caminho-curto-até-a-anotação)), e de três para um
+  no "voltar da sala para a anotação".
+- **Nada foi removido.** A lista de produções, a lista de diárias e a navegação da sala
+  continuam inteiras: atalho que esconde o caminho longo vira armadilha no dia em que o
+  caminho longo é o certo.
+- O primeiro dia num aparelho novo continua custando o caminho completo — não há o que
+  lembrar antes de a pessoa ter estado em algum lugar. É o preço de não adivinhar.

@@ -33,6 +33,10 @@ const APP_SHELL = [
   '/offline',
   '/login',
   '/producoes',
+  // Fase 11: o atalho "Última diária" do ícone do app resolve o destino no próprio
+  // aparelho. Se a casca dele não estivesse no cache, o atalho que existe para funcionar
+  // sem rede seria o único que exigiria rede.
+  '/continuar',
   '/manifest.webmanifest',
   '/icons/icon.svg',
   '/icons/icon-192.png',

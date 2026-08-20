@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 
 import { NotAMemberError, requireMember } from '@/lib/auth/guards';
+import { BarraDiariaAtiva } from '@/features/diaria/BarraDiariaAtiva';
 import { RoomNav } from '@/features/production/RoomNav';
 
 /**
@@ -33,7 +34,12 @@ export default async function RoomLayout({
   return (
     <div className="flex min-h-dvh flex-col">
       <div className="flex-1">{children}</div>
-      <RoomNav productionId={productionId} />
+      {/* Fase 11: voltar da sala para a anotação custa um toque, de qualquer tela. A
+          barra some sozinha quando já se está na diária — ver `BarraDiariaAtiva`. */}
+      <div className="sticky bottom-0 z-30">
+        <BarraDiariaAtiva productionId={productionId} />
+        <RoomNav productionId={productionId} />
+      </div>
     </div>
   );
 }

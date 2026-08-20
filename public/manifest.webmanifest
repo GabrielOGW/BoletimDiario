@@ -40,6 +40,20 @@
   ],
   "shortcuts": [
     {
+      "name": "Diária de hoje",
+      "short_name": "Hoje",
+      "description": "Abre direto a anotação da diária de hoje, no seu departamento.",
+      "url": "/hoje",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Continuar de onde parei",
+      "short_name": "Continuar",
+      "description": "Volta para a última diária aberta neste aparelho, mesmo sem rede.",
+      "url": "/continuar",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
       "name": "Novo boletim",
       "short_name": "Novo",
       "url": "/novo",

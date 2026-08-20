@@ -382,29 +382,57 @@ existir é teste que nunca é escrito.
 
 ---
 
-## 📋 Fase 11 — Caminho curto até a anotação
+## ✅ Fase 11 — Caminho curto até a anotação
 
-Hoje, do login até marcar um take: `produções → produção → diárias → diária → anotação`.
-**Quatro toques**, todo dia, para chegar no único lugar onde o trabalho acontece. Em set isso
-não é incômodo de UX: é o motivo pelo qual alguém volta para o caderno.
+Do login até marcar um take: `produções → produção → diárias → diária → anotação`. **Cinco
+toques**, todo dia, para chegar no único lugar onde o trabalho acontece. Em set isso não é
+incômodo de UX: é o motivo pelo qual alguém volta para o caderno.
 
 A fase é deliberadamente tardia porque cada atalho depende de saber **qual** é a diária ativa —
 e isso só é confiável depois que produções, diárias e sync existem. Atalho construído cedo
 adivinha; construído aqui, ele sabe.
 
-- [ ] **Diária de hoje é o destino padrão.** Havendo uma única produção ativa com diária para
-      hoje, `/` e `/producoes` levam direto à anotação. Um toque.
-- [ ] **"Continuar de onde parei"** — a última diária aberta, com o departamento certo já
-      selecionado, mesmo sem rede
-- [ ] **Atalhos do PWA** (`shortcuts` no manifesto): "Diária de hoje" e "Última diária" no
-      menu longo do ícone, sem abrir o app antes
-- [ ] **Fixação automática** da diária de hoje e de amanhã em background — a pendência
-      registrada na Fase 4; sem ela o atalho leva a uma tela que precisa de rede
-- [ ] **Barra de diária ativa** persistente na sala, para voltar de qualquer tela
-- [ ] Medir: contar os toques antes e depois, e registrar o número no fim da fase
+> **Fechada em `2026-08-20`** ([ADR-037](decisions.md#adr-037--o-caminho-curto-é-o-atalho-que-lembra-e--continua-sendo-o-boletim)).
+> A saída óbvia — fazer `/` decidir pela sessão — está errada: `/` é o `start_url` do PWA e
+> **precisa abrir sem rede**, e usar o boletim sem conta continua sendo um modo suportado.
+> Então `/` continua sendo o boletim local e **ganha em cima um botão que só existe quando há
+> para onde voltar**.
+
+- [x] **Diária de hoje é o destino padrão.** `/hoje` resolve e **redireciona** para o módulo
+      do departamento da pessoa quando há uma diária hoje; havendo duas produções, pergunta.
+      A data vem do relógio do aparelho (`?d=`), nunca do banco — às 21h de Brasília o
+      servidor já está no dia seguinte, e o atalho abriria o dia errado (R9)
+- [x] **"Continuar de onde parei"** — `lib/atalhos.ts` guarda produção, diária, módulo e os
+      rótulos no `localStorage`; aparece em `/`, em `/producoes` e na barra da sala, **sem
+      rede** e sem consultar nada. Envelhece em sete dias: depois disso vira palpite
+- [x] **Atalhos do PWA** — "Diária de hoje" (`/hoje`) e "Continuar de onde parei"
+      (`/continuar`) no menu longo do ícone. `/continuar` é estática e entra no `APP_SHELL`:
+      o atalho que existe para funcionar sem rede não pode ser o único que exige rede
+- [x] **Fixação automática** de hoje e amanhã ao abrir a sala, a partir da lista de diárias
+      que a página já carregou — a pendência registrada na Fase 4
+- [x] **Barra de diária ativa** na sala, que some sozinha quando já se está na diária e
+      quando a última diária é de outra produção
+- [x] **Medido:**
+
+| Caminho                                     | Antes        | Depois                                      |
+| ------------------------------------------- | ------------ | ------------------------------------------- |
+| Abrir o app → anotar (diária já aberta)     | **5 toques** | **1 toque**                                 |
+| Ícone do app → anotar (primeira vez no dia) | 5 toques     | **1 toque** (menu longo → "Diária de hoje") |
+| Sala → voltar para a anotação               | 3 toques     | **1 toque**                                 |
+
+Os cinco toques de antes: "trabalhar com a equipe" → produção → Diárias → a diária → o
+módulo. Nenhum deles deixou de existir — a lista de produções, a de diárias e a navegação
+da sala continuam inteiras. Atalho que esconde o caminho longo vira armadilha no dia em que
+o caminho longo é o certo.
 
 **Pronta quando:** um assistente que abre o app em locação chega à tela de anotação em **um
-toque**, offline, sem passar por nenhuma lista.
+toque**, offline, sem passar por nenhuma lista. ✅ — com uma ressalva honesta: o **primeiro**
+dia num aparelho novo continua custando o caminho completo, porque não há o que lembrar antes
+de a pessoa ter estado em algum lugar.
+
+**Verificado por** `npm run test:atalhos` (29 checks): a rota de cada departamento, a virada
+de mês e de ano na fixação, o atalho que envelhece e o `localStorage` corrompido que **não**
+pode quebrar a tela inicial.
 
 ---
 

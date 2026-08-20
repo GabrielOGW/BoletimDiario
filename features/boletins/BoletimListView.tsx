@@ -28,6 +28,7 @@ import {
 
 import { BoletimCard } from '@/features/boletins/BoletimCard';
 import { BackupControls } from '@/features/backup/BackupControls';
+import { ContinuarDiaria } from '@/features/diaria/ContinuarDiaria';
 
 export function BoletimListView() {
   const router = useRouter();
@@ -54,6 +55,12 @@ export function BoletimListView() {
       <main className="flex-1 py-4">
         <PageContainer className="space-y-4">
           <InstallPrompt />
+
+          {/* O caminho curto (Fase 11): quem tem uma diária aberta chega nela em **um
+              toque**, na primeira tela que o app abre — sem lista, sem sala, sem rede.
+              Quem não tem não vê nada, e `/` continua sendo o boletim local (ADR-032). */}
+          <ContinuarDiaria />
+
           <BackupControls count={all.length} />
 
           {/* A porta para a plataforma. Fica aqui, e não no lugar desta tela: usar o

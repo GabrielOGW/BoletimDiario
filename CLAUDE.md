@@ -18,7 +18,7 @@ npm run format         # Prettier --write
 npm run format:check
 npm run icons          # regenerate PWA PNG icons from public/icons/icon.svg
 npm run check:env      # what the build needs before it starts (runs on prebuild)
-npm test               # all eight check suites below (511 assertions)
+npm test               # all nine check suites below (540 assertions)
 npm run test:migration # a real v1 boletim through v2 normalization (22 assertions)
 npm run test:platform  # domain/platform set rules: inheritance, take axes, page eighths (91)
 npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-to-end (87)
@@ -27,6 +27,7 @@ npm run test:camera    # camera sheet + mídia + the post CSV (85)
 npm run test:som       # sound report: ordering, MOS, day summary, CSV escaping (63)
 npm run test:continuidade # verdicts, action fields, progress-report counts (45)
 npm run test:consolidado  # departments joined by take_id, gaps, search, day JSON (56)
+npm run test:atalhos   # short path: department route, today/tomorrow pinning, expiry (29)
 npm run test:db        # schema/triggers/enums against the real Neon (35) — needs DATABASE_URL
 npm run test:sala      # room rules, equipment, search vs the real Neon (51) — needs DATABASE_URL
 npm run test:sync      # compare-and-set, idempotency, cursor, registry (67) — needs DATABASE_URL
@@ -142,6 +143,11 @@ Drizzle, Server Actions for mutation, no Dexie, no outbox, no cursor. Routes: `/
   local and offline (`filtraLinhas`, on the consolidated screen); the production-wide one is
   this server route and needs the network. Same semantics on both sides — every word must
   appear, matched against the row's concatenated text — and each hands the term to the other.
+- **The short path to annotating** (Phase 11, ADR-037) is `lib/atalhos.ts`: the last opened
+  day lives in `localStorage` — not Dexie (it is read on `/`, the legacy boletim, which must
+  open instantly and offline) and not the server ("where I was" is a fact about this device).
+  `/hoje` redirects to the department's module and takes the date from the **device**
+  (`?d=`), never `current_date` — at 21h in Brazil the server is already tomorrow (R9).
 
 - Session is required once, in [app/(app)/layout.tsx](<app/(app)/layout.tsx>); membership in
   the room layout. There is **no `middleware.ts`** — Server Components have no private-screen

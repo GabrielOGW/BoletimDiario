@@ -13,6 +13,7 @@ import { listEquipment } from '@/lib/db/queries/equipment';
 import { listMembers } from '@/lib/db/queries/members';
 import { getProduction } from '@/lib/db/queries/productions';
 import { listShootingDays } from '@/lib/db/queries/shooting-days';
+import { FixacaoAutomatica } from '@/features/diaria/FixacaoAutomatica';
 import { BuscaForm } from '@/features/production/BuscaForm';
 import { JoinCodePanel } from '@/features/production/JoinCodePanel';
 import {
@@ -60,6 +61,13 @@ export default async function SalaPage({
       />
 
       <PageContainer className="flex flex-col gap-4 py-4 pb-8">
+        {/* Fase 11: abrir a sala já deixa hoje e amanhã no aparelho. Sem isto, o atalho
+            "diária de hoje" levaria a uma tela que precisa de rede — e quem o usa está
+            saindo de casa às 5h para uma locação sem cobertura. Não desenha nada. */}
+        <FixacaoAutomatica
+          dias={diarias.map((diaria) => ({ id: diaria.id, date: diaria.date }))}
+        />
+
         {/* A busca da produção mora aqui, no alto da sala, porque é a pergunta que se faz
             de fora da diária: "em que dia foi aquele take?". A busca de dentro da diária é
             outra, é local, e continua na visão consolidada (ADR-036). */}
