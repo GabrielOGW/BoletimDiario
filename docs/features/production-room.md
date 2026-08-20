@@ -187,10 +187,34 @@ cena 24 com nota de boom, e não tudo que tem 24 **ou** boom.
 Ela alcança cartão, arquivo, roll, cena, plano, take e as notas dos três departamentos — o
 índice é pré-calculado por linha, porque o filtro roda a cada tecla com o dedo esperando.
 
-**O que ainda não existe:** a busca **global da produção**, cruzando diárias e alcançando o que
-não está fixado no aparelho. Ela precisa do complemento full-text no servidor (o índice
-`scenes_search` já existe desde a migration `0001`) e de decidir como os dois caminhos se
-fundem num resultado só. Fica para a Fase 9, junto dos relatórios — que leem o mesmo recorte.
+### A busca da produção — `2026-08-19`, fecha a Fase 8
+
+A outra metade existe: `/p/[id]/busca`, Server Component lendo
+[`lib/db/queries/search.ts`](../../lib/db/queries/search.ts). Alcança **toda diária da
+produção**, inclusive as que este aparelho nunca baixou — e por isso **exige rede**, como o
+resto da sala (ADR-016).
+
+**Os dois alcances não viram uma lista só**
+([ADR-036](../decisions.md#adr-036--a-busca-tem-dois-alcances-declarados-e-eles-não-viram-uma-lista-só)).
+Uma lista misturada teria metade offline e metade não: quando o sinal caísse, o mesmo termo
+devolveria menos resultados sem nada explicando por quê — e uma busca que encolhe em silêncio
+faz alguém concluir "esse take não existe". O que é fundido é a **semântica**: as duas exigem
+que cada palavra apareça, as duas concatenam o texto antes de comparar (as palavras podem vir
+de campos e departamentos diferentes) e as duas devolvem cena · plano · take mais onde bateu.
+
+E uma leva à outra **com o termo na mão**: a diária oferece "procurar em todas as diárias"
+assim que há termo digitado, e o resultado da produção abre a diária com `?q=` preenchido.
+
+**Por trecho, não full-text.** O que se procura aqui é quase sempre identificador — `A023`,
+`A023C012_001`, `008_012`, `24B`. `to_tsvector` trata `A023C012_001` como um lexema só, então
+buscar `A023` não acharia: exatamente o sintoma de "a busca não acha nada". O índice
+`scenes_search` (migration `0001`) continua servindo à descrição de cena.
+
+O resultado sai agrupado por diária, com a mais recente primeiro, cena em ordem **numérica**
+(105 depois de 24) e teto de 60 — quando bate no teto, a tela pede uma palavra a mais, que é a
+mesma regra que a busca já ensina.
+
+Verificado por `npm run test:sala` (51 checks, +13, contra o Neon real).
 
 ## 6. Visão consolidada da diária (§8 do roadmap)
 

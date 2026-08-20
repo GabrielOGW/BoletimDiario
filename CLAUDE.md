@@ -28,7 +28,7 @@ npm run test:som       # sound report: ordering, MOS, day summary, CSV escaping 
 npm run test:continuidade # verdicts, action fields, progress-report counts (45)
 npm run test:consolidado  # departments joined by take_id, gaps, search, day JSON (56)
 npm run test:db        # schema/triggers/enums against the real Neon (35) — needs DATABASE_URL
-npm run test:sala      # room rules + equipment against the real Neon (38) — needs DATABASE_URL
+npm run test:sala      # room rules, equipment, search vs the real Neon (51) — needs DATABASE_URL
 npm run test:sync      # compare-and-set, idempotency, cursor, registry (67) — needs DATABASE_URL
 npm run test:import    # local-boletim import: idempotency, ownership (29) — needs DATABASE_URL
 ```
@@ -135,7 +135,13 @@ Two rules, both checkable in review:
 
 `app/(app)/` + `features/production/` are **ordinary Next.js**: Server Components reading
 Drizzle, Server Actions for mutation, no Dexie, no outbox, no cursor. Routes: `/producoes`
-(list, create, join by code) and `/p/[productionId]` (dashboard · `membros` · `diarias`).
+(list, create, join by code) and `/p/[productionId]` (dashboard · `membros` · `diarias` ·
+`equipamentos` · `busca`).
+
+- **Search has two declared reaches, never one merged list** (ADR-036): the day's search is
+  local and offline (`filtraLinhas`, on the consolidated screen); the production-wide one is
+  this server route and needs the network. Same semantics on both sides — every word must
+  appear, matched against the row's concatenated text — and each hands the term to the other.
 
 - Session is required once, in [app/(app)/layout.tsx](<app/(app)/layout.tsx>); membership in
   the room layout. There is **no `middleware.ts`** — Server Components have no private-screen

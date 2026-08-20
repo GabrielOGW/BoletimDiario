@@ -13,6 +13,7 @@ import { listEquipment } from '@/lib/db/queries/equipment';
 import { listMembers } from '@/lib/db/queries/members';
 import { getProduction } from '@/lib/db/queries/productions';
 import { listShootingDays } from '@/lib/db/queries/shooting-days';
+import { BuscaForm } from '@/features/production/BuscaForm';
 import { JoinCodePanel } from '@/features/production/JoinCodePanel';
 import {
   DEPARTMENT_LABEL,
@@ -59,6 +60,11 @@ export default async function SalaPage({
       />
 
       <PageContainer className="flex flex-col gap-4 py-4 pb-8">
+        {/* A busca da produção mora aqui, no alto da sala, porque é a pergunta que se faz
+            de fora da diária: "em que dia foi aquele take?". A busca de dentro da diária é
+            outra, é local, e continua na visão consolidada (ADR-036). */}
+        <BuscaForm productionId={productionId} />
+
         <SectionCard
           title="Diária mais recente"
           icon={<CalendarIcon size={18} />}

@@ -31,10 +31,14 @@ export const metadata: Metadata = { title: 'Diária consolidada' };
  */
 export default async function ConsolidadoPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ productionId: string; dayId: string }>;
+  /** `?q=` — o termo que a busca da produção passou para cá (ADR-036). */
+  searchParams: Promise<{ q?: string }>;
 }) {
   const { productionId, dayId } = await params;
+  const { q } = await searchParams;
   if (!uuidSchema.safeParse(dayId).success) notFound();
 
   await requireMember(productionId);
@@ -60,6 +64,7 @@ export default async function ConsolidadoPage({
         <ConsolidadoDiaria
           productionId={productionId}
           shootingDayId={dayId}
+          termoInicial={q ?? ''}
           // O cabeçalho vai junto com a página, como nos três módulos: o relatório é
           // impresso e o arquivo é gerado no fim da diária, quando não há sinal.
           // Aqui a equipe é a **inteira**, não a de um departamento — a folha

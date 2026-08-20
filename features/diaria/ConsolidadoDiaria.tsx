@@ -46,16 +46,25 @@ export function ConsolidadoDiaria({
   productionId,
   shootingDayId,
   impressao,
+  termoInicial = '',
 }: {
   productionId: string;
   shootingDayId: string;
   /** Cabeçalho resolvido no servidor — o mesmo objeto que os três módulos imprimem. */
   impressao: CabecalhoImpressao;
+  /**
+   * O termo com que a busca da produção mandou alguém para cá (`?q=`).
+   *
+   * As duas buscas se entregam o termo (ADR-036): quem achou o take na produção inteira
+   * abre a diária já filtrada, e quem não achou aqui vai para lá sem redigitar. Só o
+   * valor inicial — a partir daí quem manda é o campo, que responde a cada tecla.
+   */
+  termoInicial?: string;
 }) {
   const [fixacao, setFixacao] = useState<'CARREGANDO' | 'PRONTA' | 'SEM_REDE'>(
     'CARREGANDO',
   );
-  const [termo, setTermo] = useState('');
+  const [termo, setTermo] = useState(termoInicial);
   const [folha, setFolha] = useState(false);
 
   // Fechar com Esc: a folha é uma camada sobre a diária, e sair dela não pode custar
@@ -234,6 +243,18 @@ export function ConsolidadoDiaria({
           onChange={setTermo}
           placeholder="Buscar cartão, arquivo, cena, nota…"
         />
+
+        {/* O outro alcance da busca, oferecido só quando há termo: esta é local e sem
+            rede, aquela varre a produção inteira e precisa de sinal (ADR-036). O termo
+            vai junto — quem procura duas vezes a mesma coisa desiste na segunda. */}
+        {termo.trim() ? (
+          <a
+            href={`/p/${productionId}/busca?q=${encodeURIComponent(termo)}`}
+            className="px-1 text-xs font-medium text-brand underline underline-offset-2"
+          >
+            Procurar “{termo.trim()}” em todas as diárias da produção →
+          </a>
+        ) : null}
 
         {linhas.length === 0 ? (
           <p className="px-1 text-sm text-zinc-500">
