@@ -159,8 +159,7 @@ function run() {
   // ---- 3. Marco de conteúdo em toda tela da plataforma ----
 
   const telasDaPlataforma = arquivos.filter(
-    (caminho) =>
-      caminho.includes(join('app', '(app)')) && caminho.endsWith(`${'page'}.tsx`),
+    (caminho) => caminho.includes(join('app', '(app)')) && caminho.endsWith('page.tsx'),
   );
 
   const semMarco = telasDaPlataforma.filter((caminho) => {
@@ -200,6 +199,13 @@ function run() {
   check(
     'o estado do sync é anunciado, e sem interromper',
     indicador.includes('role="status"') && indicador.includes('aria-live="polite"'),
+  );
+
+  // O `<main id="conteudo">` só se paga se alguém puder pular para ele.
+  const cascaDaPlataforma = readFileSync(join('app', '(app)', 'layout.tsx'), 'utf8');
+  check(
+    'dá para pular o cabeçalho e cair no conteúdo',
+    cascaDaPlataforma.includes('#conteudo'),
   );
 
   // ---- 5. Alvo de toque: o app é usado em pé, no set, com pressa ----

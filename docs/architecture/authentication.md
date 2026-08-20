@@ -224,6 +224,13 @@ Feito em `2026-08-20` ([ADR-038](../decisions.md#adr-038--o-limite-de-tentativas
       de 90 dias: encurtá-la quebraria o offline para todo mundo por causa do aparelho de
       um, então o que se ganha não é expiração curta, é **poder derrubar**. Só existe
       porque a sessão vive no banco e não num JWT.
+- [x] **Frescor de sessão desligado** (`session.freshAge: 0`), e é consequência direta do
+      item acima. O padrão da biblioteca é um dia, e com sessão de 90 dias que nunca é
+      reverificada quase toda sessão real está velha — sendo que o único endpoint em uso
+      que exige frescor é **listar os aparelhos**. Com o padrão, a tela que existe para
+      derrubar um telefone perdido era a que não abria. Revogar nunca exigiu frescor, então
+      o botão ficava do outro lado de um erro. Coberto por `test/e2e/conta.spec.ts`, que
+      envelhece a sessão no banco antes de abrir a tela.
 - [x] **RLS avaliada e recusada**, com o motivo escrito em
       [database.md §7](database.md#7-segurança).
 

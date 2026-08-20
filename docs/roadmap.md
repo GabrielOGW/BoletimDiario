@@ -443,8 +443,16 @@ existir é teste que nunca é escrito.
 > porque a sessão vive no banco e não num JWT — uma capacidade que o schema já tinha e que não
 > tinha tela.
 >
-> **Verificado por** `npm run test:db` (41, +6) e `npm run test:sala` (60, +9), e por exercício
-> HTTP contra o build de produção.
+> **Achado na revisão, e o pior tipo — o que só aparece depois de um dia:** a Better Auth exige
+> sessão "fresca" para **listar** sessões, e o padrão dela de frescor é 24 h. Com sessão de 90
+> dias que nunca é reverificada, isso significa que `/conta` funcionaria só no primeiro dia de
+> cada login — a tela que existe para derrubar um telefone perdido seria justamente a que não
+> abre. Nenhum teste tinha pegado porque a conta do E2E nasce segundos antes de ser usada.
+> Agora `test/e2e/conta.spec.ts` envelhece a sessão no banco antes de abrir a tela, e
+> `freshAge: 0` está no config com o motivo escrito.
+>
+> **Verificado por** `npm run test:db` (41, +6), `npm run test:sala` (62, +11) e o E2E da conta,
+> além de exercício HTTP contra o build de produção.
 
 > **Produção grande em `2026-08-20`** — `npm run test:carga`: 40 diárias, 200 cenas, 2400
 > takes, 4800 linhas de câmera, 9600 tracks e 24 mil linhas de `sync_log`, semeadas, medidas e
@@ -520,13 +528,16 @@ existir é teste que nunca é escrito.
 >   são polimento, são enjoo.
 > - **O botão de limpar a busca** tinha 36 px, contra os 44 px que a regra do projeto exige e
 >   que o resto da interface cumpre.
+> - **"Pular para o conteúdo"**, visível só quando recebe foco. Sem ele, quem navega por
+>   teclado atravessa "voltar", "conta" e "sair" de novo a cada rota para chegar sempre no
+>   mesmo lugar.
 >
 > **Não mexido, e de propósito:** os tamanhos `sm` de `Button` (38 px) e `OptionChips` (32 px).
 > São controles densos e secundários de uma tela validada em set, e a regra dos 44 px foi
 > escrita para os alvos principais — que a cumprem. Subi-los mudaria a densidade de uma
 > interface que funciona.
 >
-> **Verificado por** `npm run test:acessibilidade` (14 checks, dentro do `npm test`): ele
+> **Verificado por** `npm run test:acessibilidade` (15 checks, dentro do `npm test`): ele
 > calcula os contrastes, varre os `.tsx` atrás de cinza reprovado fora das folhas, confere o
 > `<main>` em todas as telas e trava os quatro detalhes que somem numa refatoração distraída.
 > E olhado nas duas superfícies — a tela escura e a folha branca. A regra das duas

@@ -524,7 +524,10 @@ async function run() {
     insert into rate_limits (key, count, last_request)
     values (${'fossil-de-ontem'}, 9, ${Date.now() - 25 * 3600 * 1000})
   `;
-  await consomeTentativa(chaveDeEntrada(terceiro.id), regra);
+  // A poda anda junto da **abertura** de janela, não de toda tentativa: presa à
+  // tentativa, quem está sendo barrado faria o servidor varrer a tabela a cada batida.
+  // Por isso o gatilho aqui é uma chave nova, e não mais uma tentativa da mesma.
+  await consomeTentativa(chaveDeEntrada(dono.id), regra);
   const [fossil] = await sql`
     select count(*)::int as total from rate_limits where key = ${'fossil-de-ontem'}
   `;
@@ -536,6 +539,7 @@ async function run() {
   check('a poda não leva junto quem ainda está na janela', viva.total === 1);
 
   await sql`delete from rate_limits where key like ${'entrar-por-codigo:%'}`;
+  await sql`delete from rate_limits where key = ${'fossil-de-ontem'}`;
 }
 
 async function papel(userId) {

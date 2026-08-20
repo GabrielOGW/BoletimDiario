@@ -60,12 +60,24 @@ export async function consomeTentativa(chave: string, regra: Regra): Promise<Ver
   `);
 
   const linha = rows[0];
-  if (!linha) return { permitido: true, esperarSegundos: 0 };
 
-  await podaVencidos(agora);
+  /**
+   * Sem linha, deixa passar.
+   *
+   * `returning` sempre devolve uma; isto é o caminho impossível. Ele **falha aberto** de
+   * propósito: um limitador que tranca todo mundo quando ele próprio quebra transforma um
+   * defeito de contador em indisponibilidade da sala inteira. A porta que ele guarda já
+   * exige sessão e um código secreto.
+   */
+  if (!linha) return { permitido: true, esperarSegundos: 0 };
 
   const contagem = Number(linha.count);
   const inicioDaJanela = Number(linha.last_request);
+
+  // A faxina anda junto da **abertura** de janela, que é rara, e não de toda tentativa:
+  // presa à tentativa, quem está sendo barrado faria o servidor varrer a tabela a cada
+  // batida — trabalho feito em nome de quem já foi recusado.
+  if (contagem === 1) await podaVencidos(agora);
 
   if (contagem <= regra.maximo) return { permitido: true, esperarSegundos: 0 };
 

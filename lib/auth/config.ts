@@ -134,6 +134,29 @@ export const auth = betterAuth({
      */
     expiresIn: 60 * 60 * 24 * 90,
     updateAge: 60 * 60 * 24 * 7,
+
+    /**
+     * Sem exigência de sessão "fresca" — e isto **não** é afrouxar por conveniência.
+     *
+     * O padrão da biblioteca é um dia: passado esse prazo, os endpoints marcados como
+     * sensíveis recusam a sessão até a pessoa entrar de novo. Aqui a sessão dura 90 dias
+     * e nunca é reverificada, porque reverificar quebraria o offline (ADR-025) — então,
+     * na prática, a sessão de quem usa o app quase sempre tem mais de um dia.
+     *
+     * Só um endpoint em uso neste projeto exige frescor, e é justamente o pior possível:
+     * **listar os aparelhos conectados**. Com o padrão, a tela que existe para derrubar
+     * um telefone perdido era exatamente a que não abria — a proteção desligando o
+     * remédio. Revogar sessão nunca exigiu frescor, então quem entrasse em `/conta`
+     * veria um erro sem entender que o botão que precisava estava do outro lado dele.
+     *
+     * O que se perde é pouco: listar e revogar **as próprias** sessões não é escalada de
+     * privilégio — quem tem o cookie já tem a conta inteira. O que se ganha é a tela
+     * funcionar para quem precisa dela. Trocar e-mail e apagar conta também são gatilhos
+     * de frescor, e nenhum dos dois existe neste app; se um dia existirem, a exigência
+     * volta **neles**, não no global. Coberto por `test/e2e/conta.spec.ts`, que envelhece
+     * a sessão no banco antes de abrir a tela.
+     */
+    freshAge: 0,
   },
 
   /**

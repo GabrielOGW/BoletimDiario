@@ -1033,6 +1033,19 @@ qualquer um deles, ou todos os outros de uma vez. O aparelho atual **não** tem 
 desconectar: ele tem "Sair", que é outra coisa, e misturar os dois faria alguém se deslogar
 tentando derrubar o outro.
 
+**E a sessão deixa de precisar ser "fresca"** (`session.freshAge: 0`). O padrão da Better Auth
+é um dia: passado esse prazo, os endpoints marcados como sensíveis recusam a sessão até a
+pessoa entrar de novo. Com sessão de 90 dias que nunca é reverificada, isso quer dizer que
+**quase toda** sessão real está velha — e o único endpoint em uso que exige frescor é
+justamente listar os aparelhos. A proteção desligava o remédio: a tela que existe para
+derrubar um telefone perdido era a que não abria, e o botão de revogar (que nunca exigiu
+frescor) ficava do outro lado de um erro.
+
+O que se perde é pouco: listar e revogar **as próprias** sessões não é escalada de privilégio,
+porque quem tem o cookie já tem a conta inteira. Trocar e-mail e apagar conta também são
+gatilhos de frescor e nenhum dos dois existe neste app; se um dia existirem, a exigência volta
+**neles**, não no global.
+
 **Consequências:**
 
 - Uma migration nova (`0008`) e uma tabela que **não** segue as convenções de domínio: sem
@@ -1045,9 +1058,13 @@ tentando derrubar o outro.
 - Quem for barrado vê "tente de novo em 12 minutos", não "espere 743 segundos". Mensagem que
   não é acionável vira ticket de suporte.
 - A tabela ganha **poda**: é uma linha por chave e chave nova a cada IP, então sem limpeza ela
-  só cresce. Some o que passou de 24 h, junto do resgate de código — operação rara, faxina
-  fora do caminho quente. Não é cron porque não precisa ser ainda; quando precisar, é cron, e
-  não uma poda mais agressiva por requisição.
+  só cresce. Some o que passou de 24 h, e o gatilho é a **abertura de janela**, não a
+  tentativa: preso à tentativa, quem estivesse sendo barrado faria o servidor varrer a tabela
+  a cada batida — trabalho feito em nome de quem já foi recusado. Não é cron porque não
+  precisa ser ainda; quando precisar, é cron, e não uma poda mais agressiva por requisição.
+- O limitador **falha aberto**. Se o próprio contador quebrar, a entrada passa: um limitador
+  que tranca todo mundo quando ele falha transforma um defeito de contador em indisponibilidade
+  da sala inteira, e a porta que ele guarda já exige sessão e um código secreto.
 - A §7 de `database.md` deixa de prometer RLS e passa a explicar por que não.
 
 ---
