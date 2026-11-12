@@ -87,3 +87,9 @@ export function editorLocalDoModulo(modulo: ModuloDeDepartamento, id: string): s
   if (modulo === 'camera') return `/legado/editar?id=${id}`;
   return `/${modulo}/editar?id=${encodeURIComponent(id)}`;
 }
+
+/** A folha A4 do boletim local — no de Câmera é `/legado/visualizar`. */
+export function folhaLocalDoModulo(modulo: ModuloDeDepartamento, id: string): string {
+  if (modulo === 'camera') return `/legado/visualizar?id=${id}`;
+  return `${editorLocalDoModulo(modulo, id)}&folha=1`;
+}

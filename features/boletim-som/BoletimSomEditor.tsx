@@ -115,10 +115,17 @@ const TIMECODES = [
  * arquivo incrementado e canais herdados do anterior) porque o mixer preenche com uma mão,
  * durante a gravação.
  */
-export function BoletimSomEditor({ id }: { id: string | null }) {
+export function BoletimSomEditor({
+  id,
+  abrirFolha = false,
+}: {
+  id: string | null;
+  /** `?folha=1`: abre direto na folha — o "Ver PDF" da lista, como o de Câmera. */
+  abrirFolha?: boolean;
+}) {
   const router = useRouter();
   const { boletim, status, saveState, update } = useBoletimLocal(storeSom, id);
-  const [folha, setFolha] = useState(false);
+  const [folha, setFolha] = useState(abrirFolha);
   const [apagando, setApagando] = useState(false);
 
   const leitura = useMemo(() => {
@@ -127,6 +134,16 @@ export function BoletimSomEditor({ id }: { id: string | null }) {
     const linhas = linhasDoRelatorio(fonte.fonte);
     return { ...fonte, linhas, rolos: rolosDoDia(linhas, fonte.rolls) };
   }, [boletim]);
+
+  // Fechar a folha aberta por "Ver PDF" tira o `?folha=1` da URL: senão recarregar a
+  // página a abriria de novo.
+  useEffect(() => {
+    if (folha) return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('folha')) return;
+    url.searchParams.delete('folha');
+    window.history.replaceState(null, '', url.toString());
+  }, [folha]);
 
   useEffect(() => {
     if (!folha) return;

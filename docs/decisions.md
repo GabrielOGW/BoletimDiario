@@ -1314,5 +1314,16 @@ criar nada antes. Produção, diária e equipe ficam para o futuro.
 - A tela inicial lista os três tipos; a lista de Câmera continua exatamente como era.
 - Os módulos da plataforma (ADR-041/042) **ficam** — são o caminho da equipe, quando ele vier.
 
+> **Revisto em `2026-11-12`** — a tela inicial passa a usar **um cartão só** para os três
+> tipos (`CartaoDeBoletim`: faixa e nome do departamento), e Som e Continuidade ganham as
+> mesmas ações da Câmera: ver a folha (`?folha=1` abre o editor já na folha) e duplicar. A
+> duplicação regenera todos os ids, como `duplicateBoletim`; na Continuidade os **bytes das
+> fotos são copiados** para ids novos antes de a cópia ser gravada — fotos compartilhadas
+> fariam apagar um boletim apagar as fotos do outro.
+
+> **Revisto em `2026-11-12`** — demos de Som e Continuidade (`lib/local/seed.ts`), contando
+> a mesma diária do demo de Câmera (que não muda). Semeados uma vez por aparelho, com bandeira
+> própria e só em store vazio: quem já usava o app os ganha uma vez, e um demo apagado não volta.
+
 **Fica para depois.** Backup em JSON dos boletins de Som e Continuidade (o de Câmera continua
 igual); levar um boletim local para uma diária da plataforma.

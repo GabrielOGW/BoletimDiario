@@ -11,7 +11,9 @@ import { BoletimSomEditor } from '@/features/boletim-som/BoletimSomEditor';
  */
 function Conteudo() {
   const params = useSearchParams();
-  return <BoletimSomEditor id={params.get('id')} />;
+  return (
+    <BoletimSomEditor id={params.get('id')} abrirFolha={params.get('folha') === '1'} />
+  );
 }
 
 export default function EditarPage() {
