@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import {
   DEPARTAMENTOS_PRINCIPAIS,
   definicaoDoModulo,
-  destinoDoModulo,
+  editorLocalDoModulo,
   moduloValido,
 } from '@/features/diaria/departamentos.ts';
 import { proximoCodigoDePlano } from '@/features/diaria/cenas.ts';
@@ -95,14 +95,16 @@ ok('?dep= aceita só os três módulos', moduloValido('som') === 'som');
 ok('?dep= recusa setor escondido', moduloValido('arte') === null);
 ok('?dep= recusa vazio e lixo', moduloValido('') === null && moduloValido(null) === null);
 
-const atalho = { productionId: 'p1', shootingDayId: 'd1' };
+// ADR-043: os três abrem um editor **local** — nenhum passa por produção ou diária.
+ok('Câmera abre o editor de sempre', editorLocalDoModulo('camera', 'b1') === '/legado/editar?id=b1');
+ok('Som abre o editor local de som', editorLocalDoModulo('som', 'som_1') === '/som/editar?id=som_1');
 ok(
-  'com diária recente, Continuidade abre direto nela — sem rede',
-  destinoDoModulo('continuidade', atalho) === '/p/p1/diarias/d1/continuidade',
+  'Continuidade abre o editor local de continuidade',
+  editorLocalDoModulo('continuidade', 'c1') === '/continuidade/editar?id=c1',
 );
 ok(
-  'sem diária recente, Som vai para /hoje com o departamento escolhido',
-  destinoDoModulo('som', null) === '/hoje?dep=som',
+  'nenhum destino exige diária',
+  ['camera', 'som', 'continuidade'].every((m) => !editorLocalDoModulo(m, 'x').includes('/diarias/')),
 );
 
 // ---- Plano criado fora da Câmera ----

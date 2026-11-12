@@ -30,6 +30,15 @@ import { BoletimCard } from '@/features/boletins/BoletimCard';
 import { BackupControls } from '@/features/backup/BackupControls';
 import { ContinuarDiaria } from '@/features/diaria/ContinuarDiaria';
 
+import { ListaLocal, useItensLocais } from '@/features/boletins-locais/ListaLocal';
+import {
+  editorLocalDoModulo,
+  type ModuloDeDepartamento,
+} from '@/features/diaria/departamentos';
+import { criaBoletimContinuidade } from '@/lib/local/continuidade';
+import { criaBoletimSom } from '@/lib/local/som';
+import { storeContinuidade, storeSom } from '@/lib/local/store';
+
 import { EscolhaDepartamento } from './EscolhaDepartamento';
 
 export function BoletimListView() {
@@ -54,11 +63,31 @@ export function BoletimListView() {
 
   const handleNew = () => setEscolhendo(true);
 
+  /**
+   * Som e Continuidade nascem como o de Câmera: no aparelho, sem conta, sem diária
+   * (ADR-043). Criar e abrir o editor — o próximo toque já é registrar.
+   */
+  const escolhe = (modulo: ModuloDeDepartamento) => {
+    if (modulo === 'camera') {
+      criaBoletimDeCamera();
+      return;
+    }
+    setEscolhendo(false);
+    const criado =
+      modulo === 'som'
+        ? storeSom.upsert(criaBoletimSom())
+        : storeContinuidade.upsert(criaBoletimContinuidade());
+    router.push(editorLocalDoModulo(modulo, criado.id));
+  };
+
+  const locais = useItensLocais(query);
+  const total = all.length + locais.total;
+
   return (
     <div className="flex min-h-dvh flex-col bg-ink">
       <AppHeader
-        title="Boletim Diário de Câmera"
-        subtitle={ready ? `${all.length} boletim(ns) neste aparelho` : 'Carregando…'}
+        title="Boletim Diário"
+        subtitle={ready ? `${total} boletim(ns) neste aparelho` : 'Carregando…'}
         right={<OfflineBadge />}
       />
 
@@ -110,7 +139,7 @@ export function BoletimListView() {
             </Link>
           ) : null}
 
-          {all.length > 0 ? (
+          {total > 0 ? (
             <SearchInput
               value={query}
               onChange={setQuery}
@@ -127,11 +156,11 @@ export function BoletimListView() {
                 />
               ))}
             </ul>
-          ) : all.length === 0 ? (
+          ) : total === 0 ? (
             <EmptyState
               icon={<ClapperboardIcon size={40} />}
               title="Nenhum boletim ainda"
-              description="Crie seu primeiro boletim. Tudo fica salvo neste aparelho e funciona offline em set."
+              description="Crie seu primeiro boletim de câmera, continuidade ou som. Tudo fica salvo neste aparelho e funciona offline em set."
               action={
                 <Button
                   variant="primary"
@@ -143,24 +172,29 @@ export function BoletimListView() {
                 </Button>
               }
             />
-          ) : results.length === 0 ? (
+          ) : results.length === 0 && locais.itens.length === 0 ? (
             <EmptyState
               icon={<SearchIcon size={36} />}
               title="Nada encontrado"
               description="Nenhum boletim corresponde à busca. Tente outro termo."
             />
           ) : (
-            <ul className="space-y-3">
-              {results.map((boletim) => (
-                <BoletimCard
-                  key={boletim.id}
-                  boletim={boletim}
-                  onView={() => router.push(`/legado/visualizar?id=${boletim.id}`)}
-                  onDuplicate={() => duplicate(boletim.id)}
-                  onDelete={() => setPendingDelete(boletim)}
-                />
-              ))}
-            </ul>
+            <>
+              {results.length > 0 ? (
+                <ul className="space-y-3">
+                  {results.map((boletim) => (
+                    <BoletimCard
+                      key={boletim.id}
+                      boletim={boletim}
+                      onView={() => router.push(`/legado/visualizar?id=${boletim.id}`)}
+                      onDuplicate={() => duplicate(boletim.id)}
+                      onDelete={() => setPendingDelete(boletim)}
+                    />
+                  ))}
+                </ul>
+              ) : null}
+              <ListaLocal itens={locais.itens} />
+            </>
           )}
         </PageContainer>
       </main>
@@ -180,7 +214,7 @@ export function BoletimListView() {
       <EscolhaDepartamento
         aberta={escolhendo}
         onFechar={() => setEscolhendo(false)}
-        onCamera={criaBoletimDeCamera}
+        onEscolhe={escolhe}
       />
 
       <ConfirmDialog

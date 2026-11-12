@@ -1280,3 +1280,39 @@ que o cursor pulou na fixação, que se repete toda vez que um módulo abre com 
 mandaria para `426` todo aparelho em campo que ainda não recarregou o app — sem proteger nada
 que a refixação já não proteja. A rota de fotos é nova, e um cliente antigo simplesmente não a
 chama.
+
+---
+
+### ADR-043 · Som e Continuidade também são boletins locais, sem diária
+
+`2026-11-12` · **Aceita** · revê [ADR-040](#adr-040--três-departamentos-na-porta-de-entrada-os-outros-setores-escondidos)
+no destino de Som e Continuidade
+
+**Contexto.** ADR-040 mandava quem escolhesse Som ou Continuidade em "Novo boletim" para uma
+diária da plataforma — o que exige conta, produção e diária marcada. O proprietário corrigiu:
+**os três boletins devem funcionar como o de Câmera** — escolher e começar a registrar, sem
+criar nada antes. Produção, diária e equipe ficam para o futuro.
+
+**Decisão.**
+
+- Som e Continuidade ganham um boletim **local**, como o de Câmera: tudo neste aparelho, sem
+  conta, offline, auto-save sem botão salvar, folha A4 por impressão nativa.
+  - Modelos puros em `lib/local/{comum,som,continuidade}.ts` — fábrica, normalização
+    defensiva e idempotente, regras de herança (o take de som nasce com rolo, arquivo
+    incrementado e canais do anterior; o de continuidade nasce vazio).
+  - LocalStorage com **chave própria por departamento** (`lib/local/store.ts`). Não a chave
+    da Câmera: `normalizeBoletim()` transformaria um boletim de som num de câmera vazio.
+  - Fotos da Continuidade: bytes no IndexedDB (`lib/local/fotos.ts`, banco
+    `bdc-fotos-locais`), comprimidas no aparelho; o boletim guarda só a referência. Apagar o
+    boletim apaga as fotos dele.
+  - Rotas estáticas `/som/editar` e `/continuidade/editar`, no `APP_SHELL` do Service Worker.
+- **Uma leitura só por relatório.** Os boletins locais são traduzidos
+  (`features/boletim-som/relatorio.ts`, `features/boletim-continuidade/relatorio.ts`) para as
+  formas que `features/{sound,continuity}/estrutura.ts` já leem — e `FolhaSom`, o CSV,
+  `FolhaContinuidade`, rolos, canais, raccord, pendências e alterações de diálogo saem do
+  código já testado.
+- A tela inicial lista os três tipos; a lista de Câmera continua exatamente como era.
+- Os módulos da plataforma (ADR-041/042) **ficam** — são o caminho da equipe, quando ele vier.
+
+**Fica para depois.** Backup em JSON dos boletins de Som e Continuidade (o de Câmera continua
+igual); levar um boletim local para uma diária da plataforma.
