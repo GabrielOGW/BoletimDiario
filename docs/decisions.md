@@ -395,6 +395,15 @@ de cota. Some a tabela `photos`, some `db.blobs`, some o Vercel Blob, some o mon
 O modelo continua extensível — `subject_type` + `subject_id` é o formato natural quando/se
 voltar —, mas **nada é implementado agora**. O objetivo é manter o app leve, rápido e barato.
 
+> **Revisto em `2026-11-12`** ([ADR-042](#adr-042--continuidade-completa-raccord-problema-e-fotos-que-sobem-depois))
+> — decisão do proprietário: as fotografias **voltam, só para a Continuidade**. Não volta a
+> tabela genérica `photos` nem o Vercel Blob: o registro da foto é uma entidade sincronizável
+> comum (`continuity_photos`, com o mesmo escopo cena/plano/take das coleções de estado) e os
+> bytes ficam fora do `sync_log`, em `continuity_photo_blobs`. A razão original — leveza e
+> custo — continua valendo, e é por ela que a foto é comprimida no aparelho, sobe uma vez e
+> só desce sozinha para as diárias fixadas. O risco R5 (despejo do IndexedDB) volta a existir
+> e passa a ter mitigação própria (ADR-042).
+
 ---
 
 ### ADR-023 · A migração vira importação opcional
@@ -636,6 +645,12 @@ afetados.
 
 **Consequência quando um módulo novo nascer:** basta entrar em `ACTIVE_DEPARTMENTS`. A tela
 deixa de ser somente leitura para aquele departamento sem nenhuma outra mudança.
+
+> **Revisto em `2026-11-12`** ([ADR-040](#adr-040--três-departamentos-na-porta-de-entrada-os-outros-setores-escondidos))
+> — os oito departamentos sem módulo saem das listas de escolha. Quem entra para gestão
+> escolhe **"Outra função — gestão e leitura"**, gravada como `PRODUCTION`; a regra desta
+> decisão (somente leitura na anotação) continua idêntica. Membros já cadastrados como Arte,
+> Direção etc. não mudam: o `<select>` deles continua mostrando o valor que têm.
 
 ---
 
@@ -1142,3 +1157,126 @@ Então o design system tem **duas** superfícies declaradas, e a regra é difere
 - Os tamanhos `sm` de `Button` (38 px) e `OptionChips` (32 px) **não** subiram para 44 px. A
   regra dos 44 px é dos alvos principais, que a cumprem; esses são controles densos e
   secundários de uma tela validada em set, e mudá-los mudaria a densidade de algo que funciona.
+
+---
+
+### ADR-040 · Três departamentos na porta de entrada; os outros setores, escondidos
+
+`2026-11-12` · **Aceita** · revê [ADR-031](#adr-031--departamento-sem-módulo-entra-para-gestão-não-para-anotação)
+na escolha, não na regra
+
+**Contexto.** "Novo boletim" criava direto um Boletim de Câmera local. Som e Continuidade já
+existiam (Fases 6–7), mas só se chegava a eles pela sala → produção → diária → módulo. E as
+listas de departamento ofereciam onze opções, oito delas sem boletim nenhum.
+
+**Decisão.**
+
+1. **"Novo boletim" abre uma escolha entre os três departamentos** — uma camada sobre a lista,
+   não uma rota. Rota nova pediria rede a quem nunca a visitou, e esta é a primeira tela do
+   dia; a camada abre em modo avião.
+   - **Câmera** faz exatamente o que o botão sempre fez: cria o boletim local e abre o editor.
+     Nenhuma regra, campo ou tela do Boletim de Câmera mudou.
+   - **Continuidade** e **Som** vivem numa diária da plataforma. O destino é a diária aberta por
+     último neste aparelho, já no módulo escolhido (funciona sem rede, porque está fixada); sem
+     ela, `/hoje?dep=…` encontra a diária do dia no módulo escolhido.
+2. **Um registro só** dos três (`features/diaria/departamentos.ts`): nome, descrição, rota e
+   cor. A tela de escolha, a faixa sob o cabeçalho de cada módulo e o `?dep=` leem dele — nada
+   de `if (departamento === 'SOUND')` espalhado.
+3. **Cores**: Câmera amarela (a `brand`), Continuidade azul (`sky`), Som verde (`emerald`).
+   **A cor nunca é o rótulo**: todo lugar que pinta um departamento escreve o nome dele.
+4. **Os outros setores somem das escolhas** — criar produção, entrar por código, editar membro,
+   cadastrar equipamento — atrás de `MOSTRAR_OUTROS_SETORES = false`. Nada é apagado nem migrado:
+   o enum, o banco e os membros existentes continuam iguais, e um `<select>` de registro antigo
+   inclui o valor que ele já tem (senão o primeiro "Salvar" o trocaria em silêncio). Reativar é
+   trocar a constante.
+5. **Plano e take nascem em qualquer departamento.** Som e Continuidade ganham "Novo plano" e
+   "Próximo take", com a numeração da Câmera (`proximoCodigoDePlano`) e ids derivados
+   (ADR-019): quem chega primeiro não duplica nada.
+
+**Alternativas descartadas.** Uma rota `/novo-boletim` (precisaria de rede na primeira visita);
+um boletim de som/continuidade **local**, sem conta, como o de câmera (duplicaria os dois
+módulos fora da plataforma e cortaria a integração por `take_id`, que é o motivo de existirem).
+
+---
+
+### ADR-041 · Som completo: rolos, problemas de captação e canais com captação
+
+`2026-11-12` · **Aceita**
+
+O sound report precisava responder três perguntas que o modelo não respondia:
+
+- **Que cartão é este?** O take dizia o roll, mas o roll não dizia nada de si. Nasce
+  `sound_rolls` (por diária, id derivado de `(diária, rótulo)`): mídia, equipamento, observação.
+  **A lista de arquivos não é guardada** — é derivada dos takes que apontam para o rótulo. A
+  tela e a folha unem o cadastro com o que os takes citam: roll sem cadastro continua aparecendo
+  com os arquivos; cartão cadastrado sem arquivo também (é informação de custódia).
+- **Que problema este take tem?** `sound_take_data.issues` (códigos separados por vírgula, em
+  ordem canônica) + `issue_notes` livre. A lista — ruído externo, interferência, microfone,
+  saturação, falha, inaudível, ruído de equipamento, wild track, room tone, ADR — é
+  **acelerador**: código desconhecido é preservado e impresso como veio. Ordem canônica porque
+  "A depois B" e "B depois A" precisam ser o mesmo valor para o compare-and-set.
+- **Que microfone e que captação em cada canal?** `sound_take_tracks.source` sempre foi pedido
+  na tela como modelo de microfone ("MKH 416") e é isso que está gravado; ele passa a ser
+  documentado como tal. O tipo de captação ganha coluna própria, `pickup` (Boom, Lapela, Plant,
+  Ambiente, Linha), herdada com o layout como nome e microfone (ADR-033).
+
+Mais `recorder` e `notes` na configuração do dia. O relatório ganha rolos, distribuição de
+canais (uma linha por configuração **distinta** de canal, não por take), takes selecionados,
+problemas e observações gerais; o CSV ganha `problemas` e `obs_problemas` antes das tracks.
+
+`issues` é `text` e não `text[]`: o contrato de sync só transporta escalares, e o Som é uma
+pessoa por take — o merge por campo cobre o caso real.
+
+---
+
+### ADR-042 · Continuidade completa: raccord, problema, e fotos que sobem depois
+
+`2026-11-12` · **Aceita** · revê [ADR-022](#adr-022--sem-fotografias-na-v1)
+
+**Notas de raccord** (`continuity_notes`). Posição de ator, olhar, movimento entre planos,
+alteração de diálogo — observações que não são objeto, figurino, cabelo nem cenário. Mesmo
+escopo flexível das coleções de estado (cena, plano **ou** take), mas **id aleatório**: duas
+notas de "olhar" na mesma cena são duas observações, e convergi-las apagaria a de alguém.
+
+**Problema de continuidade no take** (`has_issue` + `issue`). Independente do veredito: o print
+do diretor pode ser justamente o take com o copo na mão errada, e é esse aviso que a montagem
+precisa ler. O relatório ganha "Pendências de continuidade" e "Alterações de diálogo" (do campo
+do take e das notas de categoria diálogo), além do raccord e das fotos por cena.
+
+**Fotografias.**
+
+| Peça                       | Onde                                                    |
+| -------------------------- | ------------------------------------------------------- |
+| Registro (escopo, legenda) | `continuity_photos` — entidade sincronizável comum      |
+| Bytes no servidor          | `continuity_photo_blobs` — base64, **sem** `sync_log`   |
+| Bytes no aparelho          | Dexie `photoBlobs` (`ArrayBuffer`, `uploaded: 0 \| 1`)  |
+| Transferência              | `lib/sync/fotos.ts`, no ciclo do motor, depois do texto |
+| Rota                       | `POST/GET /api/sync/fotos` — mesmo guarda do sync       |
+
+- **Comprimida no aparelho** antes de gravar (JPEG, lado maior 1600 px, ≈150–400 KB). O servidor
+  recusa acima de 1,5 MB.
+- **Registro e bytes nascem na mesma transação** Dexie, com a fila. Separados, o aparelho que
+  tirou a foto poderia ficar com o registro e sem bytes — e ninguém mais os teria.
+- **Os bytes só sobem depois do registro**: o servidor aceita bytes apenas para uma foto que já
+  existe na produção (409 senão). É a autorização real, e o motor só tenta quando o registro
+  saiu da fila.
+- **Imutável**: `on conflict do nothing`. Editar foto é tirar outra.
+- **Só desce sozinho o que vai ser usado**: fotos de cena/plano/take das diárias fixadas, quatro
+  por ciclo, e só com mais de 15% de cota livre. O resto desce quando alguém abre a foto.
+- **R5 volta, com mitigação**: `navigator.storage.persist()` na primeira foto; recusa de foto
+  nova acima de 90% da cota, com o motivo na tela; bytes já enviados saem do aparelho quando a
+  foto é apagada.
+
+**Por que base64 no Postgres e não Vercel Blob.** Nenhuma dependência nova, nenhum segredo novo,
+e a autorização é a mesma da sala. O custo (≈33% de inflação e o tamanho do banco) é aceitável
+no volume de uma continuísta — dezenas de fotos por diária. **Reavaliar se** uma produção passar
+de alguns GB em fotos: a troca é só do armazenamento de `continuity_photo_blobs`, sem mexer no
+contrato do cliente.
+
+**Protocolo continua `3`.** As três entidades novas (`soundRoll`, `continuityNote`,
+`continuityPhoto`) seguem o precedente da Fase 7 (synchronization.md §2): o cliente antigo
+ignora tipo desconhecido e continua sincronizando câmera, som e continuidade; o novo recupera o
+que o cursor pulou na fixação, que se repete toda vez que um módulo abre com sinal. Incrementar
+mandaria para `426` todo aparelho em campo que ainda não recarregou o app — sem proteger nada
+que a refixação já não proteja. A rota de fotos é nova, e um cliente antigo simplesmente não a
+chama.

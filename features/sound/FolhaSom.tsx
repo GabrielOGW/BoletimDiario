@@ -6,7 +6,14 @@ import { cn } from '@/utils/cn';
 import type { CabecalhoImpressao } from '@/features/camera/FolhaCamera';
 import { equipamentosDoDepartamento } from '@/features/diaria/equipamentos';
 
-import { resumoDeTracks, resumoDoDia, type LinhaSom } from './estrutura';
+import {
+  canaisDoDia,
+  resumoDeTracks,
+  resumoDoDia,
+  temProblema,
+  type LinhaSom,
+  type RoloDoDia,
+} from './estrutura';
 
 /**
  * A folha A4 do Boletim de Som — HTML + CSS de impressão, sem biblioteca de PDF.
@@ -62,11 +69,16 @@ export interface FolhaSomProps {
   cabecalho: CabecalhoImpressao;
   config?: LocalSoundDayConfig;
   linhas: LinhaSom[];
+  /** Rolos do dia (ADR-041). Opcional: sem cadastro, a folha sai como saía. */
+  rolos?: RoloDoDia[];
 }
 
-export function FolhaSom({ cabecalho, config, linhas }: FolhaSomProps) {
+export function FolhaSom({ cabecalho, config, linhas, rolos = [] }: FolhaSomProps) {
   const { producao, diaria, equipe } = cabecalho;
   const resumo = resumoDoDia(linhas);
+  const canais = canaisDoDia(linhas);
+  const selecionados = linhas.filter((linha) => linha.circled);
+  const comProblema = linhas.filter(temProblema);
 
   /** Só o equipamento de Som: o boom não interessa ao cabeçalho da câmera, nem o contrário. */
   const equipamentos = equipamentosDoDepartamento(cabecalho.equipamentos, 'SOUND');
@@ -103,6 +115,8 @@ export function FolhaSom({ cabecalho, config, linhas }: FolhaSomProps) {
             <dd>{config?.soundMixer || '—'}</dd>
             <dt className="font-semibold text-zinc-500">Boom</dt>
             <dd>{config?.boomOperator || '—'}</dd>
+            <dt className="font-semibold text-zinc-500">Gravador</dt>
+            <dd>{config?.recorder || '—'}</dd>
           </dl>
         </div>
       </header>
@@ -112,13 +126,15 @@ export function FolhaSom({ cabecalho, config, linhas }: FolhaSomProps) {
         <h2 className="mb-2 text-[11px] font-bold uppercase tracking-widest text-zinc-700">
           Resumo da diária
         </h2>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
           <StatCard label="Takes" value={resumo.takes} />
           <StatCard label="Com som" value={resumo.comSom} />
           <StatCard label="Circled" value={resumo.circled} />
           <StatCard label="MOS" value={resumo.mos} />
           <StatCard label="NG" value={resumo.ng} />
           <StatCard label="Arquivos" value={resumo.arquivos} />
+          <StatCard label="Rolos" value={Math.max(rolos.length, resumo.rolls.length)} />
+          <StatCard label="Problemas" value={resumo.comProblema} />
         </div>
 
         <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
@@ -168,6 +184,78 @@ export function FolhaSom({ cabecalho, config, linhas }: FolhaSomProps) {
           </p>
         ) : null}
       </section>
+
+      {/* ===== Rolos / cartões (ADR-041) ===== */}
+      {rolos.length > 0 ? (
+        <section className="mt-6 break-inside-avoid">
+          <Titulo>Rolos e cartões</Titulo>
+          <table className="pdf-table w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="border-b border-zinc-400 text-left">
+                <Th>Roll</Th>
+                <Th>Mídia</Th>
+                <Th>Equipamento</Th>
+                <Th className="text-right">Arquivos</Th>
+                <Th>Primeiro → último</Th>
+                <Th>Observações</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {rolos.map((rolo) => {
+                const nomes = rolo.arquivos.map((linha) => linha.arquivo).filter(Boolean);
+                return (
+                  <tr key={rolo.rotulo} className="border-b border-zinc-200 align-top">
+                    <Td className="font-mono font-semibold">{rolo.rotulo}</Td>
+                    <Td>{rolo.midia}</Td>
+                    <Td>{rolo.gravador || config?.recorder || ''}</Td>
+                    <Td className="text-right font-mono">{rolo.arquivos.length}</Td>
+                    <Td className="font-mono">
+                      {nomes.length > 0
+                        ? nomes.length === 1
+                          ? nomes[0]
+                          : `${nomes[0]} → ${nomes[nomes.length - 1]}`
+                        : ''}
+                    </Td>
+                    <Td>{rolo.nota}</Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
+
+      {/* ===== Distribuição de canais e microfones (ADR-041) ===== */}
+      {canais.length > 0 ? (
+        <section className="mt-6 break-inside-avoid">
+          <Titulo>Canais e microfones</Titulo>
+          <table className="pdf-table w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="border-b border-zinc-400 text-left">
+                <Th className="text-right">Canal</Th>
+                <Th>Identificação</Th>
+                <Th>Microfone</Th>
+                <Th>Captação</Th>
+                <Th className="text-right">Takes</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {canais.map((canal) => (
+                <tr
+                  key={`${canal.index}-${canal.nome}-${canal.microfone}-${canal.captacao}`}
+                  className="border-b border-zinc-200 align-top"
+                >
+                  <Td className="text-right font-mono">{canal.index}</Td>
+                  <Td>{canal.nome}</Td>
+                  <Td>{canal.microfone}</Td>
+                  <Td>{canal.captacao}</Td>
+                  <Td className="text-right font-mono">{canal.takes}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
 
       {/* ===== Uma linha por arquivo ===== */}
       <section className="mt-6">
@@ -229,9 +317,28 @@ export function FolhaSom({ cabecalho, config, linhas }: FolhaSomProps) {
                   <Td className="font-mono">{linha.arquivo}</Td>
                   <Td className="font-mono">{linha.tcInicio}</Td>
                   <Td className="font-mono">{linha.tcFim}</Td>
-                  <Td>{resumoDeTracks(linha.tracks)}</Td>
                   <Td>
-                    {[linha.motivoNG ? `NG: ${linha.motivoNG}` : '', linha.nota]
+                    {linha.tracks
+                      .map((track) =>
+                        [
+                          `${track.index}`,
+                          track.nome || track.fonte,
+                          track.nome && track.fonte ? `(${track.fonte})` : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' '),
+                      )
+                      .join(' · ') || resumoDeTracks(linha.tracks)}
+                  </Td>
+                  <Td>
+                    {[
+                      linha.motivoNG ? `NG: ${linha.motivoNG}` : '',
+                      linha.problemas.length > 0
+                        ? `Problemas: ${linha.problemas.join(', ')}`
+                        : '',
+                      linha.obsProblemas,
+                      linha.nota,
+                    ]
                       .filter(Boolean)
                       .join(' · ')}
                   </Td>
@@ -241,6 +348,53 @@ export function FolhaSom({ cabecalho, config, linhas }: FolhaSomProps) {
           </table>
         )}
       </section>
+
+      {/* ===== Takes selecionados ===== */}
+      {selecionados.length > 0 ? (
+        <section className="mt-6 break-inside-avoid">
+          <Titulo>Takes selecionados (circled)</Titulo>
+          <p className="text-[11px] leading-relaxed text-zinc-800">
+            {selecionados
+              .map(
+                (linha) =>
+                  `${linha.cena}${linha.bloco}/${linha.plano}/${linha.take}` +
+                  (linha.arquivo ? ` — ${linha.arquivo}` : '') +
+                  (linha.roll ? ` (roll ${linha.roll})` : ''),
+              )
+              .join(' · ')}
+          </p>
+        </section>
+      ) : null}
+
+      {/* ===== Problemas identificados ===== */}
+      {comProblema.length > 0 ? (
+        <section className="mt-6 break-inside-avoid">
+          <Titulo>Problemas identificados</Titulo>
+          <ul className="space-y-1 text-[11px] leading-snug text-zinc-800">
+            {comProblema.map((linha) => (
+              <li key={linha.takeId}>
+                <span className="font-semibold">
+                  {linha.cena}
+                  {linha.bloco}/{linha.plano}/{linha.take}
+                  {linha.arquivo ? ` · ${linha.arquivo}` : ''}:
+                </span>{' '}
+                {[linha.problemas.join(', '), linha.obsProblemas]
+                  .filter(Boolean)
+                  .join(' — ')}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {config?.notes ? (
+        <section className="mt-5 break-inside-avoid">
+          <Titulo>Observações gerais do som</Titulo>
+          <p className="whitespace-pre-wrap text-xs leading-relaxed text-zinc-700">
+            {config.notes}
+          </p>
+        </section>
+      ) : null}
 
       {diaria.notes ? (
         <section className="mt-5 break-inside-avoid">
@@ -257,6 +411,14 @@ export function FolhaSom({ cabecalho, config, linhas }: FolhaSomProps) {
         Boletim Audiovisual · Som · {dataBR(diaria.date)}
       </footer>
     </article>
+  );
+}
+
+function Titulo({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mb-2 border-b border-zinc-300 pb-1 text-[11px] font-bold uppercase tracking-widest text-zinc-700">
+      {children}
+    </h2>
   );
 }
 

@@ -148,8 +148,9 @@ lib/
 └── (storage · normalize · factory · backup · seed)   ← ATUAIS, intocados (legado)
 ```
 
-Não existe `lib/offline/photos` nem tabela de blobs: não há fotos na v1
-([ADR-022](../decisions.md#adr-022--sem-fotografias-na-v1)).
+Não existe `lib/offline/photos`: as fotos de continuidade ([ADR-042](../decisions.md#adr-042--continuidade-completa-raccord-problema-e-fotos-que-sobem-depois),
+revisão do ADR-022) moram no repositório da Continuidade, com os bytes em `photoBlobs` e a
+transferência em `lib/sync/fotos.ts`.
 
 Por que `domain/` fora de `lib/`: é o único código que roda **nos três lugares** (browser,
 route handler, script de migração) e que **não pode** importar nem Dexie, nem Drizzle, nem
@@ -234,17 +235,17 @@ departamento é o julgamento técnico de cada um. Ambos são necessários — é
 
 Cada decisão tem documento próprio; o resumo e a justificativa curta:
 
-| Área         | Escolha                                                  | Alternativas descartadas                    | Documento                                                 |
-| ------------ | -------------------------------------------------------- | ------------------------------------------- | --------------------------------------------------------- |
-| Banco remoto | **Neon Postgres** (serverless driver)                    | —                                           | [database.md](database.md)                                |
-| ORM          | **Drizzle**                                              | Prisma (peso no edge), SQL cru (sem tipos)  | [database.md](database.md)                                |
-| Autenticação | **Better Auth** (e-mail+senha, Drizzle)                  | Auth.js v5, Clerk                           | [authentication.md](authentication.md)                    |
-| Banco local  | **Dexie**, só na superfície de diária                    | LocalStorage, IDB cru, `idb`                | [offline-first.md](offline-first.md)                      |
-| Validação    | **Zod** em `lib/contracts/`                              | validação manual                            | [database.md](database.md#validação)                      |
-| Sync         | Outbox + pull por cursor + **compare-and-set por campo** | CRDT, LWW puro, versão+histórico de chaves  | [synchronization.md](synchronization.md)                  |
-| Realtime     | **Polling adaptativo**                                   | SSE (adiado), Pusher/Ably, LISTEN/NOTIFY    | [synchronization.md](synchronization.md#6-polling)        |
-| Fotos        | **Fora da v1**                                           | IndexedDB + Vercel Blob, base64 no Postgres | [ADR-022](../decisions.md#adr-022--sem-fotografias-na-v1) |
-| PDF          | **Mantém** impressão nativa + CSS A4                     | react-pdf, puppeteer                        | [features/camera.md](../features/camera.md)               |
+| Área         | Escolha                                                                 | Alternativas descartadas                   | Documento                                                                                           |
+| ------------ | ----------------------------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| Banco remoto | **Neon Postgres** (serverless driver)                                   | —                                          | [database.md](database.md)                                                                          |
+| ORM          | **Drizzle**                                                             | Prisma (peso no edge), SQL cru (sem tipos) | [database.md](database.md)                                                                          |
+| Autenticação | **Better Auth** (e-mail+senha, Drizzle)                                 | Auth.js v5, Clerk                          | [authentication.md](authentication.md)                                                              |
+| Banco local  | **Dexie**, só na superfície de diária                                   | LocalStorage, IDB cru, `idb`               | [offline-first.md](offline-first.md)                                                                |
+| Validação    | **Zod** em `lib/contracts/`                                             | validação manual                           | [database.md](database.md#validação)                                                                |
+| Sync         | Outbox + pull por cursor + **compare-and-set por campo**                | CRDT, LWW puro, versão+histórico de chaves | [synchronization.md](synchronization.md)                                                            |
+| Realtime     | **Polling adaptativo**                                                  | SSE (adiado), Pusher/Ably, LISTEN/NOTIFY   | [synchronization.md](synchronization.md#6-polling)                                                  |
+| Fotos        | **Só Continuidade**: IndexedDB + base64 no Postgres, fora do `sync_log` | Vercel Blob, tabela `photos` genérica      | [ADR-042](../decisions.md#adr-042--continuidade-completa-raccord-problema-e-fotos-que-sobem-depois) |
+| PDF          | **Mantém** impressão nativa + CSS A4                                    | react-pdf, puppeteer                       | [features/camera.md](../features/camera.md)                                                         |
 
 Sobre a regra de **zero dependências de runtime**: ela é mantida como princípio, mas passa a
 ter exceções **registradas**. A regra existe para evitar carregar biblioteca por preguiça em

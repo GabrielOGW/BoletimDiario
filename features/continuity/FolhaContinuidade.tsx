@@ -6,7 +6,13 @@ import { cn } from '@/utils/cn';
 import type { CabecalhoImpressao } from '@/features/camera/FolhaCamera';
 
 import { paginasComRessalva } from './RelatorioProgresso';
-import type { ContagensDoDia, LinhaContinuidade } from './estrutura';
+import {
+  alteracoesDeDialogo,
+  pendenciasDoDia,
+  type ContagensDoDia,
+  type LinhaContinuidade,
+  type RaccordDaCena,
+} from './estrutura';
 
 /**
  * As duas folhas A4 da Continuidade — mesmo mecanismo de impressão dos outros módulos.
@@ -33,6 +39,13 @@ export interface FolhaContinuidadeProps {
   linhas: LinhaContinuidade[];
   contagens: ContagensDoDia;
   relatorio?: LocalDailyProgressReport;
+  /** Notas de raccord, estado do set e fotos, por cena (ADR-042). */
+  raccord?: RaccordDaCena[];
+  /**
+   * `photoId → object URL`, já resolvido pela tela a partir do banco local. A folha não
+   * consulta nada — imprime o que recebeu, inclusive em modo avião.
+   */
+  urlsDasFotos?: Record<string, string>;
 }
 
 export function FolhaContinuidade(props: FolhaContinuidadeProps) {
@@ -46,11 +59,16 @@ export function FolhaContinuidade(props: FolhaContinuidadeProps) {
 function Cabecalho({
   cabecalho,
   titulo,
+  continuista,
 }: {
   cabecalho: CabecalhoImpressao;
   titulo: string;
+  continuista?: string;
 }) {
   const { producao, diaria } = cabecalho;
+  // Quem assina o relatório, ou a equipe de continuidade da sala — nunca redigitado.
+  const nome =
+    continuista?.trim() || cabecalho.equipe.map((pessoa) => pessoa.nome).join(', ');
 
   return (
     <header className="border-b-2 border-zinc-900 pb-4">
@@ -73,6 +91,8 @@ function Cabecalho({
           <dd className="font-semibold">{diaria.dayNumber || '—'}</dd>
           <dt className="font-semibold text-zinc-500">Direção</dt>
           <dd>{producao.director || '—'}</dd>
+          <dt className="font-semibold text-zinc-500">Continuidade</dt>
+          <dd>{nome || '—'}</dd>
           <dt className="font-semibold text-zinc-500">Locação</dt>
           <dd>{diaria.location || '—'}</dd>
         </dl>
@@ -81,17 +101,42 @@ function Cabecalho({
   );
 }
 
-/** O boletim de continuidade: por cena, com os takes e as notas de ação (§8). */
-function FolhaDeCenas({ cabecalho, linhas }: FolhaContinuidadeProps) {
+/**
+ * O boletim de continuidade: por cena, com os takes, as notas de ação, o raccord e as
+ * fotos (§8, ADR-042). É o documento da montagem — por isso termina com o que ela lê
+ * primeiro: takes selecionados, alterações de diálogo e pendências.
+ */
+function FolhaDeCenas({
+  cabecalho,
+  linhas,
+  relatorio,
+  raccord = [],
+  urlsDasFotos = {},
+}: FolhaContinuidadeProps) {
   const porCena = new Map<string, LinhaContinuidade[]>();
   for (const linha of linhas) {
     const chave = `${linha.cena}|${linha.bloco}`;
     porCena.set(chave, [...(porCena.get(chave) ?? []), linha]);
   }
 
+  // O raccord é por **número** de cena (os blocos são a mesma cena de roteiro): sai uma
+  // vez, depois do último bloco daquele número.
+  const raccordPorNumero = new Map(raccord.map((cena) => [cena.cena, cena]));
+  const ultimoBloco = new Map<string, string>();
+  for (const chave of porCena.keys()) ultimoBloco.set(chave.split('|')[0], chave);
+
+  const selecionados = linhas.filter((linha) => linha.print);
+  const dialogos = alteracoesDeDialogo(linhas, raccord);
+  const pendencias = pendenciasDoDia(linhas);
+  const observacoes = [relatorio?.notes, cabecalho.diaria.notes].filter(Boolean);
+
   return (
     <article className="print-sheet mx-auto w-full max-w-[820px] rounded-none bg-white p-6 text-zinc-900 shadow-2xl sm:rounded-xl sm:p-9">
-      <Cabecalho cabecalho={cabecalho} titulo="Boletim de Continuidade" />
+      <Cabecalho
+        cabecalho={cabecalho}
+        titulo="Boletim de Continuidade"
+        continuista={relatorio?.signedBy ?? ''}
+      />
 
       {linhas.length === 0 ? (
         <p className="mt-6 text-sm text-zinc-500">Nenhum take registrado.</p>
@@ -99,6 +144,10 @@ function FolhaDeCenas({ cabecalho, linhas }: FolhaContinuidadeProps) {
         <div className="mt-5 space-y-5">
           {[...porCena.entries()].map(([chave, daCena]) => {
             const [numero, bloco] = chave.split('|');
+            const extras =
+              ultimoBloco.get(numero) === chave
+                ? raccordPorNumero.get(numero)
+                : undefined;
 
             return (
               <section key={chave} className="pdf-cena">
@@ -144,6 +193,17 @@ function FolhaDeCenas({ cabecalho, linhas }: FolhaContinuidadeProps) {
                         </span>
                       </div>
 
+                      {linha.enquadramento ? (
+                        <p className="mt-0.5 text-zinc-600">{linha.enquadramento}</p>
+                      ) : null}
+
+                      {linha.problema ? (
+                        <p className="mt-1 font-semibold text-zinc-900">
+                          ⚠ Problema de continuidade
+                          {linha.problemaDescricao ? `: ${linha.problemaDescricao}` : ''}
+                        </p>
+                      ) : null}
+
                       {linha.nota ? (
                         <p className="mt-1 text-zinc-800">{linha.nota}</p>
                       ) : null}
@@ -163,11 +223,51 @@ function FolhaDeCenas({ cabecalho, linhas }: FolhaContinuidadeProps) {
                     </div>
                   ))}
                 </div>
+
+                {extras ? <RaccordImpresso cena={extras} urls={urlsDasFotos} /> : null}
               </section>
             );
           })}
         </div>
       )}
+
+      {selecionados.length > 0 ? (
+        <section className="mt-6 break-inside-avoid">
+          <Titulo>Takes selecionados</Titulo>
+          <p className="text-[11px] leading-relaxed text-zinc-800">
+            {selecionados
+              .map(
+                (linha) =>
+                  `${linha.cena}${linha.bloco}/${linha.plano}/${linha.take}` +
+                  (linha.duracao ? ` (${linha.duracao})` : ''),
+              )
+              .join(' · ')}
+          </p>
+        </section>
+      ) : null}
+
+      {dialogos.length > 0 ? (
+        <section className="mt-5 break-inside-avoid">
+          <Titulo>Alterações de diálogo</Titulo>
+          <ListaComOnde itens={dialogos} />
+        </section>
+      ) : null}
+
+      {pendencias.length > 0 ? (
+        <section className="mt-5 break-inside-avoid">
+          <Titulo>Pendências de continuidade</Titulo>
+          <ListaComOnde itens={pendencias} />
+        </section>
+      ) : null}
+
+      {observacoes.length > 0 ? (
+        <section className="mt-5 break-inside-avoid">
+          <Titulo>Observações gerais</Titulo>
+          <p className="whitespace-pre-wrap text-xs leading-relaxed text-zinc-700">
+            {observacoes.join('\n\n')}
+          </p>
+        </section>
+      ) : null}
 
       <footer className="mt-6 border-t border-zinc-300 pt-2 text-[9px] text-zinc-500">
         Boletim Audiovisual · Continuidade · {dataBR(cabecalho.diaria.date)}
@@ -187,7 +287,11 @@ function FolhaProgresso({ cabecalho, contagens, relatorio }: FolhaContinuidadePr
 
   return (
     <article className="print-sheet mx-auto w-full max-w-[820px] rounded-none bg-white p-6 text-zinc-900 shadow-2xl sm:rounded-xl sm:p-9">
-      <Cabecalho cabecalho={cabecalho} titulo="Relatório de Progresso da Diária" />
+      <Cabecalho
+        cabecalho={cabecalho}
+        titulo="Relatório de Progresso da Diária"
+        continuista={relatorio?.signedBy ?? ''}
+      />
 
       <section className="mt-4 break-inside-avoid">
         <Titulo>Horários</Titulo>
@@ -269,6 +373,76 @@ function FolhaProgresso({ cabecalho, contagens, relatorio }: FolhaContinuidadePr
         Boletim Audiovisual · Progresso da diária · {dataBR(diaria.date)}
       </footer>
     </article>
+  );
+}
+
+/** Raccord, estado do set e fotos de uma cena — depois dos takes dela (ADR-042). */
+function RaccordImpresso({
+  cena,
+  urls,
+}: {
+  cena: RaccordDaCena;
+  urls: Record<string, string>;
+}) {
+  const textos = [...cena.notas, ...cena.estado];
+  if (textos.length === 0 && cena.fotos.length === 0) return null;
+
+  return (
+    <div className="mt-2 rounded border border-zinc-300 px-2.5 py-2 text-[11px] leading-snug">
+      <p className="mb-1 text-[9px] font-bold uppercase tracking-widest text-zinc-500">
+        Raccord · cena {cena.cena}
+      </p>
+
+      {textos.length > 0 ? (
+        <ul className="space-y-0.5">
+          {textos.map((item) => (
+            <li key={item.id} className="text-zinc-800">
+              <span className="font-semibold text-zinc-600">
+                {item.onde} · {item.categoria}:
+              </span>{' '}
+              {item.texto}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {cena.fotos.length > 0 ? (
+        <ul className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {cena.fotos.map((foto) => (
+            <li key={foto.id} className="break-inside-avoid">
+              {urls[foto.id] ? (
+                // eslint-disable-next-line @next/next/no-img-element -- object URL local, impressa sem rede
+                <img
+                  src={urls[foto.id]}
+                  alt={foto.legenda || foto.categoria}
+                  className="aspect-[4/3] w-full rounded-sm border border-zinc-300 object-cover"
+                />
+              ) : (
+                <div className="flex aspect-[4/3] w-full items-center justify-center rounded-sm border border-dashed border-zinc-300 text-[9px] text-zinc-500">
+                  foto não baixada neste aparelho
+                </div>
+              )}
+              <p className="mt-0.5 text-[9px] leading-tight text-zinc-600">
+                {foto.onde} · {foto.categoria}
+                {foto.legenda ? ` — ${foto.legenda}` : ''}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function ListaComOnde({ itens }: { itens: { onde: string; texto: string }[] }) {
+  return (
+    <ul className="space-y-1 text-[11px] leading-snug text-zinc-800">
+      {itens.map((item, indice) => (
+        <li key={`${item.onde}-${indice}`}>
+          <span className="font-semibold">{item.onde}:</span> {item.texto}
+        </li>
+      ))}
+    </ul>
   );
 }
 

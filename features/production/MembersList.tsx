@@ -21,7 +21,7 @@ import {
   transferirPosseAction,
 } from './actions';
 import { DEPARTMENT_LABEL, ROLE_HINT, ROLE_LABEL } from './labels';
-import { DEPARTMENT_OPTIONS, ROLE_OPTIONS } from './options';
+import { ROLE_OPTIONS, departmentOptionsFor } from './options';
 import { SubmitButton } from './SubmitButton';
 
 interface MembersListProps {
@@ -102,7 +102,7 @@ function MemberCard({
             label="Departamento"
             name="department"
             defaultValue={member.department}
-            options={DEPARTMENT_OPTIONS}
+            options={departmentOptionsFor(member.department)}
           />
           <TextField
             label="Função (opcional)"

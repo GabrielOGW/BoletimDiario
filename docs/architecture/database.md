@@ -465,12 +465,36 @@ create table equipment_assignments (
 );
 ```
 
-### 4.5 Fotografias — não existem na v1
+### 4.5 Fotografias de continuidade — `2026-11-12`
 
-A tabela `photos` foi **removida** desta especificação
-([ADR-022](../decisions.md#adr-022--sem-fotografias-na-v1)). Não há tabela, não há coluna, não
-há blob storage e não há upload. Quando/se voltar, o formato natural é `subject_type` +
-`subject_id` sobre cena/setup/take — mas nada disso é implementado agora.
+A tabela genérica `photos` continua não existindo. As fotos voltaram **só para a
+Continuidade** ([ADR-042](../decisions.md#adr-042--continuidade-completa-raccord-problema-e-fotos-que-sobem-depois), revisão do ADR-022), em duas tabelas
+(migration `0010_tres_departamentos`):
+
+```sql
+create table continuity_photos (          -- o REGISTRO: sincroniza como qualquer entidade
+  id, production_id, scene_id, setup_id, take_id,   -- escopo flexível, check >= 1
+  category text, caption text,
+  mime_type text, width int, height int, size_bytes int,
+  <audit>
+);                                         -- triggers touch_row + write_sync_log
+
+create table continuity_photo_blobs (     -- os BYTES: imutáveis, fora do sync_log
+  photo_id    uuid primary key references continuity_photos(id) on delete cascade,
+  production_id uuid not null references productions(id) on delete cascade,
+  mime_type   text not null,
+  size_bytes  int  not null,
+  data_base64 text not null,               -- base64: o driver HTTP do Neon fala JSON
+  created_at  timestamptz not null default now(),
+  created_by  uuid references users(id)
+);                                         -- SEM trigger: não passa pelo pull
+```
+
+A mesma migration acrescenta `continuity_notes` (notas de raccord, escopo flexível),
+`sound_rolls` (rolos por diária) e as colunas `sound_day_config.recorder/notes`,
+`sound_take_data.issues/issue_notes`, `sound_take_tracks.pickup` e
+`continuity_take_data.has_issue/issue`. É **só aditiva**: nenhum `DROP`, nenhuma coluna muda de
+tipo, e a única `NOT NULL` nova (`has_issue`) nasce com default.
 
 ### 4.6 Log de sincronização
 

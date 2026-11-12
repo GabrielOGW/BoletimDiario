@@ -30,19 +30,29 @@ import { BoletimCard } from '@/features/boletins/BoletimCard';
 import { BackupControls } from '@/features/backup/BackupControls';
 import { ContinuarDiaria } from '@/features/diaria/ContinuarDiaria';
 
+import { EscolhaDepartamento } from './EscolhaDepartamento';
+
 export function BoletimListView() {
   const router = useRouter();
   const mounted = useMounted();
   const { all, results, query, setQuery, loaded, create, duplicate, remove } =
     useBoletins();
   const [pendingDelete, setPendingDelete] = useState<Boletim | null>(null);
+  const [escolhendo, setEscolhendo] = useState(false);
 
   const ready = mounted && loaded;
 
-  const handleNew = () => {
+  /**
+   * O Boletim de Câmera local — exatamente o que "Novo boletim" sempre fez. Agora é uma
+   * das três escolhas da tela de departamento (ADR-040), e não o gesto direto do botão.
+   */
+  const criaBoletimDeCamera = () => {
+    setEscolhendo(false);
     const created = create();
     router.push(`/legado/editar?id=${created.id}`);
   };
+
+  const handleNew = () => setEscolhendo(true);
 
   return (
     <div className="flex min-h-dvh flex-col bg-ink">
@@ -166,6 +176,12 @@ export function BoletimListView() {
           Novo boletim
         </Button>
       </StickyActionBar>
+
+      <EscolhaDepartamento
+        aberta={escolhendo}
+        onFechar={() => setEscolhendo(false)}
+        onCamera={criaBoletimDeCamera}
+      />
 
       <ConfirmDialog
         open={pendingDelete !== null}

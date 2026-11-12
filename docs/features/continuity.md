@@ -76,19 +76,33 @@ take ou perder a precisão do copo.
 Itens de cena são **herdados** pelos setups e takes na visualização (herança de exibição, sem
 cópia de linha) e só viram registro próprio quando o estado muda.
 
-## 5. Fotografias — fora da v1
+## 5. Fotografias e notas de raccord — `2026-11-12`
 
-**Não há fotografias nesta versão**
-([ADR-022](../decisions.md#adr-022--sem-fotografias-na-v1)). Elas saem de requisitos, modelo,
-armazenamento, sincronização, UX e gestão de cota — não há tabela `photos`, não há blob no
-IndexedDB, não há upload.
+> Até `2026-11-12` esta seção dizia "fotografias — fora da v1" (ADR-022). O proprietário as
+> trouxe de volta, **só para a Continuidade** — ver [ADR-042](../decisions.md#adr-042--continuidade-completa-raccord-problema-e-fotos-que-sobem-depois).
 
-O objetivo é manter o aplicativo leve, rápido e barato. O modelo continua extensível
-(`subject_type` + `subject_id` é o formato natural quando/se voltar), mas **nada é implementado
-agora**.
+**Notas de raccord** (`continuity_notes`): a observação que não é objeto, figurino, cabelo nem
+cenário — posição dos atores, direção do olhar, movimentação, alteração de diálogo, movimento
+entre planos, outro. Categoria num toque, texto livre, presa à **cena, ao plano ou ao take**
+(o mesmo escopo do §4). Id aleatório: duas notas iguais são duas observações.
 
-Consequência prática para o módulo: a continuidade de estado é registrada em **texto**, nas
-quatro coleções do §4. É como o caderno funciona hoje, e é o que a equipe já sabe fazer.
+**Fotografias** (`continuity_photos` + `continuity_photo_blobs`): objetos, figurino, cabelo e
+maquiagem, posição dos atores, composição. Também presas a cena, plano ou take, com categoria e
+legenda.
+
+- Tiradas pela câmera do aparelho ou escolhidas da galeria (`<input type="file">` sem
+  `capture`), **comprimidas no aparelho** (JPEG, lado maior 1600 px) antes de qualquer gravação.
+- Registro, bytes e fila nascem na mesma transação Dexie — funcionam inteiras em modo avião.
+- Os bytes sobem no ciclo do motor, **depois** do registro; os das diárias fixadas descem
+  sozinhos, os demais quando alguém abre a foto.
+- Armazenamento: pedido de `persist()` na primeira foto, recusa de foto nova acima de 90% da
+  cota (com o motivo na tela), download automático só com mais de 15% livre.
+
+Na tela, cada nível tem um "Raccord e fotos" fechado, com a contagem no rótulo — cena (depois do
+estado do set), plano (depois do enquadramento) e take (depois do estado do take).
+
+**Problema de continuidade** no take (`has_issue` + `issue`): um toque marca, um campo diz qual.
+Independente do veredito — o print pode ser justamente o take com problema.
 
 ## 6. Fluxo em set
 
@@ -156,7 +170,7 @@ consulta com três campos preenchidos.
 
 ### O que **não** entra na v1
 
-- **Fotografias** ([ADR-022](../decisions.md#adr-022--sem-fotografias-na-v1)) — decisão firme.
+- ~~**Fotografias** (ADR-022)~~ — entraram em `2026-11-12`, [ADR-042](../decisions.md#adr-042--continuidade-completa-raccord-problema-e-fotos-que-sobem-depois).
 - **Lined script e facing pages.** É o formato tradicional, e reproduzi-lo exige importar o
   roteiro e marcar cobertura linha a linha. Fica para depois, e o que ele entrega de mais
   valioso — que take cobre que trecho — já é aproximado pela descrição do setup.
@@ -167,7 +181,10 @@ consulta com três campos preenchidos.
 ## 8. Relatório
 
 - **PDF de continuidade** em A4 (mesmo mecanismo): por cena, com setups, takes, selecionados
-  destacados e notas de ação.
+  destacados e notas de ação. Desde `2026-11-12` (ADR-042): continuísta no cabeçalho (quem
+  assina, ou a equipe de continuidade da sala), enquadramento de cada plano, problema de
+  continuidade por take, raccord e fotos por cena, e ao final **takes selecionados**,
+  **alterações de diálogo**, **pendências** e **observações gerais**.
 - **Relatório de Progresso da Diária**, do §7 — em PDF, com os números calculados e os campos
   livres preenchidos na hora do wrap.
 
@@ -177,7 +194,7 @@ Entra: cena, setup, take, notas de ação, três vereditos com motivo de NG, nat
 props, figurino, cabelo/maquiagem, cenografia, PDF de continuidade e **Relatório de Progresso
 da Diária**.
 
-Não entra: **fotografias** (ADR-022), import de roteiro (PDF/Final Draft), lined script,
+Não entra: ~~fotografias (ADR-022)~~ (entraram com ADR-042), import de roteiro (PDF/Final Draft), lined script,
 marcação de cobertura por linha de diálogo, timing automático. São o passo seguinte natural e
 nenhum bloqueia o uso.
 
@@ -257,3 +274,15 @@ Verificado por `npm run test:continuidade` (45 checks).
 [Script Supervisor Report Explained — SetHero](https://sethero.com/blog/script-supervisor-report-explained/) ·
 [Ultimate Guide to Script Supervisors — StudioBinder](https://www.studiobinder.com/blog/script-supervisor-forms-template/) ·
 [How to Read a Lined Script — EditStock](https://editstock.com/blogs/all/how-to-read-a-lined-script)
+
+### Os três departamentos — `2026-11-12`
+
+| Item                                                         | Estado                                      |
+| ------------------------------------------------------------ | ------------------------------------------- |
+| Novo plano e próximo take criados pela Continuidade          | ✅ `NovoPlano` compartilhado, ids derivados |
+| Descrição do enquadramento no plano                          | ✅ `setups.description`                     |
+| Problema de continuidade no take                             | ✅ `has_issue` + `issue`                    |
+| Notas de raccord em cena, plano ou take                      | ✅ `continuity_notes`                       |
+| Fotografias em cena, plano ou take                           | ✅ ADR-042                                  |
+| Relatório: raccord, fotos, selecionados, diálogo, pendências | ✅ `raccordDoDia`, `pendenciasDoDia`        |
+| Produção, data, diretor, nº da diária, continuísta           | ✅ lidos da sala — nunca redigitados        |

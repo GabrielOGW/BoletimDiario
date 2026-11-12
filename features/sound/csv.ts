@@ -40,6 +40,10 @@ const COLUNAS = [
   'julgamento',
   'motivo_ng',
   'nota',
+  // ADR-041: no fim das colunas fixas, antes das tracks — quem já tem um template por
+  // nome de coluna não perde nada, e as tracks continuam sendo o fim da linha.
+  'problemas',
+  'obs_problemas',
 ] as const;
 
 export interface ContextoCSV {
@@ -63,9 +67,13 @@ function campo(valor: string | number | null | undefined): string {
 const simNao = (valor: boolean) => (valor ? 'sim' : 'não');
 
 /** "Boom · MKH 416" — nome e fonte da track numa célula só. */
-function celulaDeTrack(track: { nome: string; fonte: string } | undefined): string {
+function celulaDeTrack(
+  track: { nome: string; fonte: string; captacao?: string } | undefined,
+): string {
   if (!track) return '';
-  return [track.nome, track.fonte].filter(Boolean).join(' · ');
+  const base = [track.nome, track.fonte].filter(Boolean).join(' · ');
+  // A captação vai entre parênteses, e só quando existe: "João · COS-11 (Lapela)".
+  return track.captacao ? `${base} (${track.captacao})`.trim() : base;
 }
 
 /** Quantas colunas de track o arquivo terá. */
@@ -114,6 +122,8 @@ export function montaCSV(linhas: LinhaSom[], contexto: ContextoCSV): string {
       linha.julgamento ?? '',
       linha.motivoNG,
       linha.nota,
+      linha.problemas.join(' · '),
+      linha.obsProblemas,
       ...Array.from({ length: totalTracks }, (_, i) =>
         celulaDeTrack(porIndice.get(i + 1)),
       ),

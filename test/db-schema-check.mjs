@@ -76,7 +76,15 @@ async function run() {
   const [photos] = await sql`
     select count(*)::int as n from information_schema.tables where table_name = 'photos'
   `;
-  check('não existe tabela photos', photos.n === 0);
+  // ADR-042 revisa ADR-022: as fotos voltaram, mas **de continuidade** e em duas tabelas
+  // — o registro sincroniza, os bytes não. Uma `photos` genérica continua não existindo.
+  check('não existe tabela photos genérica', photos.n === 0);
+
+  const [blobTrigger] = await sql`
+    select count(*)::int as n from information_schema.triggers
+     where trigger_schema = 'public' and event_object_table = 'continuity_photo_blobs'
+  `;
+  check('os bytes das fotos ficam fora do sync_log', blobTrigger.n === 0);
 
   const missingScope = await sql`
     select t.table_name from information_schema.tables t
@@ -96,7 +104,8 @@ async function run() {
     select count(distinct trigger_name)::int as n from information_schema.triggers
     where trigger_schema = 'public' and trigger_name like '%_sync_log'
   `;
-  check('19 tabelas de domínio escrevem no sync_log', syncTriggers.n === 19);
+  // 19 até a Fase 10; +3 com ADR-041/042: sound_rolls, continuity_notes, continuity_photos.
+  check('22 tabelas de domínio escrevem no sync_log', syncTriggers.n === 22);
 
   const [touchTriggers] = await sql`
     select count(distinct trigger_name)::int as n from information_schema.triggers

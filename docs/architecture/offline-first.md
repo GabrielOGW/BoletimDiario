@@ -3,7 +3,10 @@
 > **Revisado na rodada 2.** A estratégia deixou de ser "offline-first absoluto" e passou a ser
 > **offline capable + synchronization**, delimitada por uma fronteira explícita
 > ([ADR-016](../decisions.md#adr-016--fronteira-offline-explícita)). O capítulo de fotografias
-> foi **removido** ([ADR-022](../decisions.md#adr-022--sem-fotografias-na-v1)).
+> foi **removido** ([ADR-022](../decisions.md#adr-022--sem-fotografias-na-v1)) — e voltou, só
+> para a Continuidade, em `2026-11-12` ([ADR-042](../decisions.md#adr-042--continuidade-completa-raccord-problema-e-fotos-que-sobem-depois)): bytes em
+> `photoBlobs` (Dexie v5), comprimidos no aparelho, enviados depois do registro, com
+> `persist()` e teto de cota. Ver §8.
 
 ---
 
@@ -268,3 +271,22 @@ Cenário de teste obrigatório, antes de cada release:
 offline → cria take → fecha o PWA → reabre → dado presente
         → volta a rede → sincroniza → outro dispositivo recebe
 ```
+
+---
+
+## 8. Fotografias de continuidade — `2026-11-12`
+
+[ADR-042](../decisions.md#adr-042--continuidade-completa-raccord-problema-e-fotos-que-sobem-depois). O registro da foto é uma entidade comum da fronteira
+(`continuityPhoto`); os bytes são a única coisa no banco local que **não** passa pela outbox.
+
+| Passo        | O que acontece                                                                             |
+| ------------ | ------------------------------------------------------------------------------------------ |
+| Tirar        | `comprimeImagem` (JPEG ≤ 1600 px) → `cabeNoAparelho` (< 90% da cota) → `salvaFoto`         |
+| Gravar       | registro + `photoBlobs` + fila numa transação só                                           |
+| Subir        | `lib/sync/fotos.ts`, no ciclo do motor, depois do push — só quando o registro saiu da fila |
+| Descer       | fotos das diárias fixadas, 4 por ciclo, com > 15% livre; as demais ao abrir a foto         |
+| Apagar       | exclusão lógica do registro; os bytes saem do aparelho só se já subiram                    |
+| Despejo (R5) | `navigator.storage.persist()` na primeira foto                                             |
+
+As telas continuam sem `fetch`: elas gravam no Dexie e leem dele. `baixaFoto` (o download sob
+demanda) mora em `lib/sync`, como `syncNow`.

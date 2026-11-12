@@ -42,3 +42,22 @@ export function agrupaCenas(cenas: LocalScene[]): CenaAgrupada[] {
       ),
     }));
 }
+
+/**
+ * O código do próximo plano do bloco, quando ele nasce fora da Câmera (ADR-040).
+ *
+ * A Câmera numera planos em sequência dentro do bloco ("1", "2", "3"); esta função segue a
+ * mesma convenção — o maior código numérico mais um — para que a Continuidade e o Som,
+ * criando o plano antes da Câmera, produzam o **mesmo** código que ela produziria. Com o
+ * id derivado de `(cena, diária, código)` (ADR-019), os três convergem para o mesmo
+ * registro em vez de criarem "plano 3" três vezes.
+ *
+ * O setup de wild track (`WILD`) e códigos não numéricos ("A", "2B") não entram na conta.
+ */
+export function proximoCodigoDePlano(setups: readonly { code: string }[]): string {
+  const numericos = setups
+    .map((setup) => setup.code.trim())
+    .filter((codigo) => /^\d+$/.test(codigo))
+    .map(Number);
+  return String(numericos.length > 0 ? Math.max(...numericos) + 1 : 1);
+}

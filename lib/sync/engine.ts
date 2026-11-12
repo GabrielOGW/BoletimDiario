@@ -33,6 +33,7 @@ import {
 } from '@/lib/offline/db';
 import { backoffMs, nextBatch, pendingCount } from '@/lib/offline/outbox';
 import { pinShootingDay } from '@/lib/offline/repos/diaria';
+import { sincronizaFotos } from '@/lib/sync/fotos';
 import { uid } from '@/utils/id';
 
 // ---- Estado visível ----
@@ -469,6 +470,21 @@ async function ciclo(): Promise<void> {
 
   await push(ativo.productionId);
   await pull(ativo.productionId);
+
+  // Fotos depois do texto, e nunca no lugar dele (ADR-042): o registro da foto sobe no
+  // push acima, e só então os bytes têm um registro para se prender no servidor.
+  // `getSyncSnapshot()` e não `snapshot`: o push e o pull acima podem tê-lo trocado, e
+  // o TypeScript ainda acha que ele é o do começo da função.
+  const estado = getSyncSnapshot();
+  if (ativo && estado.sync !== 'OUTDATED' && estado.server !== 'UNREACHABLE') {
+    const aceito = await sincronizaFotos(ativo.productionId);
+    if (!aceito) {
+      update({
+        sync: 'OUTDATED',
+        message: 'Atualize o app para continuar sincronizando.',
+      });
+    }
+  }
 }
 
 function agenda(): void {

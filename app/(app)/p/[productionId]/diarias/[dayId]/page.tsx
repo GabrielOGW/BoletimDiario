@@ -54,6 +54,8 @@ export default async function DiariaPage({
       />
 
       <PageContainer as="main" className="flex flex-col gap-4 py-4 pb-8">
+        {/* Os três departamentos, cada um com a sua cor (ADR-040) — e o nome sempre
+            escrito: a cor é apoio de leitura, nunca a única identificação. */}
         <Link
           href={`/p/${productionId}/diarias/${dayId}/camera`}
           className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-brand/30 bg-brand-soft px-4 py-3 transition hover:brightness-110"
@@ -71,30 +73,30 @@ export default async function DiariaPage({
 
         <Link
           href={`/p/${productionId}/diarias/${dayId}/som`}
-          className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-brand/30 bg-brand-soft px-4 py-3 transition hover:brightness-110"
+          className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 transition hover:brightness-110"
         >
-          <MicIcon size={20} className="text-brand" />
+          <MicIcon size={20} className="text-emerald-400" />
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-semibold text-zinc-100">
               Boletim de Som
             </span>
             <span className="block text-xs text-zinc-400">
-              Os mesmos takes da Câmera — julgamento, natureza, canais e timecode
+              Rolos, arquivos, canais, microfones e problemas — os mesmos takes da Câmera
             </span>
           </span>
         </Link>
 
         <Link
           href={`/p/${productionId}/diarias/${dayId}/continuidade`}
-          className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-brand/30 bg-brand-soft px-4 py-3 transition hover:brightness-110"
+          className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-sky-500/40 bg-sky-500/10 px-4 py-3 transition hover:brightness-110"
         >
-          <FileTextIcon size={20} className="text-brand" />
+          <FileTextIcon size={20} className="text-sky-400" />
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-semibold text-zinc-100">
               Boletim de Continuidade
             </span>
             <span className="block text-xs text-zinc-400">
-              Ação, estado do set e o relatório de progresso do dia
+              Raccord, fotos, takes selecionados e o relatório de progresso do dia
             </span>
           </span>
         </Link>

@@ -21,8 +21,12 @@ import {
   type LocalContinuitySetDressing,
   type LocalContinuityTakeData,
   type LocalContinuityWardrobe,
+  type LocalContinuityNote,
+  type LocalContinuityPhoto,
   type LocalDailyProgressReport,
+  type LocalPhotoBlob,
 } from '../db';
+import { uid } from '@/utils/id';
 
 import { createEntity, patchEntity, softDelete } from './diaria';
 
@@ -242,4 +246,187 @@ export async function patchDailyProgressReport(
   changes: Record<string, unknown>,
 ): Promise<void> {
   await patchEntity('dailyProgressReport', id, changes);
+}
+
+// ---- Notas de raccord (ADR-042) ----
+
+/**
+ * Notas de raccord presas a qualquer um dos escopos — cena, plano ou take.
+ *
+ * Mesmo desenho de `listEstado` (consulta por índice de escopo, união por id), mas sem
+ * passar por ele: a nota não é uma "coleção de estado" com chave natural, e misturá-la
+ * no tipo `ColecaoDeEstado` faria `createEstado` aceitar criá-la com id derivado — que é
+ * exatamente o que apagaria a segunda nota de "olhar" da mesma cena.
+ */
+export async function listNotas(escopo: {
+  sceneIds?: string[];
+  setupIds?: string[];
+  takeIds?: string[];
+}): Promise<LocalContinuityNote[]> {
+  return porEscopo<LocalContinuityNote>(getDb().continuityNotes, escopo);
+}
+
+/** Id **aleatório**: duas notas iguais são duas observações, não a mesma (ADR-042). */
+export async function createNota(
+  input: EscopoDeEstado & {
+    productionId: string;
+    category: string | null;
+    note: string;
+  },
+): Promise<string> {
+  const id = uid();
+  return createEntity('continuityNote', id, {
+    id,
+    productionId: input.productionId,
+    sceneId: input.sceneId ?? null,
+    setupId: input.setupId ?? null,
+    takeId: input.takeId ?? null,
+    category: input.category,
+    note: input.note,
+    version: 0,
+    _dirty: 1,
+  } as unknown as LocalContinuityNote & Record<string, unknown>);
+}
+
+export async function patchNota(id: string, changes: Record<string, unknown>) {
+  await patchEntity('continuityNote', id, changes);
+}
+
+export async function removeNota(id: string): Promise<void> {
+  await softDelete('continuityNote', id);
+}
+
+// ---- Fotografias (ADR-042) ----
+
+export async function listFotos(escopo: {
+  sceneIds?: string[];
+  setupIds?: string[];
+  takeIds?: string[];
+}): Promise<LocalContinuityPhoto[]> {
+  const fotos = await porEscopo<LocalContinuityPhoto>(getDb().continuityPhotos, escopo);
+  return fotos.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+}
+
+/**
+ * Guarda uma foto: o **registro** (que sincroniza) e os **bytes** (que ficam aqui até
+ * subir), numa transação só.
+ *
+ * Separados, haveria a janela em que o registro existe sem bytes no próprio aparelho que
+ * tirou a foto — a equipe veria "foto ainda não enviada" para sempre, porque não sobrou
+ * ninguém com os bytes para enviar.
+ */
+export async function salvaFoto(
+  input: EscopoDeEstado & {
+    productionId: string;
+    category: string | null;
+    caption?: string | null;
+    mimeType: string;
+    bytes: ArrayBuffer;
+    width: number;
+    height: number;
+  },
+): Promise<string> {
+  const db = getDb();
+  const id = uid();
+
+  await db.transaction(
+    'rw',
+    [db.continuityPhotos, db.outbox, db.photoBlobs],
+    async () => {
+      await createEntity('continuityPhoto', id, {
+        id,
+        productionId: input.productionId,
+        sceneId: input.sceneId ?? null,
+        setupId: input.setupId ?? null,
+        takeId: input.takeId ?? null,
+        category: input.category,
+        caption: input.caption ?? null,
+        mimeType: input.mimeType,
+        width: input.width,
+        height: input.height,
+        sizeBytes: input.bytes.byteLength,
+        version: 0,
+        _dirty: 1,
+      } as unknown as LocalContinuityPhoto & Record<string, unknown>);
+
+      await db.photoBlobs.put({
+        id,
+        productionId: input.productionId,
+        mimeType: input.mimeType,
+        bytes: input.bytes,
+        uploaded: 0,
+        attempts: 0,
+      });
+    },
+  );
+
+  return id;
+}
+
+export async function patchFoto(id: string, changes: Record<string, unknown>) {
+  await patchEntity('continuityPhoto', id, changes);
+}
+
+/**
+ * Apagar uma foto é exclusão lógica do **registro**.
+ *
+ * Os bytes locais só saem quando o servidor já os tem: se o apagamento virar conflito e
+ * alguém restaurar a foto, um aparelho que nunca a enviou ainda precisa dos bytes para
+ * enviá-la. Os que já subiram podem sair — descem de novo se a foto voltar.
+ */
+export async function removeFoto(id: string): Promise<void> {
+  await softDelete('continuityPhoto', id);
+  const blob = await getDb().photoBlobs.get(id);
+  if (blob?.uploaded) await getDb().photoBlobs.delete(id);
+}
+
+/** Os bytes de uma foto neste aparelho, ou `undefined` se ainda não desceram. */
+export async function getFotoBlob(id: string): Promise<LocalPhotoBlob | undefined> {
+  return getDb().photoBlobs.get(id);
+}
+
+/** Os bytes de várias fotos de uma vez — os que não estão no aparelho ficam de fora. */
+export async function getFotoBlobs(ids: string[]): Promise<LocalPhotoBlob[]> {
+  if (ids.length === 0) return [];
+  const blobs = await getDb().photoBlobs.bulkGet(ids);
+  return blobs.filter((blob): blob is LocalPhotoBlob => blob !== undefined);
+}
+
+/** Quantas fotos deste aparelho ainda não subiram — o aviso antes de desfixar a diária. */
+export async function fotosPendentes(productionId: string): Promise<number> {
+  return getDb()
+    .photoBlobs.where('[productionId+uploaded]')
+    .equals([productionId, 0])
+    .count();
+}
+
+// ---- comum ----
+
+type TabelaComEscopo<T> = {
+  where: (indice: string) => {
+    anyOf: (valores: string[]) => { toArray: () => Promise<T[]> };
+  };
+};
+
+async function porEscopo<T extends { id: string; deletedAt?: string | null }>(
+  tabela: unknown,
+  escopo: { sceneIds?: string[]; setupIds?: string[]; takeIds?: string[] },
+): Promise<T[]> {
+  const t = tabela as TabelaComEscopo<T>;
+  const por = (indice: string, valores?: string[]) =>
+    valores?.length ? t.where(indice).anyOf(valores).toArray() : null;
+
+  const consultas = [
+    por('sceneId', escopo.sceneIds),
+    por('setupId', escopo.setupIds),
+    por('takeId', escopo.takeIds),
+  ].filter((consulta) => consulta !== null);
+
+  if (consultas.length === 0) return [];
+
+  const porId = new Map<string, T>();
+  for (const linha of (await Promise.all(consultas)).flat()) {
+    if (!linha.deletedAt) porId.set(linha.id, linha);
+  }
+  return [...porId.values()];
 }

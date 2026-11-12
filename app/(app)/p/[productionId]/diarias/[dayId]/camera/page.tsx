@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { AppHeader } from '@/components/layout/AppHeader';
+import { FaixaDoDepartamento } from '@/features/diaria/FaixaDoDepartamento';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { SectionCard } from '@/components/layout/SectionCard';
 import { ClockIcon, InfoIcon, UsersIcon } from '@/components/ui/icons';
@@ -61,6 +62,7 @@ export default async function CameraPage({
         backHref={`/p/${productionId}/diarias/${dayId}`}
         right={<SyncIndicator />}
       />
+      <FaixaDoDepartamento modulo="camera" />
 
       <PageContainer as="main" className="flex flex-col gap-4 py-4 pb-8">
         <CameraDiaria

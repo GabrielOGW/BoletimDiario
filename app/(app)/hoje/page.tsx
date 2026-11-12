@@ -12,6 +12,7 @@ import { caminhoDoAtalho, rotaDoDepartamento } from '@/lib/atalhos';
 import { ContinuarDiaria } from '@/features/diaria/ContinuarDiaria';
 import { HojeRedirect } from '@/features/production/HojeRedirect';
 import { DEPARTMENT_LABEL, formatDiaria } from '@/features/production/labels';
+import { definicaoDoModulo, moduloValido } from '@/features/diaria/departamentos';
 
 export const metadata: Metadata = { title: 'Diária de hoje' };
 
@@ -28,14 +29,22 @@ export const metadata: Metadata = { title: 'Diária de hoje' };
  * quando esta consulta não encontra nada.
  *
  * A data vem do aparelho (`?d=`), não do banco: ver `HojeRedirect` e R9.
+ *
+ * `?dep=` (ADR-040) é o departamento escolhido em "Novo boletim": quem tocou em Som vai
+ * para o módulo de Som, mesmo cadastrado em outro departamento. Só os três módulos são
+ * aceitos; sem ele, vale o departamento da pessoa na sala, como antes.
  */
 export default async function HojePage({
   searchParams,
 }: {
-  searchParams: Promise<{ d?: string }>;
+  searchParams: Promise<{ d?: string; dep?: string }>;
 }) {
-  const { d } = await searchParams;
+  const { d, dep } = await searchParams;
+  const escolhido = moduloValido(dep);
   const user = await requireUser();
+
+  const moduloDe = (department: Parameters<typeof rotaDoDepartamento>[0]) =>
+    escolhido ?? rotaDoDepartamento(department);
 
   // Sem a data do aparelho não há pergunta a fazer — o cliente devolve a rota com ela.
   if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) {
@@ -43,7 +52,7 @@ export default async function HojePage({
       <>
         <AppHeader title="Diária de hoje" backHref="/producoes" />
         <PageContainer as="main" className="py-4">
-          <HojeRedirect />
+          <HojeRedirect dep={escolhido} />
         </PageContainer>
       </>
     );
@@ -58,7 +67,7 @@ export default async function HojePage({
       caminhoDoAtalho({
         productionId: diaria.productionId,
         shootingDayId: diaria.shootingDayId,
-        modulo: rotaDoDepartamento(diaria.department),
+        modulo: moduloDe(diaria.department),
       }),
     );
   }
@@ -103,7 +112,7 @@ export default async function HojePage({
                     href={caminhoDoAtalho({
                       productionId: diaria.productionId,
                       shootingDayId: diaria.shootingDayId,
-                      modulo: rotaDoDepartamento(diaria.department),
+                      modulo: moduloDe(diaria.department),
                     })}
                     className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 transition hover:bg-surface-hover"
                   >
@@ -113,7 +122,9 @@ export default async function HojePage({
                       </span>
                       <span className="block truncate text-xs text-zinc-400">
                         {diaria.dayNumber ? `Diária ${diaria.dayNumber} · ` : ''}
-                        {DEPARTMENT_LABEL[diaria.department]}
+                        {escolhido
+                          ? (definicaoDoModulo(escolhido)?.nome ?? '')
+                          : DEPARTMENT_LABEL[diaria.department]}
                         {diaria.location ? ` · ${diaria.location}` : ''}
                       </span>
                     </span>

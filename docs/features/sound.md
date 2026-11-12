@@ -297,3 +297,25 @@ reconciliação automática com o arquivo do recorder.
 [iXML (Wikipedia)](https://en.wikipedia.org/wiki/IXML) ·
 [iXML and BWF Metadata — Metadata Guru](https://metadata.guru/gathering-and-using-technical-metadata/metadata-standards/ixml-and-bwf-metadata/) ·
 [How to Make Sound Reports — Beverly Boy](https://beverlyboy.com/filmmaking/how-to-make-sound-reports/)
+
+---
+
+## 8. Rolos, problemas e canais — `2026-11-12` ([ADR-041](../decisions.md#adr-041--som-completo-rolos-problemas-de-captação-e-canais-com-captação))
+
+| Item                                                   | Onde                                                        |
+| ------------------------------------------------------ | ----------------------------------------------------------- |
+| Modelo do gravador e observações gerais do dia         | `sound_day_config.recorder` / `.notes`                      |
+| Rolos / cartões: mídia, equipamento, observações       | `sound_rolls` (por diária, id de `(diária, rótulo)`)        |
+| Arquivos de cada roll                                  | **derivados** dos takes (`rolosDoDia`), nunca guardados     |
+| Problemas de captação (chips) + detalhe livre          | `sound_take_data.issues` / `.issue_notes`                   |
+| Microfone do canal                                     | `sound_take_tracks.source` (como a tela sempre o pediu)     |
+| Tipo de captação: Boom, Lapela, Plant, Ambiente, Linha | `sound_take_tracks.pickup`, herdado com o layout            |
+| Novo plano criado pelo Som                             | `NovoPlano` compartilhado — mesmo código que a Câmera daria |
+
+O sound report ganha: gravador no cabeçalho, contagens de rolos e de takes com problema, a
+tabela de **rolos e cartões** (primeiro → último arquivo), a **distribuição de canais e
+microfones** (uma linha por configuração distinta de canal), **takes selecionados**,
+**problemas identificados** e **observações gerais**. O CSV ganha `problemas` e
+`obs_problemas`, antes das tracks; a célula da track leva a captação entre parênteses.
+
+Sync: protocolo continua 3 (entidade nova não incrementa — synchronization.md §2), Dexie v5, snapshot com `soundRolls`.

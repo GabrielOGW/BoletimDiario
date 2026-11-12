@@ -22,6 +22,7 @@ import { syncNow } from '@/lib/sync/engine';
 import { cn } from '@/utils/cn';
 
 import { EstadoDoTake } from './EstadoDoSet';
+import { RaccordEFotos } from './RaccordEFotos';
 import {
   CAMPOS_DE_ACAO,
   VEREDITOS,
@@ -65,6 +66,7 @@ export function TakeContinuidade({
   canEdit,
 }: TakeContinuidadeProps) {
   const print = dados?.selected ?? false;
+  const problema = Boolean(dados?.hasIssue);
 
   /** Garante a linha antes de escrever. Preguiçoso: o take costuma vir da Câmera. */
   async function comDados(): Promise<string> {
@@ -105,6 +107,7 @@ export function TakeContinuidade({
         {take.kind && take.kind !== 'SYNC' ? (
           <Badge tone="warning">{take.kind === 'MOS' ? 'MOS' : take.kind}</Badge>
         ) : null}
+        {problema ? <Badge tone="warning">problema de continuidade</Badge> : null}
         {take._dirty || dados?._dirty ? <Badge tone="muted">não enviado</Badge> : null}
         <span className="flex-1" />
         {canEdit ? (
@@ -164,6 +167,46 @@ export function TakeContinuidade({
         />
       </div>
 
+      {/* Problema de continuidade (ADR-042): independente do veredito — o print do
+          diretor pode ser justamente o take com o copo na mão errada, e é esse aviso que
+          a montagem precisa ler antes de cortar. */}
+      <button
+        type="button"
+        aria-pressed={problema}
+        disabled={!canEdit}
+        onClick={() => void altera({ hasIssue: !problema })}
+        className={cn(
+          'mt-3 flex min-h-[44px] w-full items-center gap-2 rounded-lg border px-3 text-left text-sm font-medium transition',
+          problema
+            ? 'border-amber-500/60 bg-amber-500/15 text-zinc-100'
+            : 'border-line bg-surface-raised text-zinc-400 hover:bg-surface-hover',
+          !canEdit && 'cursor-not-allowed opacity-60',
+        )}
+      >
+        <span
+          aria-hidden
+          className={cn(
+            'flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs',
+            problema ? 'border-amber-400 text-amber-400' : 'border-zinc-400',
+          )}
+        >
+          {problema ? '!' : ''}
+        </span>
+        Problema de continuidade
+      </button>
+
+      {problema || dados?.issue ? (
+        <div className="mt-2">
+          <DebouncedTextField
+            label="Qual problema"
+            value={dados?.issue ?? ''}
+            disabled={!canEdit}
+            placeholder="Copo na mão esquerda; no plano 1 estava na direita"
+            onCommit={(valor) => void altera({ issue: valor || null })}
+          />
+        </div>
+      ) : null}
+
       <MaisCampos dados={dados} canEdit={canEdit} onAltera={altera} />
 
       <EstadoDoTake
@@ -172,6 +215,13 @@ export function TakeContinuidade({
         setupId={setupId}
         takeId={take.id}
         canEdit={canEdit}
+      />
+
+      <RaccordEFotos
+        productionId={productionId}
+        escopo={{ takeId: take.id }}
+        canEdit={canEdit}
+        rotulo="Raccord e fotos deste take"
       />
     </div>
   );

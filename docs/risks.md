@@ -32,10 +32,10 @@ Status possíveis: `MITIGATED` · `ACCEPTED` · `DEFERRED` · `NEEDS_DECISION`.
 
 ### Removidos
 
-| #   | Risco                                       | Por que deixou de existir                                                  |
-| --- | ------------------------------------------- | -------------------------------------------------------------------------- |
-| R1  | Perda de dado na migração do LocalStorage   | Não há dado real a preservar; migração virou importação opcional (ADR-023) |
-| R5  | Cota de armazenamento estourada pelas fotos | Não há fotos na v1 (ADR-022)                                               |
+| #   | Risco                                       | Por que deixou de existir                                                                                   |
+| --- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| R1  | Perda de dado na migração do LocalStorage   | Não há dado real a preservar; migração virou importação opcional (ADR-023)                                  |
+| R5  | Cota de armazenamento estourada pelas fotos | Fotos só na Continuidade, comprimidas, `persist()`, teto de 90% e download só das diárias fixadas (ADR-042) |
 
 ---
 

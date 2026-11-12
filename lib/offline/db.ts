@@ -136,6 +136,18 @@ export interface LocalSoundDayConfig extends LocalRecord {
   mediaVerified?: boolean | null;
   soundMixer?: string | null;
   boomOperator?: string | null;
+  /** Modelo do gravador, em texto livre (ADR-041). */
+  recorder?: string | null;
+  notes?: string | null;
+}
+
+/** Rolo / cartão de áudio da diária (ADR-041). Os arquivos são derivados dos takes. */
+export interface LocalSoundRoll extends LocalRecord {
+  shootingDayId: string;
+  label: string;
+  media?: string | null;
+  recorder?: string | null;
+  notes?: string | null;
 }
 
 /** Uma linha por take — o som não é multicam. */
@@ -149,6 +161,9 @@ export interface LocalSoundTakeData extends LocalRecord {
   tcStart?: string | null;
   tcEnd?: string | null;
   durationSec?: number | null;
+  /** Códigos separados por vírgula (ADR-041) — ver `features/sound/problemas.ts`. */
+  issues?: string | null;
+  issueNotes?: string | null;
   notes?: string | null;
 }
 
@@ -157,7 +172,10 @@ export interface LocalSoundTakeTrack extends LocalRecord {
   takeId: string;
   index: number;
   name?: string | null;
+  /** O microfone do canal (ADR-041). */
   source?: string | null;
+  /** Tipo de captação: Boom, Lapela, Plant, Ambiente, Linha (ADR-041). */
+  pickup?: string | null;
   equipmentId?: string | null;
   notes?: string | null;
 }
@@ -182,6 +200,9 @@ export interface LocalContinuityTakeData extends LocalRecord {
   dialogueChanges?: string | null;
   improvisation?: string | null;
   scriptDeviation?: string | null;
+  /** Problema de continuidade neste take (ADR-042). */
+  hasIssue?: boolean | null;
+  issue?: string | null;
   notes?: string | null;
 }
 
@@ -224,6 +245,42 @@ export interface LocalContinuitySetDressing extends LocalContinuityScope {
   element?: string | null;
   position?: string | null;
   state?: string | null;
+}
+
+/** Nota de raccord (ADR-042): posição, olhar, movimento, diálogo, com escopo flexível. */
+export interface LocalContinuityNote extends LocalContinuityScope {
+  category?: string | null;
+  note?: string | null;
+}
+
+/** O registro de uma foto de continuidade (ADR-042). Os bytes ficam em `photoBlobs`. */
+export interface LocalContinuityPhoto extends LocalContinuityScope {
+  category?: string | null;
+  caption?: string | null;
+  mimeType?: string | null;
+  width?: number | null;
+  height?: number | null;
+  sizeBytes?: number | null;
+}
+
+/**
+ * Os bytes de uma foto, **só neste aparelho** (ADR-042).
+ *
+ * Não é entidade sincronizável e não passa pela outbox: o conteúdo é imutável, então não
+ * há delta nem conflito — há "já subiu" ou "ainda não". `ArrayBuffer` e não `Blob`: o
+ * Safari do iOS já perdeu `Blob` guardado no IndexedDB entre versões, e `ArrayBuffer` é
+ * clonável em qualquer motor, inclusive no `fake-indexeddb` dos testes.
+ */
+export interface LocalPhotoBlob {
+  /** O mesmo id do `LocalContinuityPhoto`. */
+  id: string;
+  productionId: string;
+  mimeType: string;
+  bytes: ArrayBuffer;
+  /** `1` quando o servidor já tem estes bytes. `0` = ainda precisa subir. */
+  uploaded: 0 | 1;
+  /** Tentativas de envio que falharam — para não martelar o servidor. */
+  attempts?: number;
 }
 
 /** Relatório de Progresso da Diária — só o que exige mão humana (ADR-034). */
@@ -306,6 +363,10 @@ class PlatformDatabase extends Dexie {
   continuityHairMakeup!: Table<LocalContinuityHairMakeup, string>;
   continuitySetDressing!: Table<LocalContinuitySetDressing, string>;
   dailyProgressReport!: Table<LocalDailyProgressReport, string>;
+  soundRolls!: Table<LocalSoundRoll, string>;
+  continuityNotes!: Table<LocalContinuityNote, string>;
+  continuityPhotos!: Table<LocalContinuityPhoto, string>;
+  photoBlobs!: Table<LocalPhotoBlob, string>;
   outbox!: Table<OutboxEntry, string>;
   syncConflicts!: Table<SyncConflict, string>;
   meta!: Table<MetaEntry, string>;
@@ -354,6 +415,20 @@ class PlatformDatabase extends Dexie {
       continuitySetDressing: 'id, productionId, sceneId, setupId, takeId',
       dailyProgressReport: 'id, productionId, shootingDayId',
     });
+
+    // Versão 5: os três departamentos completos (ADR-041, ADR-042). Só tabelas novas —
+    // nenhum índice existente muda, então o upgrade não reescreve nada do que já está no
+    // aparelho, e quem tem diária fixada continua com ela.
+    //
+    // `photoBlobs` é a única tabela daqui que não sincroniza pela outbox: guarda os bytes
+    // da foto e o "já subiu". O índice composto responde a única pergunta do motor —
+    // "o que desta produção ainda não subiu?" — sem varrer as fotos inteiras.
+    this.version(5).stores({
+      soundRolls: 'id, productionId, shootingDayId',
+      continuityNotes: 'id, productionId, sceneId, setupId, takeId',
+      continuityPhotos: 'id, productionId, sceneId, setupId, takeId',
+      photoBlobs: 'id, productionId, [productionId+uploaded]',
+    });
   }
 }
 
@@ -382,6 +457,9 @@ export function tableFor(entityType: SyncEntityType): Table<AnyLocalRecord, stri
     continuityHairMakeup: db.continuityHairMakeup,
     continuitySetDressing: db.continuitySetDressing,
     dailyProgressReport: db.dailyProgressReport,
+    soundRoll: db.soundRolls,
+    continuityNote: db.continuityNotes,
+    continuityPhoto: db.continuityPhotos,
   } as const;
 
   return tables[entityType] as unknown as Table<AnyLocalRecord, string>;

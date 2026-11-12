@@ -14,12 +14,14 @@ import { hojeLocal } from '@/lib/atalhos';
  * aparelho. É um salto invisível — nenhum toque a mais — e é o que faz o atalho abrir a
  * diária certa em vez da de amanhã.
  */
-export function HojeRedirect() {
+export function HojeRedirect({ dep }: { dep?: string | null }) {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace(`/hoje?d=${hojeLocal()}`);
-  }, [router]);
+    // O departamento escolhido em "Novo boletim" atravessa o salto (ADR-040).
+    const departamento = dep ? `&dep=${encodeURIComponent(dep)}` : '';
+    router.replace(`/hoje?d=${hojeLocal()}${departamento}`);
+  }, [router, dep]);
 
   return (
     <p className="px-1 py-8 text-center text-sm text-zinc-400">
