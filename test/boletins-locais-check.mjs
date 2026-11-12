@@ -34,6 +34,7 @@ import {
   resumoContinuidade,
 } from '@/lib/local/continuidade.ts';
 import { hojeISO, tituloDoBoletim } from '@/lib/local/comum.ts';
+import { criaDemoContinuidade, criaDemoSom } from '@/lib/local/seed.ts';
 import { folhaLocalDoModulo } from '@/features/diaria/departamentos.ts';
 import { fonteDoBoletimSom } from '@/features/boletim-som/relatorio.ts';
 import { leituraDoBoletimContinuidade } from '@/features/boletim-continuidade/relatorio.ts';
@@ -48,7 +49,14 @@ import { alteracoesDeDialogo, pendenciasDoDia } from '@/features/continuity/estr
 
 const checks = [];
 const ok = (name, cond) => checks.push({ name, pass: !!cond });
-const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+/** Igualdade profunda que ignora a ordem das chaves — o que importa é o conteúdo. */
+const canonico = (v) =>
+  Array.isArray(v)
+    ? v.map(canonico)
+    : v && typeof v === 'object'
+      ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canonico(v[k])]))
+      : v;
+const igual = (a, b) => JSON.stringify(canonico(a)) === JSON.stringify(canonico(b));
 
 // ---- Armazenamento ----
 
@@ -233,6 +241,27 @@ ok('o relatório da cópia é o mesmo', leituraDoBoletimContinuidade(copiaCont).
 ok('Ver PDF do som abre o editor já na folha', folhaLocalDoModulo('som', 'som_1') === '/som/editar?id=som_1&folha=1');
 ok('Ver PDF da continuidade idem', folhaLocalDoModulo('continuidade', 'c1') === '/continuidade/editar?id=c1&folha=1');
 ok('Ver PDF da câmera continua sendo /legado/visualizar', folhaLocalDoModulo('camera', 'b1') === '/legado/visualizar?id=b1');
+
+// ---- Demos ----
+
+const demoSom = criaDemoSom();
+const demoCont = criaDemoContinuidade();
+ok('o demo de som sobrevive à normalização sem mudar', igual(normalizaBoletimSom(demoSom), demoSom));
+ok('o demo de continuidade sobrevive à normalização sem mudar', igual(normalizaBoletimContinuidade(demoCont), demoCont));
+ok('os demos contam a mesma diária do demo de câmera', demoSom.producao.produtora === 'Produtora Exemplo' && demoCont.producao.diaria === '04' && demoSom.cenas.map((c) => c.numero).join(',') === '18A,21C' && demoCont.cenas.map((c) => c.numero).join(',') === '18A,21C');
+ok('os demos nascem com a data de hoje', demoSom.producao.data === hojeISO() && demoCont.producao.data === hojeISO());
+ok('nenhum id repetido dentro de cada demo', new Set(ids(demoSom)).size === ids(demoSom).length && new Set(ids(demoCont)).size === ids(demoCont).length);
+
+const fonteDemo = fonteDoBoletimSom(demoSom);
+const linhasDemo = linhasDoRelatorio(fonteDemo.fonte);
+const resumoDemo = resumoDoDia(linhasDemo);
+ok('o sound report do demo mostra circled, NG, problemas e room tone', resumoDemo.circled === 3 && resumoDemo.ng === 2 && resumoDemo.comProblema === 3 && linhasDemo.some((l) => l.natureza === 'Room tone'));
+ok('o demo de som tem os dois rolos com arquivos', rolosDoDia(linhasDemo, fonteDemo.rolls).map((r) => `${r.rotulo}:${r.arquivos.length}`).join(',') === '004:5,005:3');
+ok('o demo de som mostra a distribuição de canais', canaisDoDia(linhasDemo).length === 3);
+
+const leituraDemo = leituraDoBoletimContinuidade(demoCont);
+ok('o demo de continuidade tem prints, pendência e diálogo', leituraDemo.contagens.prints === 3 && pendenciasDoDia(leituraDemo.linhas).length === 1 && alteracoesDeDialogo(leituraDemo.linhas, leituraDemo.raccord).length === 2);
+ok('o demo de continuidade tem raccord nas duas cenas', leituraDemo.raccord.length === 2 && leituraDemo.raccord.every((c) => c.notas.length > 0));
 
 // ---- Resultado ----
 

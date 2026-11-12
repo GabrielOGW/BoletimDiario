@@ -18,7 +18,7 @@ npm run format         # Prettier --write
 npm run format:check
 npm run icons          # regenerate PWA PNG icons from public/icons/icon.svg
 npm run check:env      # what the build needs before it starts (runs on prebuild)
-npm test               # the twelve .mjs check suites (714 assertions) + Vitest (78 tests)
+npm test               # the twelve .mjs check suites (724 assertions) + Vitest (78 tests)
 npm run test:migration # a real v1 boletim through v2 normalization (22 assertions)
 npm run test:platform  # domain/platform set rules: inheritance, take axes, page eighths (91)
 npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-to-end (87)
@@ -29,7 +29,7 @@ npm run test:continuidade # verdicts, action fields, progress-report counts (45)
 npm run test:consolidado  # departments joined by take_id, gaps, search, day JSON (56)
 npm run test:atalhos   # short path: department route, today/tomorrow pinning, expiry (29)
 npm run test:departamentos # the three departments: selector (all local), hidden sectors, sound problems/rolls/channels, raccord, photo sizing, contract, additive migration (88)
-npm run test:locais    # local Som/Continuidade boletins: normalization, take inheritance, reports via the shared structures, storage keys, duplication with fresh ids (71)
+npm run test:locais    # local Som/Continuidade boletins: normalization, take inheritance, reports via the shared structures, storage keys, duplication with fresh ids, demos (81)
 npm run test:acessibilidade # contrast math, <main>, live region, 44px targets (14)
 npm run test:db        # schema/triggers/enums against the real Neon (36) — needs DATABASE_URL
 npm run test:sala      # room rules, equipment, search vs the real Neon (51) — needs DATABASE_URL
@@ -239,6 +239,9 @@ need the network, and the sheet is printed when the location has no signal).
   and the same actions: ver folha (`folhaLocalDoModulo` — `?folha=1` opens the editor on the
   sheet), duplicar (all ids regenerated; continuity photo **bytes are copied** to new ids
   before the copy is saved, so deleting one boletim never deletes the other's photos) and excluir.
+- **Demos**: `lib/local/seed.ts` seeds one Som and one Continuidade demo (the same day as the
+  camera demo in `lib/seed.ts`, which is untouched) once per device, behind its own flag
+  `bdc:seeded-locais:v1`, only into an empty store — a deleted demo never comes back.
 - `features/diaria/departamentos.ts` is the **single registry** (name, description, route,
   colors: camera = `brand` amber, continuity = `sky`, sound = `emerald`). Color is never the
   only identification — the name is always written next to it.

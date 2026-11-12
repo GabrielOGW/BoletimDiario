@@ -1321,5 +1321,9 @@ criar nada antes. Produção, diária e equipe ficam para o futuro.
 > fotos são copiados** para ids novos antes de a cópia ser gravada — fotos compartilhadas
 > fariam apagar um boletim apagar as fotos do outro.
 
+> **Revisto em `2026-11-12`** — demos de Som e Continuidade (`lib/local/seed.ts`), contando
+> a mesma diária do demo de Câmera (que não muda). Semeados uma vez por aparelho, com bandeira
+> própria e só em store vazio: quem já usava o app os ganha uma vez, e um demo apagado não volta.
+
 **Fica para depois.** Backup em JSON dos boletins de Som e Continuidade (o de Câmera continua
 igual); levar um boletim local para uma diária da plataforma.
