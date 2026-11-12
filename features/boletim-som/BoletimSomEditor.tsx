@@ -135,6 +135,16 @@ export function BoletimSomEditor({
     return { ...fonte, linhas, rolos: rolosDoDia(linhas, fonte.rolls) };
   }, [boletim]);
 
+  // Fechar a folha aberta por "Ver PDF" tira o `?folha=1` da URL: senão recarregar a
+  // página a abriria de novo.
+  useEffect(() => {
+    if (folha) return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('folha')) return;
+    url.searchParams.delete('folha');
+    window.history.replaceState(null, '', url.toString());
+  }, [folha]);
+
   useEffect(() => {
     if (!folha) return;
     const aoTeclar = (evento: KeyboardEvent) => {
