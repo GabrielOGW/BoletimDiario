@@ -639,7 +639,11 @@ Decisões: [ADR-040](decisions.md#adr-040--três-departamentos-na-porta-de-entra
       nenhuma, bytes só depois do registro, download só das diárias fixadas, nota que não
       converge, roll restaurado e não recriado, fixação com servidor antigo
 
-**Fica para depois:** sincronizar o "Novo boletim" de Continuidade/Som **sem conta** (hoje eles
+> **`2026-11-12`, ADR-043:** Som e Continuidade passam a ser boletins **locais**, como o de
+> Câmera — escolher em "Novo boletim" e registrar, sem conta e sem diária. Verificado por
+> `npm run test:locais` (59 checks) e `test/vitest/fotos-locais.test.ts`.
+
+**Fica para depois:** ~~Continuidade/Som sem conta~~ (feito, ADR-043) (hoje eles
 vivem na plataforma — o boletim local continua sendo só de câmera); mover os bytes de foto para
 armazenamento de objetos quando uma produção passar de alguns GB; anotar sobre a foto.
 

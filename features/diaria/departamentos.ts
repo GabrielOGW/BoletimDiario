@@ -80,19 +80,10 @@ export function moduloValido(
 }
 
 /**
- * Para onde vai quem escolhe Continuidade ou Som em "Novo boletim".
- *
- * Os dois módulos vivem numa **diária** da plataforma, não num arquivo local. Havendo uma
- * diária aberta recentemente neste aparelho, o destino é ela, no módulo escolhido — e é o
- * que funciona sem rede, porque a diária já está fixada. Sem ela, `/hoje` descobre a
- * diária do dia (precisa de rede, uma vez).
+ * O editor local de cada departamento (ADR-043). Os três boletins nascem neste aparelho,
+ * sem conta e sem diária; a rota recebe o id do boletim recém-criado.
  */
-export function destinoDoModulo(
-  modulo: ModuloDeDepartamento,
-  atalho: { productionId: string; shootingDayId: string } | null,
-): string {
-  if (atalho) {
-    return `/p/${atalho.productionId}/diarias/${atalho.shootingDayId}/${modulo}`;
-  }
-  return `/hoje?dep=${modulo}`;
+export function editorLocalDoModulo(modulo: ModuloDeDepartamento, id: string): string {
+  if (modulo === 'camera') return `/legado/editar?id=${id}`;
+  return `/${modulo}/editar?id=${encodeURIComponent(id)}`;
 }

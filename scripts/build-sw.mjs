@@ -27,6 +27,9 @@ const APP_SHELL = [
   '/legado/novo',
   '/legado/editar',
   '/legado/visualizar',
+  // ADR-043: os boletins locais de Som e Continuidade abrem sem rede, como o de Câmera.
+  '/som/editar',
+  '/continuidade/editar',
   '/novo',
   '/editar',
   '/visualizar',
