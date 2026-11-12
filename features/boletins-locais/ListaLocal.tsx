@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useState } from 'react';
 
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -12,7 +11,7 @@ import { resumoContinuidade, type BoletimContinuidade } from '@/lib/local/contin
 import { apagaFotosDoBoletim } from '@/lib/local/fotos';
 import { resumoSom, type BoletimSom } from '@/lib/local/som';
 import { storeContinuidade, storeSom } from '@/lib/local/store';
-import { cn } from '@/utils/cn';
+import { CartaoDeBoletim } from '@/features/boletins/CartaoDeBoletim';
 import { formatDateBR } from '@/utils/date';
 
 import {
@@ -97,7 +96,7 @@ export function useItensLocais(query: string): { total: number; itens: Item[] } 
  * Os boletins locais de Som e Continuidade na tela inicial (ADR-043), logo abaixo dos de
  * Câmera — a lista de câmera continua exatamente como era.
  *
- * Cada cartão diz o departamento por extenso e leva a faixa de cor dele.
+ * O cartão é o mesmo da Câmera (`CartaoDeBoletim`): faixa de cor e nome do departamento.
  */
 export function ListaLocal({ itens }: { itens: Item[] }) {
   const [apagando, setApagando] = useState<Item | null>(null);
@@ -107,45 +106,23 @@ export function ListaLocal({ itens }: { itens: Item[] }) {
   return (
     <section aria-label="Boletins de som e continuidade" className="flex flex-col gap-3">
       <ul className="flex flex-col gap-3">
-        {itens.map((item) => {
-          const definicao = definicaoDoModulo(item.modulo);
-          return (
-            <li
-              key={item.id}
-              className={cn(
-                'flex items-stretch overflow-hidden rounded-2xl border bg-surface',
-                definicao?.cor.borda,
-              )}
-            >
-              <span aria-hidden className={cn('w-1.5 shrink-0', definicao?.cor.faixa)} />
-              <Link
-                href={editorLocalDoModulo(item.modulo, item.id)}
-                className="min-w-0 flex-1 px-4 py-3 transition hover:bg-surface-hover"
-              >
-                <span
-                  className={cn(
-                    'block text-xs font-semibold uppercase tracking-wide',
-                    definicao?.cor.texto,
-                  )}
-                >
-                  {definicao?.nome}
-                </span>
-                <span className="block truncate text-[15px] font-semibold text-zinc-100">
-                  {item.titulo}
-                </span>
-                <span className="block truncate text-xs text-zinc-400">{item.linha}</span>
-              </Link>
-              <div className="flex items-center pr-2">
-                <IconButton
-                  label={`Excluir ${definicao?.nome ?? 'boletim'} ${item.titulo}`}
-                  variant="danger"
-                  icon={<TrashIcon size={16} />}
-                  onClick={() => setApagando(item)}
-                />
-              </div>
-            </li>
-          );
-        })}
+        {itens.map((item) => (
+          <CartaoDeBoletim
+            key={item.id}
+            modulo={item.modulo}
+            href={editorLocalDoModulo(item.modulo, item.id)}
+            titulo={item.titulo}
+            resumo={item.linha}
+            acoes={
+              <IconButton
+                label={`Excluir ${definicaoDoModulo(item.modulo)?.nome ?? 'boletim'} ${item.titulo}`}
+                variant="danger"
+                icon={<TrashIcon size={16} />}
+                onClick={() => setApagando(item)}
+              />
+            }
+          />
+        ))}
       </ul>
 
       <ConfirmDialog
