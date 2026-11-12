@@ -16,6 +16,7 @@ import {
   criaCena,
   criaPlano,
   criaRolo,
+  duplicaBoletimSom,
   normalizaBoletimSom,
   proximoCodigoPlano,
   proximoTake,
@@ -26,12 +27,14 @@ import {
   criaCenaContinuidade,
   criaNota,
   criaPlanoContinuidade,
+  duplicaBoletimContinuidade,
   idsDasFotos,
   normalizaBoletimContinuidade,
   proximoTakeContinuidade,
   resumoContinuidade,
 } from '@/lib/local/continuidade.ts';
 import { hojeISO, tituloDoBoletim } from '@/lib/local/comum.ts';
+import { folhaLocalDoModulo } from '@/features/diaria/departamentos.ts';
 import { fonteDoBoletimSom } from '@/features/boletim-som/relatorio.ts';
 import { leituraDoBoletimContinuidade } from '@/features/boletim-continuidade/relatorio.ts';
 import {
@@ -200,6 +203,36 @@ const dialogos = alteracoesDeDialogo(leitura.linhas, leitura.raccord);
 ok('alterações de diálogo: do campo do take e da nota', dialogos.length === 2);
 ok('a continuísta vai para o cabeçalho', leitura.cabecalho.equipe[0]?.nome === 'Ana');
 ok('as contagens do dia saem da mesma estrutura', leitura.contagens.takes === 3 && leitura.contagens.prints === 1 && leitura.contagens.comProblema === 1);
+
+// ---- Duplicar e ver PDF ----
+
+/** Todos os ids aninhados de um objeto — para provar que a cópia não repete nenhum. */
+function ids(valor, acc = []) {
+  if (Array.isArray(valor)) valor.forEach((item) => ids(item, acc));
+  else if (valor && typeof valor === 'object') {
+    if (typeof valor.id === 'string') acc.push(valor.id);
+    Object.values(valor).forEach((item) => ids(item, acc));
+  }
+  return acc;
+}
+
+const copiaSom = duplicaBoletimSom(som);
+ok('a cópia de som leva "(cópia)" no título', copiaSom.producao.tituloProjeto === 'Filme X (cópia)');
+ok('a cópia de som não repete nenhum id', ids(copiaSom).every((id) => !ids(som).includes(id)));
+ok('a cópia de som tem o mesmo conteúdo', resumoSom(copiaSom).takes === resumoSom(som).takes && copiaSom.cenas[0].planos[0].takes[0].arquivo === '004_001');
+copiaSom.cenas[0].planos[0].takes[0].problemas.push('SATURADO');
+ok('mexer na cópia não mexe no original', !som.cenas[0].planos[0].takes[0].problemas.includes('SATURADO'));
+ok('título vazio vira "Boletim (cópia)"', duplicaBoletimSom(criaBoletimSom()).producao.tituloProjeto === 'Boletim (cópia)');
+
+const { copia: copiaCont, fotos: mapaFotos } = duplicaBoletimContinuidade(cont);
+ok('a cópia de continuidade não repete nenhum id', ids(copiaCont).every((id) => !ids(cont).includes(id)));
+ok('as fotos ganham ids novos, com o mapa para copiar os bytes', mapaFotos.length === 2 && mapaFotos.every((m) => m.de !== m.para) && idsDasFotos(copiaCont).join(',') === mapaFotos.map((m) => m.para).join(','));
+ok('legenda e categoria das fotos vão junto', copiaCont.cenas[0].fotos[0].legenda === 'Camisa azul');
+ok('o relatório da cópia é o mesmo', leituraDoBoletimContinuidade(copiaCont).linhas.length === 3);
+
+ok('Ver PDF do som abre o editor já na folha', folhaLocalDoModulo('som', 'som_1') === '/som/editar?id=som_1&folha=1');
+ok('Ver PDF da continuidade idem', folhaLocalDoModulo('continuidade', 'c1') === '/continuidade/editar?id=c1&folha=1');
+ok('Ver PDF da câmera continua sendo /legado/visualizar', folhaLocalDoModulo('camera', 'b1') === '/legado/visualizar?id=b1');
 
 // ---- Resultado ----
 

@@ -18,6 +18,7 @@ import {
   producaoVazia,
   texto,
   textos,
+  tituloDaCopia,
   type BoletimLocalBase,
 } from './comum';
 
@@ -296,5 +297,41 @@ export function resumoSom(boletim: BoletimSom) {
     circled: takes.filter((take) => take.julgamento === 'CIRCLE').length,
     comProblema: takes.filter((take) => take.problemas.length > 0 || take.obsProblemas)
       .length,
+  };
+}
+
+/**
+ * Duplica o boletim regenerando **todos** os ids aninhados — a mesma regra de
+ * `duplicateBoletim` da Câmera: um id repetido entre dois boletins viraria colisão no dia
+ * em que eles forem para a plataforma.
+ */
+export function duplicaBoletimSom(original: BoletimSom): BoletimSom {
+  const agora = new Date().toISOString();
+  return {
+    ...original,
+    id: novoId('som'),
+    createdAt: agora,
+    updatedAt: agora,
+    producao: {
+      ...original.producao,
+      tituloProjeto: tituloDaCopia(original.producao.tituloProjeto),
+    },
+    equipe: { ...original.equipe },
+    tecnica: { ...original.tecnica },
+    rolos: original.rolos.map((rolo) => ({ ...rolo, id: novoId('rolo') })),
+    cenas: original.cenas.map((cena) => ({
+      ...cena,
+      id: novoId('cena'),
+      planos: cena.planos.map((plano) => ({
+        ...plano,
+        id: novoId('plano'),
+        takes: plano.takes.map((take) => ({
+          ...take,
+          id: novoId('take'),
+          problemas: [...take.problemas],
+          canais: take.canais.map((canal) => ({ ...canal, id: novoId('canal') })),
+        })),
+      })),
+    })),
   };
 }

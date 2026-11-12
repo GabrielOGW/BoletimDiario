@@ -19,6 +19,7 @@ import {
   objeto,
   producaoVazia,
   texto,
+  tituloDaCopia,
   type BoletimLocalBase,
   type FotoLocal,
   type NotaLocal,
@@ -261,4 +262,60 @@ export function resumoContinuidade(boletim: BoletimContinuidade) {
     comProblema: takes.filter((take) => take.problema).length,
     fotos: idsDasFotos(boletim).length,
   };
+}
+
+/**
+ * Duplica o boletim regenerando todos os ids — inclusive os das **fotos**.
+ *
+ * Devolve também o mapa `foto antiga → foto nova`: quem chama copia os bytes para os ids
+ * novos (`copiaFotos`). Se as duas cópias apontassem para os mesmos bytes, apagar uma
+ * apagaria as fotos da outra (`apagaFotosDoBoletim` apaga pelo boletim dono).
+ */
+export function duplicaBoletimContinuidade(original: BoletimContinuidade): {
+  copia: BoletimContinuidade;
+  fotos: { de: string; para: string }[];
+} {
+  const agora = new Date().toISOString();
+  const fotos: { de: string; para: string }[] = [];
+
+  const copiaNotas = (notas: NotaLocal[]) =>
+    notas.map((nota) => ({ ...nota, id: novoId('nota') }));
+  const copiaFotosRef = (lista: FotoLocal[]) =>
+    lista.map((foto) => {
+      const para = novoId('foto');
+      fotos.push({ de: foto.id, para });
+      return { ...foto, id: para };
+    });
+
+  const copia: BoletimContinuidade = {
+    ...original,
+    id: novoId('cont'),
+    createdAt: agora,
+    updatedAt: agora,
+    producao: {
+      ...original.producao,
+      tituloProjeto: tituloDaCopia(original.producao.tituloProjeto),
+    },
+    cenas: original.cenas.map((cena) => ({
+      ...cena,
+      id: novoId('cena'),
+      notas: copiaNotas(cena.notas),
+      fotos: copiaFotosRef(cena.fotos),
+      planos: cena.planos.map((plano) => ({
+        ...plano,
+        id: novoId('plano'),
+        notas: copiaNotas(plano.notas),
+        fotos: copiaFotosRef(plano.fotos),
+        takes: plano.takes.map((take) => ({
+          ...take,
+          id: novoId('take'),
+          acao: { ...take.acao },
+          notas: copiaNotas(take.notas),
+          fotos: copiaFotosRef(take.fotos),
+        })),
+      })),
+    })),
+  };
+
+  return { copia, fotos };
 }

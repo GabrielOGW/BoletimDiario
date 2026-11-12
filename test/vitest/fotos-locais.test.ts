@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   apagaFoto,
   apagaFotosDoBoletim,
+  copiaFotos,
   guardaFoto,
   leFoto,
   leFotos,
@@ -50,5 +51,24 @@ describe('fotos locais', () => {
     await guardaFoto({ id: 'f1', boletimId: 'b1', mimeType: 'image/jpeg', bytes: bytes(1) });
     await apagaFoto('f1');
     expect(await leFoto('f1')).toBeUndefined();
+  });
+
+  it('a cópia do boletim leva cópia dos bytes, e apagar o original não a afeta', async () => {
+    await guardaFoto({ id: 'f1', boletimId: 'b1', mimeType: 'image/jpeg', bytes: bytes(4, 9) });
+    await copiaFotos(
+      [
+        { de: 'f1', para: 'f1-copia' },
+        { de: 'nao-existe', para: 'x' },
+      ],
+      'b2',
+    );
+    const copia = await leFoto('f1-copia');
+    expect(copia?.boletimId).toBe('b2');
+    expect([...new Uint8Array(copia?.bytes ?? new ArrayBuffer(0))]).toEqual([9, 9, 9, 9]);
+    expect(await leFoto('x')).toBeUndefined();
+
+    await apagaFotosDoBoletim('b1');
+    expect(await leFoto('f1')).toBeUndefined();
+    expect(await leFoto('f1-copia')).toBeDefined();
   });
 });

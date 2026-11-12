@@ -18,7 +18,7 @@ npm run format         # Prettier --write
 npm run format:check
 npm run icons          # regenerate PWA PNG icons from public/icons/icon.svg
 npm run check:env      # what the build needs before it starts (runs on prebuild)
-npm test               # the twelve .mjs check suites (702 assertions) + Vitest (77 tests)
+npm test               # the twelve .mjs check suites (714 assertions) + Vitest (78 tests)
 npm run test:migration # a real v1 boletim through v2 normalization (22 assertions)
 npm run test:platform  # domain/platform set rules: inheritance, take axes, page eighths (91)
 npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-to-end (87)
@@ -29,14 +29,14 @@ npm run test:continuidade # verdicts, action fields, progress-report counts (45)
 npm run test:consolidado  # departments joined by take_id, gaps, search, day JSON (56)
 npm run test:atalhos   # short path: department route, today/tomorrow pinning, expiry (29)
 npm run test:departamentos # the three departments: selector (all local), hidden sectors, sound problems/rolls/channels, raccord, photo sizing, contract, additive migration (88)
-npm run test:locais    # local Som/Continuidade boletins: normalization, take inheritance, reports via the shared structures, storage keys (59)
+npm run test:locais    # local Som/Continuidade boletins: normalization, take inheritance, reports via the shared structures, storage keys, duplication with fresh ids (71)
 npm run test:acessibilidade # contrast math, <main>, live region, 44px targets (14)
 npm run test:db        # schema/triggers/enums against the real Neon (36) — needs DATABASE_URL
 npm run test:sala      # room rules, equipment, search vs the real Neon (51) — needs DATABASE_URL
 npm run test:sync      # compare-and-set, idempotency, cursor, registry (67) — needs DATABASE_URL
 npm run test:import    # local-boletim import: idempotency, ownership (29) — needs DATABASE_URL
 npm run test:carga     # 40 days, 2400 takes: seeds, measures, asserts, deletes — needs DATABASE_URL
-npm run test:vitest    # outbox, boundary repos, sync engine, photo transfer and local photo bytes over real IndexedDB (77)
+npm run test:vitest    # outbox, boundary repos, sync engine, photo transfer and local photo bytes over real IndexedDB (78)
 npm run test:watch     # the same, in watch mode
 npm run test:e2e       # Playwright: offline lifecycle of the PWA — needs DATABASE_URL
 ```
@@ -235,7 +235,10 @@ need the network, and the sheet is printed when the location has no signal).
   `hooks/useBoletimLocal.ts` (same contract as `useBoletim`). Editors in
   `features/boletim-{som,continuidade}/`, shared pieces in `features/boletins-locais/`.
   Reports reuse the platform structures through `relatorio.ts` adapters — one reading per
-  report.
+  report. The home list renders all three with **one** card (`features/boletins/CartaoDeBoletim.tsx`)
+  and the same actions: ver folha (`folhaLocalDoModulo` — `?folha=1` opens the editor on the
+  sheet), duplicar (all ids regenerated; continuity photo **bytes are copied** to new ids
+  before the copy is saved, so deleting one boletim never deletes the other's photos) and excluir.
 - `features/diaria/departamentos.ts` is the **single registry** (name, description, route,
   colors: camera = `brand` amber, continuity = `sky`, sound = `emerald`). Color is never the
   only identification — the name is always written next to it.

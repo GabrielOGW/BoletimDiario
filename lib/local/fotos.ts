@@ -60,3 +60,24 @@ export async function apagaFoto(id: string): Promise<void> {
 export async function apagaFotosDoBoletim(boletimId: string): Promise<void> {
   await banco().fotos.where('boletimId').equals(boletimId).delete();
 }
+
+/**
+ * Copia os bytes de fotos para ids novos, de outro boletim — a parte de I/O da duplicação
+ * do Boletim de Continuidade. Foto que não está no aparelho é pulada: a cópia mostra
+ * "foto não encontrada", como o original mostraria.
+ */
+export async function copiaFotos(
+  mapa: { de: string; para: string }[],
+  boletimId: string,
+): Promise<void> {
+  if (mapa.length === 0) return;
+  const db = banco();
+  await db.transaction('rw', db.fotos, async () => {
+    const originais = await db.fotos.bulkGet(mapa.map((item) => item.de));
+    const novas = mapa.flatMap((item, indice) => {
+      const original = originais[indice];
+      return original ? [{ ...original, id: item.para, boletimId }] : [];
+    });
+    await db.fotos.bulkPut(novas);
+  });
+}

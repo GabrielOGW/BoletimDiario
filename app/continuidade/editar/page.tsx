@@ -11,7 +11,12 @@ import { BoletimContinuidadeEditor } from '@/features/boletim-continuidade/Bolet
  */
 function Conteudo() {
   const params = useSearchParams();
-  return <BoletimContinuidadeEditor id={params.get('id')} />;
+  return (
+    <BoletimContinuidadeEditor
+      id={params.get('id')}
+      abrirFolha={params.get('folha') === '1'}
+    />
+  );
 }
 
 export default function EditarPage() {

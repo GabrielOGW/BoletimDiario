@@ -1,15 +1,20 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { IconButton } from '@/components/ui/IconButton';
-import { TrashIcon } from '@/components/ui/icons';
+import { CopyIcon, EyeIcon, TrashIcon } from '@/components/ui/icons';
 import { useListaLocal } from '@/hooks/useBoletimLocal';
 import { tituloDoBoletim } from '@/lib/local/comum';
-import { resumoContinuidade, type BoletimContinuidade } from '@/lib/local/continuidade';
-import { apagaFotosDoBoletim } from '@/lib/local/fotos';
-import { resumoSom, type BoletimSom } from '@/lib/local/som';
+import {
+  duplicaBoletimContinuidade,
+  resumoContinuidade,
+  type BoletimContinuidade,
+} from '@/lib/local/continuidade';
+import { apagaFotosDoBoletim, copiaFotos } from '@/lib/local/fotos';
+import { duplicaBoletimSom, resumoSom, type BoletimSom } from '@/lib/local/som';
 import { storeContinuidade, storeSom } from '@/lib/local/store';
 import { CartaoDeBoletim } from '@/features/boletins/CartaoDeBoletim';
 import { formatDateBR } from '@/utils/date';
@@ -17,6 +22,7 @@ import { formatDateBR } from '@/utils/date';
 import {
   definicaoDoModulo,
   editorLocalDoModulo,
+  folhaLocalDoModulo,
   type ModuloDeDepartamento,
 } from '@/features/diaria/departamentos';
 
@@ -74,6 +80,26 @@ const casa = (item: Item, query: string) => {
 export type ItemLocal = Item;
 
 /**
+ * Duplica um boletim local, como o "Duplicar" da Câmera: todos os ids novos e "(cópia)"
+ * no título. Na Continuidade, os bytes das fotos são copiados **antes** de gravar a cópia —
+ * assim ela nunca existe apontando para fotos que ainda não estão lá.
+ */
+async function duplica(item: Item): Promise<void> {
+  if (item.modulo === 'som') {
+    const original = storeSom.getById(item.id);
+    if (original) storeSom.upsert(duplicaBoletimSom(original));
+    return;
+  }
+  if (item.modulo === 'continuidade') {
+    const original = storeContinuidade.getById(item.id);
+    if (!original) return;
+    const { copia, fotos } = duplicaBoletimContinuidade(original);
+    await copiaFotos(fotos, copia.id).catch(() => undefined);
+    storeContinuidade.upsert(copia);
+  }
+}
+
+/**
  * Os boletins locais de Som e Continuidade: o total (para a tela vazia) e os que casam com
  * a busca — a mesma regra da lista de câmera, toda palavra precisa aparecer.
  */
@@ -99,6 +125,7 @@ export function useItensLocais(query: string): { total: number; itens: Item[] } 
  * O cartão é o mesmo da Câmera (`CartaoDeBoletim`): faixa de cor e nome do departamento.
  */
 export function ListaLocal({ itens }: { itens: Item[] }) {
+  const router = useRouter();
   const [apagando, setApagando] = useState<Item | null>(null);
 
   if (itens.length === 0) return null;
@@ -114,12 +141,24 @@ export function ListaLocal({ itens }: { itens: Item[] }) {
             titulo={item.titulo}
             resumo={item.linha}
             acoes={
-              <IconButton
-                label={`Excluir ${definicaoDoModulo(item.modulo)?.nome ?? 'boletim'} ${item.titulo}`}
-                variant="danger"
-                icon={<TrashIcon size={16} />}
-                onClick={() => setApagando(item)}
-              />
+              <>
+                <IconButton
+                  label={`Ver folha de ${item.titulo}`}
+                  icon={<EyeIcon size={17} />}
+                  onClick={() => router.push(folhaLocalDoModulo(item.modulo, item.id))}
+                />
+                <IconButton
+                  label={`Duplicar ${item.titulo}`}
+                  icon={<CopyIcon size={17} />}
+                  onClick={() => void duplica(item)}
+                />
+                <IconButton
+                  label={`Excluir ${definicaoDoModulo(item.modulo)?.nome ?? 'boletim'} ${item.titulo}`}
+                  variant="danger"
+                  icon={<TrashIcon size={16} />}
+                  onClick={() => setApagando(item)}
+                />
+              </>
             }
           />
         ))}

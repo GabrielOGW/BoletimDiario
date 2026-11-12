@@ -81,10 +81,17 @@ const DIA_NOITE: OptionChip[] = [
  * observação, problema — e esconde o resto atrás de dobras, porque um formulário de
  * sessenta campos aberto por take é a forma mais rápida de fazer alguém voltar ao caderno.
  */
-export function BoletimContinuidadeEditor({ id }: { id: string | null }) {
+export function BoletimContinuidadeEditor({
+  id,
+  abrirFolha = false,
+}: {
+  id: string | null;
+  /** `?folha=1`: abre direto na folha — o "Ver PDF" da lista, como o de Câmera. */
+  abrirFolha?: boolean;
+}) {
   const router = useRouter();
   const { boletim, status, saveState, update } = useBoletimLocal(storeContinuidade, id);
-  const [folha, setFolha] = useState(false);
+  const [folha, setFolha] = useState(abrirFolha);
   const [apagando, setApagando] = useState(false);
 
   const leitura = useMemo(

@@ -124,3 +124,9 @@ export interface BoletimLocalBase {
 export function tituloDoBoletim(boletim: { producao: ProducaoLocal }): string {
   return boletim.producao.tituloProjeto.trim() || 'Sem título';
 }
+
+/** "Filme X" → "Filme X (cópia)" — a mesma regra do Boletim de Câmera (`appendCopy`). */
+export function tituloDaCopia(titulo: string): string {
+  const limpo = titulo.trim();
+  return limpo ? `${limpo} (cópia)` : 'Boletim (cópia)';
+}
