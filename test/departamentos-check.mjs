@@ -274,15 +274,15 @@ const fonteC = { cenas: cenasC, setups: setupsC, takes: takesC, dados: dadosC, c
 const linhasC = linhasDaContinuidade(fonteC);
 
 ok('o take com problema é marcado', linhasC[0].problema && linhasC[0].problemaDescricao === 'Copo na mão esquerda');
-ok('descrição sem a marca ainda conta como problema', linhasC[2].problema);
+ok('descrição sem a marca não conta: desmarcar tira do relatório', !linhasC[2].problema);
 ok('take sem nada não tem problema', linhasDaContinuidade({ ...fonteC, dados: [] }).every((l) => !l.problema));
 ok('o print continua independente do problema', linhasC[0].print && linhasC[0].problema);
 ok('o enquadramento sai do plano', linhasC[0].enquadramento === 'Close · Plongée — João no sofá');
 ok('plano sem descrição não imprime travessão sozinho', enquadramentoDoPlano(setupsC[1]) === '');
-ok('as contagens contam takes com problema', contagensDoDia(fonteC).comProblema === 3);
+ok('as contagens contam takes com problema', contagensDoDia(fonteC).comProblema === 2);
 
 const pendencias = pendenciasDoDia(linhasC);
-ok('pendências: uma por take com problema', pendencias.length === 3);
+ok('pendências: uma por take com problema', pendencias.length === 2);
 ok('problema sem descrição vira aviso explícito', pendencias[1].texto.includes('sem descrição'));
 
 const notas = [

@@ -46,6 +46,11 @@ export function EscolhaDepartamento({
   const [atalho, setAtalho] = useState<AtalhoDeDiaria | null>(null);
   const [online, setOnline] = useState(true);
   const primeiro = useRef<HTMLButtonElement>(null);
+  // Em ref, e não na lista de dependências: quem chama passa uma função nova a cada
+  // render, e o efeito rodaria de novo a cada atualização da lista — devolvendo o foco ao
+  // primeiro botão no meio da escolha.
+  const fecha = useRef(onFechar);
+  fecha.current = onFechar;
 
   useEffect(() => {
     if (!aberta) return;
@@ -54,11 +59,11 @@ export function EscolhaDepartamento({
     primeiro.current?.focus();
 
     const aoTeclar = (evento: KeyboardEvent) => {
-      if (evento.key === 'Escape') onFechar();
+      if (evento.key === 'Escape') fecha.current();
     };
     window.addEventListener('keydown', aoTeclar);
     return () => window.removeEventListener('keydown', aoTeclar);
-  }, [aberta, onFechar]);
+  }, [aberta]);
 
   if (!aberta) return null;
 

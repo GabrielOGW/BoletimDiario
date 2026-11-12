@@ -280,7 +280,9 @@ export function linhasDaContinuidade({
               .filter(Boolean)
               .join(' · '),
             enquadramento: enquadramentoDoPlano(plano),
-            problema: Boolean(linha?.hasIssue) || texto(linha?.issue) !== '',
+            // A marca é a verdade: desmarcar o problema o tira do relatório, mesmo que o
+            // texto continue guardado (volta inteiro se a marca voltar).
+            problema: Boolean(linha?.hasIssue),
             problemaDescricao: texto(linha?.issue),
             semDados: !linha,
           });

@@ -195,7 +195,7 @@ export function TakeContinuidade({
         Problema de continuidade
       </button>
 
-      {problema || dados?.issue ? (
+      {problema ? (
         <div className="mt-2">
           <DebouncedTextField
             label="Qual problema"
