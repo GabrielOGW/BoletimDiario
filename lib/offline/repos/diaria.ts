@@ -75,6 +75,9 @@ export async function pinShootingDay(snapshot: SnapshotResponse): Promise<void> 
       db.continuityHairMakeup,
       db.continuitySetDressing,
       db.dailyProgressReport,
+      db.soundRolls,
+      db.continuityNotes,
+      db.continuityPhotos,
       db.refs,
       db.meta,
     ],
@@ -127,6 +130,19 @@ export async function pinShootingDay(snapshot: SnapshotResponse): Promise<void> 
       await mergeRemote(
         'dailyProgressReport',
         snapshot.dailyProgressReport,
+        snapshot.productionId,
+      );
+      // `?? []`: um servidor ainda no protocolo 3 não manda estas listas, e a fixação
+      // não pode quebrar por isso — elas só ficam vazias até o servidor atualizar.
+      await mergeRemote('soundRoll', snapshot.soundRolls ?? [], snapshot.productionId);
+      await mergeRemote(
+        'continuityNote',
+        snapshot.continuityNotes ?? [],
+        snapshot.productionId,
+      );
+      await mergeRemote(
+        'continuityPhoto',
+        snapshot.continuityPhotos ?? [],
         snapshot.productionId,
       );
 

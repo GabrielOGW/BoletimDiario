@@ -20,6 +20,7 @@ import {
 } from '@/lib/offline/repos/diaria';
 import { ensureSoundTakeData, ensureSoundTracks } from '@/lib/offline/repos/som';
 import { syncNow } from '@/lib/sync/engine';
+import { NovoPlano } from '@/features/diaria/NovoPlano';
 import { cn } from '@/utils/cn';
 
 import { TakeSom } from './TakeSom';
@@ -176,8 +177,8 @@ function BlocoSom({
       <div className="flex flex-col gap-3 p-3">
         {ordenados.length === 0 ? (
           <p className="text-sm text-zinc-400">
-            Sem planos neste bloco. A Câmera cria os planos; o Som pode registrar wild
-            tracks aqui de qualquer jeito.
+            Sem planos neste bloco. Eles aparecem aqui quando a Câmera os cria — ou crie o
+            plano agora, e a Câmera vai encontrar o mesmo.
           </p>
         ) : null}
 
@@ -196,15 +197,30 @@ function BlocoSom({
           />
         ))}
 
-        {canEdit && !temWild ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            leftIcon={<PlusIcon size={15} />}
-            onClick={() => void criaWild()}
-          >
-            Wild / room tone
-          </Button>
+        {canEdit ? (
+          <div className="flex flex-wrap gap-2">
+            {/* Plano criado pelo Som (ADR-040): mesmo código e mesmo id que a Câmera
+                produziria, então ninguém duplica o plano por chegar primeiro. */}
+            <NovoPlano
+              productionId={productionId}
+              sceneId={bloco.id}
+              shootingDayId={shootingDayId}
+              setups={ordenados.filter((setup) => setup.code !== CODIGO_WILD)}
+              onCriado={(setupId) =>
+                criaProximoTake({ productionId, shootingDayId, setupId })
+              }
+            />
+            {!temWild ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                leftIcon={<PlusIcon size={15} />}
+                onClick={() => void criaWild()}
+              >
+                Wild / room tone
+              </Button>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </section>

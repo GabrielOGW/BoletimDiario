@@ -5,7 +5,8 @@
  * `docs/architecture/database.md` é explicativo e subordinado a elas. Se os dois
  * divergirem, o documento é corrigido no mesmo commit, nunca depois.
  *
- * Não existe tabela `photos` (ADR-022).
+ * As fotos de continuidade voltaram com ADR-042 (revisão do ADR-022): registro
+ * sincronizado em `continuity_photos`, bytes em `continuity_photo_blobs`, fora do sync_log.
  */
 
 export * from './enums';

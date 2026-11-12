@@ -14,7 +14,7 @@ import { FormError } from '@/features/auth/AuthCard';
 
 import { excluirEquipamentoAction, salvarEquipamentoAction } from './actions';
 import { CATEGORY_LABEL, DEPARTMENT_LABEL, descreveEquipamento } from './labels';
-import { CATEGORY_OPTIONS, DEPARTMENT_OPTIONS } from './options';
+import { CATEGORY_OPTIONS, equipmentDepartmentOptionsFor } from './options';
 import { SubmitButton } from './SubmitButton';
 
 /**
@@ -170,7 +170,7 @@ function EquipmentForm({
             label="Departamento"
             name="department"
             defaultValue={item?.department ?? 'CAMERA'}
-            options={DEPARTMENT_OPTIONS}
+            options={equipmentDepartmentOptionsFor(item?.department)}
             required
           />
           <SelectField

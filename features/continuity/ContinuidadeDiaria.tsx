@@ -11,6 +11,9 @@ import { listCameraTakeData } from '@/lib/offline/repos/camera';
 import {
   getDailyProgressReport,
   listContinuityTakeData,
+  listEstado,
+  listFotos,
+  listNotas,
 } from '@/lib/offline/repos/continuidade';
 import { isPinned, listScenes, listSetups, listTakes } from '@/lib/offline/repos/diaria';
 import { listSoundTakeData } from '@/lib/offline/repos/som';
@@ -23,9 +26,16 @@ import { cn } from '@/utils/cn';
 import { useLembraDiaria } from '@/features/diaria/useLembraDiaria';
 
 import { CenaContinuidade } from './CenaContinuidade';
+import { COLECOES } from './EstadoDoSet';
 import { FolhaContinuidade, type DocumentoImpresso } from './FolhaContinuidade';
+import { useUrlsDasFotos } from './RaccordEFotos';
 import { RelatorioProgresso } from './RelatorioProgresso';
-import { contagensDoDia, linhasDaContinuidade } from './estrutura';
+import {
+  contagensDoDia,
+  linhasDaContinuidade,
+  raccordDoDia,
+  type ColecaoImpressa,
+} from './estrutura';
 
 /**
  * O Boletim de Continuidade na plataforma — dentro da fronteira offline.
@@ -119,6 +129,39 @@ export function ContinuidadeDiaria({
     undefined,
   );
 
+  /**
+   * O raccord do dia para o relatório (ADR-042): notas, fotos e estado do set presos às
+   * cenas, planos e takes **desta** diária. As cenas entram pelo id de todos os blocos com
+   * plano hoje — o que foi anotado na cena em outra diária também é desta cena.
+   */
+  const escopoDoDia = useMemo(() => {
+    const lista = setups ?? [];
+    return {
+      sceneIds: [...new Set(lista.map((setup) => setup.sceneId))],
+      setupIds: lista.map((setup) => setup.id),
+      takeIds: idsDosTakes,
+    };
+  }, [setups, idsDosTakes]);
+
+  const notas = useLiveQuery(() => listNotas(escopoDoDia), [escopoDoDia], []);
+  const fotos = useLiveQuery(() => listFotos(escopoDoDia), [escopoDoDia], []);
+  const estado = useLiveQuery(
+    async (): Promise<ColecaoImpressa[]> =>
+      Promise.all(
+        COLECOES.map(async (definicao) => ({
+          titulo: definicao.titulo,
+          chave: definicao.chave,
+          campos: definicao.campos.map((campo) => campo.campo),
+          itens: (await listEstado(
+            definicao.colecao,
+            escopoDoDia,
+          )) as unknown as ColecaoImpressa['itens'],
+        })),
+      ),
+    [escopoDoDia],
+    [],
+  );
+
   const fonte = useMemo(
     () => ({
       cenas: cenas ?? [],
@@ -134,6 +177,24 @@ export function ContinuidadeDiaria({
   /** A leitura única: tela, folha de continuidade e relatório de progresso saem daqui. */
   const linhas = useMemo(() => linhasDaContinuidade(fonte), [fonte]);
   const contagens = useMemo(() => contagensDoDia(fonte), [fonte]);
+  const raccord = useMemo(
+    () =>
+      raccordDoDia({
+        cenas: cenas ?? [],
+        setups: setups ?? [],
+        takes: takes ?? [],
+        notas: notas ?? [],
+        fotos: fotos ?? [],
+        estado: estado ?? [],
+      }),
+    [cenas, setups, takes, notas, fotos, estado],
+  );
+  // Só resolve as URLs com a folha aberta: fora dela, ninguém está olhando as fotos.
+  const idsDasFotos = useMemo(
+    () => (folha ? raccord.flatMap((cena) => cena.fotos.map((foto) => foto.id)) : []),
+    [folha, raccord],
+  );
+  const urlsDasFotos = useUrlsDasFotos(idsDasFotos);
 
   if (fixacao === 'CARREGANDO') {
     return (
@@ -190,6 +251,7 @@ export function ContinuidadeDiaria({
                   camera={camera ?? []}
                   som={som ?? []}
                   productionId={productionId}
+                  shootingDayId={shootingDayId}
                   canEdit={canEdit}
                 />
               ))}
@@ -224,6 +286,8 @@ export function ContinuidadeDiaria({
           linhas={linhas}
           contagens={contagens}
           relatorio={relatorio}
+          raccord={raccord}
+          urlsDasFotos={urlsDasFotos}
         />
       ) : null}
     </>

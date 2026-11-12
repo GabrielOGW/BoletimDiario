@@ -5,7 +5,9 @@
  * em enums seria mais lento que escrever, e é assim que a ferramenta é abandonada. O
  * que a estrutura entrega é **busca** e **relacionamento com o take**, não taxonomia.
  *
- * **Não há fotografias** (ADR-022).
+ * Fotografias voltaram com ADR-042, que revisa ADR-022: `continuity_photos` guarda o
+ * registro (escopo, categoria, legenda) e sincroniza como qualquer outro; os bytes moram
+ * em `continuity_photo_blobs`, **fora** do `sync_log`, porque são imutáveis e pesados.
  */
 
 import {
@@ -15,11 +17,13 @@ import {
   integer,
   pgTable,
   text,
+  timestamp,
   unique,
   uuid,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
+import { users } from './auth';
 import { audit } from './columns';
 import { takeStatusEnum } from './enums';
 import { productions } from './production';
@@ -53,6 +57,14 @@ export const continuityTakeData = pgTable(
     dialogueChanges: text('dialogue_changes'),
     improvisation: text('improvisation'),
     scriptDeviation: text('script_deviation'),
+    /**
+     * "Este take tem problema de continuidade" — o aviso que a montagem procura antes de
+     * cortar dois planos juntos (ADR-042). Booleano e não status: um take pode ser o
+     * print do diretor **e** ter o copo na mão errada, e é exatamente esse que importa.
+     */
+    hasIssue: boolean('has_issue').notNull().default(false),
+    /** Qual é o problema — "copo na mão esquerda; no plano A estava na direita". */
+    issue: text('issue'),
     notes: text('notes'),
     ...audit(),
   },
@@ -171,3 +183,78 @@ export const continuitySetDressing = pgTable(
     index('continuity_set_dressing_production_take').on(t.productionId, t.takeId),
   ],
 );
+
+/**
+ * Notas de raccord (ADR-042) — a observação de continuidade que não é objeto, figurino,
+ * cabelo nem cenário: posição de ator, direção de olhar, movimento entre planos,
+ * alteração de diálogo.
+ *
+ * Mesmo escopo flexível das quatro coleções (cena, setup **ou** take), mas sem chave
+ * natural: duas notas de "olhar" na mesma cena são duas observações, não a mesma. O id é
+ * aleatório de propósito — convergir aqui seria apagar a nota de alguém.
+ */
+export const continuityNotes = pgTable(
+  'continuity_notes',
+  {
+    ...continuityScope(),
+    /** `ATORES`, `OLHAR`, `MOVIMENTO`, `DIALOGO`, `RACCORD`, `OUTRO` — texto, lista aberta. */
+    category: text('category'),
+    note: text('note'),
+    ...audit(),
+  },
+  (t) => [
+    atLeastOneScope('continuity_notes_scope'),
+    index('continuity_notes_production_scene').on(t.productionId, t.sceneId),
+    index('continuity_notes_production_take').on(t.productionId, t.takeId),
+  ],
+);
+
+/**
+ * Fotografias de continuidade — o **registro** (ADR-042).
+ *
+ * Sincroniza pelo caminho normal: escopo, categoria e legenda são campos como outros, e
+ * mover a foto da cena para o take é mudança de campo. Os bytes não estão aqui.
+ */
+export const continuityPhotos = pgTable(
+  'continuity_photos',
+  {
+    ...continuityScope(),
+    /** `OBJETOS`, `FIGURINO`, `CABELO_MAQUIAGEM`, `ATORES`, `COMPOSICAO`, `OUTRO`. */
+    category: text('category'),
+    caption: text('caption'),
+    mimeType: text('mime_type'),
+    width: integer('width'),
+    height: integer('height'),
+    sizeBytes: integer('size_bytes'),
+    ...audit(),
+  },
+  (t) => [
+    atLeastOneScope('continuity_photos_scope'),
+    index('continuity_photos_production_scene').on(t.productionId, t.sceneId),
+    index('continuity_photos_production_take').on(t.productionId, t.takeId),
+  ],
+);
+
+/**
+ * Os bytes de cada foto, já comprimidos no aparelho (JPEG, lado maior ≤ 1600 px).
+ *
+ * **Fora do `sync_log`, sem trigger**: o conteúdo é imutável (editar uma foto é tirar
+ * outra), então não há o que fazer merge, e passá-lo pelo pull faria cada aparelho baixar
+ * megabytes a cada ciclo. Sobe uma vez por `/api/fotos` e desce sob demanda.
+ *
+ * Base64 em `text` e não `bytea`: o driver HTTP do Neon serializa parâmetros como JSON, e
+ * texto atravessa sem adaptação. O custo (≈33%) está no teto declarado em ADR-042.
+ */
+export const continuityPhotoBlobs = pgTable('continuity_photo_blobs', {
+  photoId: uuid('photo_id')
+    .primaryKey()
+    .references(() => continuityPhotos.id, { onDelete: 'cascade' }),
+  productionId: uuid('production_id')
+    .notNull()
+    .references(() => productions.id, { onDelete: 'cascade' }),
+  mimeType: text('mime_type').notNull(),
+  sizeBytes: integer('size_bytes').notNull(),
+  dataBase64: text('data_base64').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by').references(() => users.id),
+});

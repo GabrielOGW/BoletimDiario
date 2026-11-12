@@ -17,9 +17,11 @@ import {
 import { isPinned, listScenes, listSetups, listTakes } from '@/lib/offline/repos/diaria';
 import {
   getSoundDayConfig,
+  listSoundRolls,
   listSoundTakeData,
   listSoundTracks,
 } from '@/lib/offline/repos/som';
+import { formatDiaria } from '@/features/production/labels';
 import { fetchAndPin, startSync } from '@/lib/sync/engine';
 import { agrupaCenas } from '@/features/diaria/cenas';
 import { NovaCena } from '@/features/diaria/NovaCena';
@@ -32,7 +34,8 @@ import { baixaCSV } from '@/utils/download';
 import { CenaSom } from './CenaSom';
 import { ConfiguracaoSom } from './ConfiguracaoSom';
 import { FolhaSom } from './FolhaSom';
-import { linhasDoRelatorio, resumoDoDia } from './estrutura';
+import { RolosSom } from './RolosSom';
+import { linhasDoRelatorio, resumoDoDia, rolosDoDia } from './estrutura';
 import { montaCSV, nomeDoArquivo } from './csv';
 
 /**
@@ -131,6 +134,7 @@ export function SomDiaria({
     [shootingDayId],
     undefined,
   );
+  const rolls = useLiveQuery(() => listSoundRolls(shootingDayId), [shootingDayId], []);
 
   /**
    * A leitura única da diária: tela, folha e CSV saem **daqui**.
@@ -149,6 +153,9 @@ export function SomDiaria({
       }),
     [cenas, setups, takes, dados, tracks],
   );
+
+  /** Os rolos do dia — cadastrados e citados pelos takes, com os arquivos derivados. */
+  const rolos = useMemo(() => rolosDoDia(linhas, rolls ?? []), [linhas, rolls]);
 
   if (fixacao === 'CARREGANDO') {
     return (
@@ -193,6 +200,14 @@ export function SomDiaria({
           canEdit={canEdit}
         />
 
+        <RolosSom
+          rolos={rolos}
+          productionId={productionId}
+          shootingDayId={shootingDayId}
+          data={formatDiaria(impressao.diaria.date)}
+          canEdit={canEdit}
+        />
+
         <SectionCard
           title="Cenas"
           icon={<ClapperboardIcon size={18} />}
@@ -231,6 +246,8 @@ export function SomDiaria({
             <Numero rotulo="Com som" valor={resumo.comSom} />
             <Numero rotulo="Circled" valor={resumo.circled} destaque="approved" />
             <Numero rotulo="MOS" valor={resumo.mos} destaque="warning" />
+            <Numero rotulo="Com problema" valor={resumo.comProblema} destaque="warning" />
+            <Numero rotulo="Rolos" valor={rolos.length} />
           </dl>
           <p className="mt-3 text-xs text-zinc-400">
             Contados a partir dos takes — não há dois números divergentes na mesma tela.
@@ -265,6 +282,7 @@ export function SomDiaria({
           cabecalho={impressao}
           config={config}
           linhas={linhas}
+          rolos={rolos}
         />
       ) : null}
     </>

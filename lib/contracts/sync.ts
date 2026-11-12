@@ -24,6 +24,12 @@ import { uuidSchema } from './production';
  * **Entidade** nova não era: o `pull` do cliente antigo procurava a tabela local do tipo
  * que chegou e não achava. O motor passou a ignorar tipo desconhecido, como o servidor já
  * fazia; o incremento cobre quem foi instalado antes dessa tolerância existir.
+ *
+ * **Continua `3` com ADR-041/042** (rolos, notas de raccord, fotos), pelo mesmo motivo da
+ * Fase 7 (synchronization.md §2): o cliente antigo ignora tipo desconhecido e segue
+ * sincronizando o resto, e a versão nova recupera o que o cursor pulou na fixação, que
+ * acontece toda vez que um módulo abre com sinal. Incrementar travaria em campo, à toa,
+ * todo aparelho que ainda não recarregou o app.
  */
 export const SYNC_PROTOCOL = 3;
 
@@ -171,6 +177,24 @@ export const SYNC_ENTITIES = {
       mediaVerified: 'bool',
       soundMixer: 'text',
       boomOperator: 'text',
+      recorder: 'text',
+      notes: 'text',
+      deletedAt: 'instant',
+    },
+  },
+
+  /**
+   * Rolos / cartões de áudio da diária (ADR-041). A lista de arquivos do roll **não**
+   * sincroniza aqui: ela é derivada dos takes que apontam para o mesmo rótulo.
+   */
+  soundRoll: {
+    table: 'sound_rolls',
+    fields: {
+      shootingDayId: 'text',
+      label: 'text',
+      media: 'text',
+      recorder: 'text',
+      notes: 'text',
       deletedAt: 'instant',
     },
   },
@@ -188,6 +212,9 @@ export const SYNC_ENTITIES = {
       tcStart: 'text',
       tcEnd: 'text',
       durationSec: 'int',
+      /** Códigos separados por vírgula — ver `features/sound/problemas.ts` (ADR-041). */
+      issues: 'text',
+      issueNotes: 'text',
       notes: 'text',
       deletedAt: 'instant',
     },
@@ -208,6 +235,8 @@ export const SYNC_ENTITIES = {
       index: 'int',
       name: 'text',
       source: 'text',
+      /** Tipo de captação — Boom, Lapela, Plant, Ambiente, Linha (ADR-041). */
+      pickup: 'text',
       equipmentId: 'text',
       notes: 'text',
       deletedAt: 'instant',
@@ -242,6 +271,9 @@ export const SYNC_ENTITIES = {
       dialogueChanges: 'text',
       improvisation: 'text',
       scriptDeviation: 'text',
+      /** Problema de continuidade neste take (ADR-042) — o aviso que a montagem procura. */
+      hasIssue: 'bool',
+      issue: 'text',
       notes: 'text',
       deletedAt: 'instant',
     },
@@ -307,6 +339,42 @@ export const SYNC_ENTITIES = {
       position: 'text',
       state: 'text',
       notes: 'text',
+      deletedAt: 'instant',
+    },
+  },
+
+  /**
+   * Notas de raccord (ADR-042): posição, olhar, movimento, diálogo — com o mesmo escopo
+   * flexível das coleções de estado, e sem chave natural (cada nota é uma observação).
+   */
+  continuityNote: {
+    table: 'continuity_notes',
+    fields: {
+      sceneId: 'text',
+      setupId: 'text',
+      takeId: 'text',
+      category: 'text',
+      note: 'text',
+      deletedAt: 'instant',
+    },
+  },
+
+  /**
+   * Fotografias de continuidade — só o **registro** (ADR-042). Os bytes sobem e descem
+   * por `/api/fotos`, fora do cursor: são imutáveis e pesados demais para o pull.
+   */
+  continuityPhoto: {
+    table: 'continuity_photos',
+    fields: {
+      sceneId: 'text',
+      setupId: 'text',
+      takeId: 'text',
+      category: 'text',
+      caption: 'text',
+      mimeType: 'text',
+      width: 'int',
+      height: 'int',
+      sizeBytes: 'int',
       deletedAt: 'instant',
     },
   },
@@ -501,6 +569,11 @@ export interface SnapshotResponse {
   soundDayConfig: Record<string, unknown>[];
   soundTakeData: Record<string, unknown>[];
   soundTakeTracks: Record<string, unknown>[];
+  /**
+   * Rolos da diária (ADR-041). Opcionais — e as duas listas de continuidade abaixo — porque
+   * um servidor ainda na versão anterior não as manda, e a fixação não pode quebrar.
+   */
+  soundRolls?: Record<string, unknown>[];
   continuityTakeData: Record<string, unknown>[];
   /**
    * As quatro coleções de estado do set.
@@ -513,6 +586,9 @@ export interface SnapshotResponse {
   continuityWardrobe: Record<string, unknown>[];
   continuityHairMakeup: Record<string, unknown>[];
   continuitySetDressing: Record<string, unknown>[];
+  /** Notas de raccord e fotos — mesmo recorte das coleções de estado (ADR-042). */
+  continuityNotes?: Record<string, unknown>[];
+  continuityPhotos?: Record<string, unknown>[];
   dailyProgressReport: Record<string, unknown>[];
   /** Referência somente leitura: quem é quem na sala, para exibir autoria de conflito. */
   members: { id: string; userId: string; name: string; department: string }[];
@@ -520,3 +596,22 @@ export interface SnapshotResponse {
 
 export type SyncOperationInput = z.infer<typeof syncOperationSchema>;
 export type PushRequest = z.infer<typeof pushRequestSchema>;
+
+// ---- Fotos (ADR-042) ----
+
+/**
+ * Teto do arquivo que o servidor aceita, **depois** da compressão no aparelho.
+ *
+ * A compressão entrega 150–400 KB por foto (JPEG, lado maior 1600 px); o teto é folgado
+ * para não recusar uma foto de cena escura com muito ruído, e apertado o bastante para que
+ * uma foto sem compressão — 6 MB de uma câmera de celular — nunca entre no banco.
+ */
+export const FOTO_MAX_BYTES = 1_500_000;
+
+/** Os formatos aceitos. O aparelho sempre converte para JPEG; os outros são tolerância. */
+export const FOTO_MIME_TYPES = ['image/jpeg', 'image/webp', 'image/png'] as const;
+
+export const fotoQuerySchema = z.object({
+  productionId: uuidSchema,
+  photoId: uuidSchema,
+});

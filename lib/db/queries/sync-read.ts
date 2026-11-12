@@ -141,7 +141,7 @@ export async function pullChanges(input: {
  * é preenchimento, e preenchimento não pode depender de rede (ADR-016). São poucos
  * registros de texto — o custo é irrelevante perto de travar em locação.
  *
- * **Uma requisição, não dezessete** (Fase 10). As consultas sempre foram independentes,
+ * **Uma requisição, não dezessete** (Fase 10 — vinte desde ADR-041/042). As consultas sempre foram independentes,
  * mas iam uma de cada vez, e o `await` entre elas custa uma ida e volta cada. Medido
  * contra uma produção de 40 diárias e 2400 takes, isso dava 613 ms com o banco a 40 ms de
  * distância — e o número é aritmética de latência, não de dados: com os 200 ms de um 4G
@@ -176,6 +176,9 @@ export async function loadSnapshot(input: {
     continuityHairMakeup,
     continuitySetDressing,
     dailyProgressReport,
+    soundRolls,
+    continuityNotes,
+    continuityPhotos,
     members,
     cursor,
   ] = await db.batch([
@@ -283,6 +286,29 @@ export async function loadSnapshot(input: {
          and shooting_day_id = ${input.shootingDayId}
     `),
 
+    /** Os rolos de som são da diária, como a configuração (ADR-041). */
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('soundRoll')} from sound_rolls
+       where production_id = ${input.productionId}
+         and shooting_day_id = ${input.shootingDayId}
+    `),
+
+    /**
+     * Notas de raccord e registros de foto: o mesmo recorte das coleções de estado, pelo
+     * mesmo motivo — o valor da continuidade é atravessar dias (ADR-042). Das fotos vem
+     * só o **registro**; os bytes descem sob demanda, por `/api/fotos`, e é isso que
+     * mantém a fixação numa requisição de texto mesmo numa produção com mil fotos.
+     */
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('continuityNote')} from continuity_notes
+       where production_id = ${input.productionId} and (${escopoDaProducao(input)})
+    `),
+
+    db.execute<Record<string, unknown>>(sql`
+      select ${entitySelect('continuityPhoto')} from continuity_photos
+       where production_id = ${input.productionId} and (${escopoDaProducao(input)})
+    `),
+
     db.execute<{
       id: string;
       userId: string;
@@ -322,6 +348,9 @@ export async function loadSnapshot(input: {
     continuityHairMakeup: continuityHairMakeup.rows,
     continuitySetDressing: continuitySetDressing.rows,
     dailyProgressReport: dailyProgressReport.rows,
+    soundRolls: soundRolls.rows,
+    continuityNotes: continuityNotes.rows,
+    continuityPhotos: continuityPhotos.rows,
     members: members.rows,
   };
 }

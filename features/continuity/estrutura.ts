@@ -12,6 +12,8 @@
 import { somaPaginas, type SomaDePaginas } from '@/domain/platform/paginas';
 import type {
   LocalCameraTakeData,
+  LocalContinuityNote,
+  LocalContinuityPhoto,
   LocalContinuityTakeData,
   LocalScene,
   LocalSetup,
@@ -20,6 +22,12 @@ import type {
 } from '@/lib/offline/db';
 
 import { agrupaCenas } from '@/features/diaria/cenas';
+
+import {
+  nivelDoEscopo,
+  rotuloDaCategoriaDeFoto,
+  rotuloDaCategoriaDeNota,
+} from './raccord';
 
 const texto = (valor: unknown): string => String(valor ?? '').trim();
 
@@ -194,6 +202,11 @@ export interface LinhaContinuidade {
   tecnica: string;
   /** Roll e arquivo lidos de Som. */
   som: string;
+  /** Enquadramento do plano — tamanho, ângulo, movimento e descrição (setup). */
+  enquadramento: string;
+  /** Problema de continuidade marcado neste take (ADR-042). */
+  problema: boolean;
+  problemaDescricao: string;
   semDados: boolean;
 }
 
@@ -266,6 +279,11 @@ export function linhasDaContinuidade({
             som: [texto(dadosSom?.soundRoll), texto(dadosSom?.fileName)]
               .filter(Boolean)
               .join(' · '),
+            enquadramento: enquadramentoDoPlano(plano),
+            // A marca é a verdade: desmarcar o problema o tira do relatório, mesmo que o
+            // texto continue guardado (volta inteiro se a marca voltar).
+            problema: Boolean(linha?.hasIssue),
+            problemaDescricao: texto(linha?.issue),
             semDados: !linha,
           });
         }
@@ -274,6 +292,259 @@ export function linhasDaContinuidade({
   }
 
   return linhas;
+}
+
+/** "Close · contra-plongée · travelling — João no sofá". O plano lido como se descreve. */
+export function enquadramentoDoPlano(plano: LocalSetup): string {
+  const tecnico = [plano.shotSize, plano.angle, plano.movement]
+    .map(texto)
+    .filter(Boolean)
+    .join(' · ');
+  const descricao = texto(plano.description);
+  return [tecnico, descricao].filter(Boolean).join(' — ');
+}
+
+// ---- Raccord: notas, fotos e estado do set, por cena (ADR-042) ----
+
+export interface ItemDeRaccord {
+  id: string;
+  /** Onde está preso: "Cena 24", "Plano 24A/2", "Take 24A/2/3". */
+  onde: string;
+  /** Ordena dentro da cena: o da cena primeiro, depois plano e take na ordem do dia. */
+  ordem: number;
+  categoria: string;
+  texto: string;
+}
+
+export interface FotoDeRaccord {
+  id: string;
+  onde: string;
+  ordem: number;
+  categoria: string;
+  legenda: string;
+}
+
+export interface RaccordDaCena {
+  cena: string;
+  notas: ItemDeRaccord[];
+  fotos: FotoDeRaccord[];
+  /** As quatro coleções de estado, já em texto — "Figurino · João: camisa azul". */
+  estado: ItemDeRaccord[];
+}
+
+/** Uma coleção de estado, do jeito que a folha precisa: título e as linhas em texto. */
+export interface ColecaoImpressa {
+  titulo: string;
+  /** O campo-chave — `name`, `character`, `element`. */
+  chave: string;
+  /** Os campos secundários, na ordem do caderno. */
+  campos: string[];
+  itens: (Record<string, unknown> & {
+    id: string;
+    sceneId?: string | null;
+    setupId?: string | null;
+    takeId?: string | null;
+  })[];
+}
+
+export interface FonteDoRaccord {
+  cenas: LocalScene[];
+  setups: LocalSetup[];
+  takes: LocalTake[];
+  notas: LocalContinuityNote[];
+  fotos: LocalContinuityPhoto[];
+  estado?: ColecaoImpressa[];
+}
+
+/**
+ * Tudo o que a continuidade anotou **em volta** dos takes, agrupado por cena.
+ *
+ * Uma nota pode estar presa à cena, ao plano ou ao take; a montagem lê por cena. Esta
+ * função resolve o "onde" de cada uma e põe tudo debaixo da cena certa — inclusive o que
+ * foi anotado em outra diária, quando a cena é a mesma (o valor da continuidade é
+ * atravessar dias). Só entram cenas **desta** diária: as que têm plano hoje.
+ */
+export function raccordDoDia({
+  cenas,
+  setups,
+  takes,
+  notas,
+  fotos,
+  estado = [],
+}: FonteDoRaccord): RaccordDaCena[] {
+  const cenaPorId = new Map(cenas.map((cena) => [cena.id, cena]));
+  const setupPorId = new Map(setups.map((setup) => [setup.id, setup]));
+  const takePorId = new Map(takes.map((take) => [take.id, take]));
+  const ordemDoSetup = new Map(
+    [...setups]
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code))
+      .map((setup, indice) => [setup.id, indice]),
+  );
+
+  const numeroDaCena = (sceneId: string | null | undefined) =>
+    texto(cenaPorId.get(sceneId ?? '')?.number);
+
+  /** Resolve cena, rótulo e ordem de um item preso a cena, plano ou take. */
+  function localiza(item: {
+    sceneId?: string | null;
+    setupId?: string | null;
+    takeId?: string | null;
+  }): { cena: string; onde: string; ordem: number } | null {
+    const nivel = nivelDoEscopo(item);
+
+    if (nivel === 'TAKE') {
+      const take = takePorId.get(item.takeId ?? '');
+      const setup = take ? setupPorId.get(take.setupId) : undefined;
+      const cena = setup ? cenaPorId.get(setup.sceneId) : undefined;
+      if (!take || !setup || !cena) return null;
+      return {
+        cena: texto(cena.number),
+        onde: `Take ${texto(cena.number)}${texto(cena.block)}/${texto(setup.code)}/${take.number}`,
+        ordem: 1000 + (ordemDoSetup.get(setup.id) ?? 0) * 1000 + take.number,
+      };
+    }
+
+    if (nivel === 'PLANO') {
+      const setup = setupPorId.get(item.setupId ?? '');
+      const cena = setup ? cenaPorId.get(setup.sceneId) : undefined;
+      if (!setup || !cena) return null;
+      return {
+        cena: texto(cena.number),
+        onde: `Plano ${texto(cena.number)}${texto(cena.block)}/${texto(setup.code)}`,
+        ordem: 1000 + (ordemDoSetup.get(setup.id) ?? 0) * 1000,
+      };
+    }
+
+    const numero = numeroDaCena(item.sceneId);
+    if (!numero) return null;
+    return { cena: numero, onde: `Cena ${numero}`, ordem: 0 };
+  }
+
+  const cenasDoDia = new Set(
+    setups.map((setup) => numeroDaCena(setup.sceneId)).filter(Boolean),
+  );
+  const porCena = new Map<string, RaccordDaCena>();
+  const daCena = (numero: string) => {
+    const atual = porCena.get(numero) ?? {
+      cena: numero,
+      notas: [],
+      fotos: [],
+      estado: [],
+    };
+    porCena.set(numero, atual);
+    return atual;
+  };
+
+  for (const nota of notas) {
+    if (nota.deletedAt || !texto(nota.note)) continue;
+    const local = localiza(nota);
+    if (!local || !cenasDoDia.has(local.cena)) continue;
+    daCena(local.cena).notas.push({
+      id: nota.id,
+      onde: local.onde,
+      ordem: local.ordem,
+      categoria: rotuloDaCategoriaDeNota(nota.category),
+      texto: texto(nota.note),
+    });
+  }
+
+  for (const foto of fotos) {
+    if (foto.deletedAt) continue;
+    const local = localiza(foto);
+    if (!local || !cenasDoDia.has(local.cena)) continue;
+    daCena(local.cena).fotos.push({
+      id: foto.id,
+      onde: local.onde,
+      ordem: local.ordem,
+      categoria: rotuloDaCategoriaDeFoto(foto.category),
+      legenda: texto(foto.caption),
+    });
+  }
+
+  for (const colecao of estado) {
+    for (const item of colecao.itens) {
+      if (item.deletedAt) continue;
+      const local = localiza(item);
+      if (!local || !cenasDoDia.has(local.cena)) continue;
+      const chave = texto(item[colecao.chave]);
+      const detalhes = [...colecao.campos, 'notes']
+        .map((campo) => texto(item[campo]))
+        .filter(Boolean)
+        .join(' · ');
+      daCena(local.cena).estado.push({
+        id: item.id,
+        onde: local.onde,
+        ordem: local.ordem,
+        categoria: colecao.titulo,
+        texto: [chave, detalhes].filter(Boolean).join(': '),
+      });
+    }
+  }
+
+  const ordena = <T extends { ordem: number; categoria: string }>(lista: T[]) =>
+    lista.sort((a, b) => a.ordem - b.ordem || a.categoria.localeCompare(b.categoria));
+
+  return [...porCena.values()]
+    .map((cena) => ({
+      ...cena,
+      notas: ordena(cena.notas),
+      fotos: ordena(cena.fotos),
+      estado: ordena(cena.estado),
+    }))
+    .sort((a, b) => a.cena.localeCompare(b.cena, 'pt-BR', { numeric: true }));
+}
+
+// ---- Pendências e alterações de diálogo (ADR-042) ----
+
+export interface Pendencia {
+  onde: string;
+  texto: string;
+}
+
+/**
+ * O que a montagem precisa saber **antes** de cortar: takes com problema de continuidade.
+ *
+ * Um take com problema e sem descrição ainda entra — "tem problema, não sei qual" é
+ * melhor que nada no relatório. A descrição vazia vira um aviso explícito.
+ */
+export function pendenciasDoDia(linhas: LinhaContinuidade[]): Pendencia[] {
+  return linhas
+    .filter((linha) => linha.problema)
+    .map((linha) => ({
+      onde: `Cena ${linha.cena}${linha.bloco} · Plano ${linha.plano} · Take ${linha.take}`,
+      texto: linha.problemaDescricao || 'Problema de continuidade sem descrição',
+    }));
+}
+
+/**
+ * As alterações de diálogo do dia, juntas — a seção que a montagem e a dublagem leem
+ * primeiro. Vêm dos dois lugares onde podem estar: o campo do take e as notas de
+ * categoria "diálogo".
+ */
+export function alteracoesDeDialogo(
+  linhas: LinhaContinuidade[],
+  raccord: RaccordDaCena[],
+): Pendencia[] {
+  const dosTakes = linhas.flatMap((linha) =>
+    linha.acao
+      .filter((campo) =>
+        ['Alterações de diálogo', 'Improviso', 'Desvio de roteiro'].includes(
+          campo.rotulo,
+        ),
+      )
+      .map((campo) => ({
+        onde: `Cena ${linha.cena}${linha.bloco} · Plano ${linha.plano} · Take ${linha.take}`,
+        texto: `${campo.rotulo}: ${campo.valor}`,
+      })),
+  );
+
+  const dasNotas = raccord.flatMap((cena) =>
+    cena.notas
+      .filter((nota) => nota.categoria === rotuloDaCategoriaDeNota('DIALOGO'))
+      .map((nota) => ({ onde: nota.onde, texto: nota.texto })),
+  );
+
+  return [...dosTakes, ...dasNotas];
 }
 
 // ---- O Relatório de Progresso da Diária (§7) ----
@@ -291,6 +562,8 @@ export interface ContagensDoDia {
   rolls: string[];
   /** Os números das cenas rodadas — sugestão para o campo de cobertura. */
   cenasRodadas: string[];
+  /** Takes marcados com problema de continuidade (ADR-042). */
+  comProblema: number;
 }
 
 /**
@@ -343,6 +616,7 @@ export function contagensDoDia(fonte: FonteDaContinuidade): ContagensDoDia {
         .map((l) => l.soundRoll),
     ),
     cenasRodadas,
+    comProblema: linhas.filter((linha) => linha.problema).length,
   };
 }
 

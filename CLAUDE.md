@@ -18,7 +18,7 @@ npm run format         # Prettier --write
 npm run format:check
 npm run icons          # regenerate PWA PNG icons from public/icons/icon.svg
 npm run check:env      # what the build needs before it starts (runs on prebuild)
-npm test               # the ten .mjs check suites (555 assertions) + Vitest (57 tests)
+npm test               # the eleven .mjs check suites (641 assertions) + Vitest (73 tests)
 npm run test:migration # a real v1 boletim through v2 normalization (22 assertions)
 npm run test:platform  # domain/platform set rules: inheritance, take axes, page eighths (91)
 npm run test:mapping   # Boletim v2 → platform model, v1→v2→platform end-to-end (87)
@@ -28,20 +28,21 @@ npm run test:som       # sound report: ordering, MOS, day summary, CSV escaping 
 npm run test:continuidade # verdicts, action fields, progress-report counts (45)
 npm run test:consolidado  # departments joined by take_id, gaps, search, day JSON (56)
 npm run test:atalhos   # short path: department route, today/tomorrow pinning, expiry (29)
+npm run test:departamentos # the three departments: selector, hidden sectors, sound problems/rolls/channels, raccord, photo sizing, contract, additive migration (86)
 npm run test:acessibilidade # contrast math, <main>, live region, 44px targets (14)
-npm run test:db        # schema/triggers/enums against the real Neon (35) — needs DATABASE_URL
+npm run test:db        # schema/triggers/enums against the real Neon (36) — needs DATABASE_URL
 npm run test:sala      # room rules, equipment, search vs the real Neon (51) — needs DATABASE_URL
 npm run test:sync      # compare-and-set, idempotency, cursor, registry (67) — needs DATABASE_URL
 npm run test:import    # local-boletim import: idempotency, ownership (29) — needs DATABASE_URL
 npm run test:carga     # 40 days, 2400 takes: seeds, measures, asserts, deletes — needs DATABASE_URL
-npm run test:vitest    # outbox, boundary repo and the sync engine over real IndexedDB (57)
+npm run test:vitest    # outbox, boundary repos, sync engine and photo transfer over real IndexedDB (73)
 npm run test:watch     # the same, in watch mode
 npm run test:e2e       # Playwright: offline lifecycle of the PWA — needs DATABASE_URL
 ```
 
 Three runners, and the split is deliberate. **The `.mjs` suites are the floor:** plain files run directly through Node's experimental TS type-stripping with a custom loader (this is why `features/camera/estrutura.ts` and `features/sound/{estrutura,csv}.ts` — the structures the screen, the printed sheet and the CSV share — are plain modules with type-only imports: they are testable without React or Dexie) (`test/alias-loader.mjs`, which resolves `@/`, extensionless relative imports and `index.ts` folders); ESLint ignores `test/**`. `test:db`, `test:sala`, `test:sync`, `test:import` and `test:carga` need a real database and are **not** part of `npm test` — the day the main suite needs a network is the day it stops being run. `test:sala`, `test:sync`, `test:import` and `test:carga` also need `--conditions=react-server`, because the query layer imports `server-only`, which fails by design outside the server. Because of type-stripping, code reachable from a test may not use `enum`, `namespace`, or parameter properties, and type-only imports must use `import type`.
 
-**Vitest (Phase 10) covers exactly what those cannot reach** — what needs IndexedDB or `fetch`: `lib/offline/outbox.ts`, `lib/offline/repos/*` and all of `lib/sync/engine.ts`. It runs on `environment: 'node'` with `fake-indexeddb` (a real implementation of the spec over memory, not a stub — against a stub, "the local write and the queue leave in one transaction" would pass without a transaction existing) and it **is** part of `npm test`: no network, so no reason to leave it out. The `.mjs` suites stay — they prove the pure domain with zero dependencies, and migrating them would only trade a working command for another. Config in `vitest.config.mts`, specs in `test/vitest/`.
+**Vitest (Phase 10) covers exactly what those cannot reach** — what needs IndexedDB or `fetch`: `lib/offline/outbox.ts`, `lib/offline/repos/*`, all of `lib/sync/engine.ts` and the photo-byte transfer in `lib/sync/fotos.ts`. It runs on `environment: 'node'` with `fake-indexeddb` (a real implementation of the spec over memory, not a stub — against a stub, "the local write and the queue leave in one transaction" would pass without a transaction existing) and it **is** part of `npm test`: no network, so no reason to leave it out. The `.mjs` suites stay — they prove the pure domain with zero dependencies, and migrating them would only trade a working command for another. Config in `vitest.config.mts`, specs in `test/vitest/`.
 
 **`test:carga` (Phase 10) answers a different question**: not "is this correct" but "where does the curve bend". It seeds a real production of 40 shooting days and 2400 takes into Neon, measures the paths that matter, asserts, and deletes. Its ceilings are deliberately generous — they exist to catch an order-of-magnitude regression (an index someone dropped), never to pin down milliseconds. Its sharpest assertion is not a stopwatch at all: it counts the database requests a day-pin makes and demands **one**. A time budget would not catch undoing the `db.batch` in `loadSnapshot`, because seventeen sequential round-trips barely move the clock next to the database and triple it on a weak 4G in the field.
 
@@ -218,6 +219,34 @@ need the network, and the sheet is printed when the location has no signal).
   time ([ADR-034](docs/decisions.md)). Page eighths are a pure function
   (`domain/platform/paginas.ts`), not a column — and one page per scene _number_, or a scene
   with blocks A/B doubles the day's coverage.
+
+### The three departments at the front door (ADR-040/041/042, `2026-11-12`)
+
+- **"Novo boletim" asks which department** — `features/boletins/EscolhaDepartamento.tsx`, an
+  overlay on the list (not a route: it must open offline). **Câmera** calls the exact same
+  `create()` → `/legado/editar` as before. **Continuidade/Som** go to the last opened day in
+  that module (`destinoDoModulo`), or `/hoje?dep=som|continuidade`.
+- `features/diaria/departamentos.ts` is the **single registry** (name, description, route,
+  colors: camera = `brand` amber, continuity = `sky`, sound = `emerald`). Color is never the
+  only identification — the name is always written next to it.
+- **Other sectors are hidden**, not deleted: `MOSTRAR_OUTROS_SETORES = false` in
+  `features/production/options.ts`. Selects show the three + "Outra função — gestão e
+  leitura" (`PRODUCTION`); `departmentOptionsFor(current)` keeps a legacy value visible so
+  saving a form never rewrites it.
+- `features/diaria/NovoPlano.tsx` — Sound and Continuity create planos with the camera's
+  numbering (`proximoCodigoDePlano`) and derived ids; the camera module keeps its own button.
+- **Sound** (ADR-041): `sound_rolls` (per day; files are **derived** from takes by
+  `rolosDoDia`, never stored), `sound_take_data.issues` (canonical comma-separated codes from
+  `features/sound/problemas.ts`, open list) + `issue_notes`, `sound_take_tracks.pickup`
+  (`source` is the microphone), `sound_day_config.recorder/notes`.
+- **Continuity** (ADR-042): `continuity_take_data.has_issue/issue`, `continuity_notes`
+  (raccord, random id — never converge two notes), and **photos**: `continuity_photos` is a
+  normal synced entity; the bytes live in Dexie `photoBlobs` (`ArrayBuffer`) and server
+  `continuity_photo_blobs` (base64, **no** `sync_log` trigger), moved by `lib/sync/fotos.ts`
+  after the push, via `/api/sync/fotos`. Compressed on device (`utils/imagem.ts`). Record +
+  bytes + outbox are one Dexie transaction.
+- Protocol stays **3** (new entities don't bump — synchronization.md §2). Migration `0010` is
+  additive only.
 
 ### `domain/platform/` — the shared domain model (Phase 1, done)
 

@@ -4,7 +4,7 @@ import { SectionCard } from '@/components/layout/SectionCard';
 import { Button } from '@/components/ui/Button';
 import { DebouncedTextField } from '@/components/ui/DebouncedTextField';
 import { Toggle } from '@/components/ui/Toggle';
-import { ClockIcon, HardDriveIcon, UsersIcon } from '@/components/ui/icons';
+import { ClockIcon, FileTextIcon, HardDriveIcon, UsersIcon } from '@/components/ui/icons';
 import type { LocalSoundDayConfig } from '@/lib/offline/db';
 import { ensureSoundDayConfig, patchSoundDayConfig } from '@/lib/offline/repos/som';
 import { syncNow } from '@/lib/sync/engine';
@@ -64,6 +64,7 @@ export function ConfiguracaoSom({
   }
 
   const resumo = [
+    config?.recorder,
     config?.sampleRate,
     config?.bitDepth,
     config?.frameRate ? `${config.frameRate} fps` : null,
@@ -112,6 +113,13 @@ export function ConfiguracaoSom({
         summary={resumo || 'Não preenchida'}
       >
         <div className="flex flex-col gap-3">
+          <DebouncedTextField
+            label="Gravador"
+            value={config?.recorder ?? ''}
+            disabled={!canEdit}
+            placeholder="Sound Devices 833"
+            onCommit={(valor) => void altera({ recorder: valor || null })}
+          />
           <div className="grid gap-3 sm:grid-cols-2">
             <DebouncedTextField
               label="Sample rate"
@@ -257,6 +265,23 @@ export function ConfiguracaoSom({
             onChange={(valor) => void altera({ mediaVerified: valor })}
           />
         </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Observações gerais do som"
+        icon={<FileTextIcon size={18} />}
+        collapsible
+        defaultOpen={false}
+        summary={config?.notes ? 'Preenchidas' : 'Nenhuma'}
+      >
+        <DebouncedTextField
+          label="Observações gerais"
+          multiline
+          value={config?.notes ?? ''}
+          disabled={!canEdit}
+          placeholder="Locação com gerador próximo; obra na rua das 14h às 16h"
+          onCommit={(valor) => void altera({ notes: valor || null })}
+        />
       </SectionCard>
     </>
   );

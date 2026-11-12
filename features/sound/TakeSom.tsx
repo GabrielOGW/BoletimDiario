@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { DebouncedTextField } from '@/components/ui/DebouncedTextField';
 import { IconButton } from '@/components/ui/IconButton';
 import { OptionChips, type OptionChip } from '@/components/ui/OptionChips';
+import { ToggleChips } from '@/components/ui/ToggleChips';
 import { ChevronDownIcon, PlusIcon, TrashIcon } from '@/components/ui/icons';
 import {
   TAKE_KINDS,
@@ -33,6 +34,21 @@ import { syncNow } from '@/lib/sync/engine';
 import { cn } from '@/utils/cn';
 
 import { resumoDeTracks } from './estrutura';
+import {
+  CAPTACOES,
+  PROBLEMAS_DE_SOM,
+  alternaProblema,
+  leProblemas,
+  rotulosDosProblemas,
+} from './problemas';
+
+/** Os problemas de captação como chips — acelerador, não lista fechada (ADR-041). */
+const PROBLEMAS: OptionChip[] = PROBLEMAS_DE_SOM.map((problema) => ({
+  valor: problema.codigo,
+  rotulo: problema.rotulo,
+}));
+
+const CAPTACAO: OptionChip[] = CAPTACOES.map((valor) => ({ valor, rotulo: valor }));
 
 /** Julgamento do Som — os cinco valores de `TakeStatus`, um toque cada (ADR-029). */
 const JULGAMENTOS: OptionChip[] = TAKE_STATUSES.map((status) => ({
@@ -242,6 +258,7 @@ export function TakeSom({
             index: track.index,
             nome: track.name ?? '',
             fonte: track.source ?? '',
+            captacao: track.pickup ?? '',
           })),
         )}
       >
@@ -254,12 +271,41 @@ export function TakeSom({
         />
       </Dobra>
 
+      {/* Problemas de captação (ADR-041): fechados por padrão, com o resumo à mostra.
+          Um take com problema acende o rótulo — é o aviso que a pós procura. */}
+      <Dobra
+        titulo="Problemas"
+        resumo={[...rotulosDosProblemas(dados?.issues), dados?.issueNotes ? 'obs.' : '']
+          .filter(Boolean)
+          .join(' · ')}
+        destaque={leProblemas(dados?.issues).length > 0 || Boolean(dados?.issueNotes)}
+      >
+        <ToggleChips
+          label="Problemas de captação"
+          options={PROBLEMAS}
+          values={leProblemas(dados?.issues)}
+          disabled={!canEdit}
+          onToggle={(codigo) =>
+            void altera({ issues: alternaProblema(dados?.issues, codigo) })
+          }
+        />
+        <div className="mt-3">
+          <DebouncedTextField
+            label="Outros problemas / detalhes"
+            value={dados?.issueNotes ?? ''}
+            disabled={!canEdit}
+            placeholder="Avião aos 20 s; lapela do João raspando no fim"
+            onCommit={(valor) => void altera({ issueNotes: valor || null })}
+          />
+        </div>
+      </Dobra>
+
       <div className="mt-3">
         <DebouncedTextField
-          label="Observações"
+          label="Observações técnicas"
           value={dados?.notes ?? ''}
           disabled={!canEdit}
-          placeholder="Avião durante o take"
+          placeholder="Ganho do boom +3 dB a partir daqui"
           onCommit={(valor) => void altera({ notes: valor || null })}
         />
       </div>
@@ -347,38 +393,60 @@ function TracksDoTake({
       ) : null}
 
       {tracks.map((track) => (
-        <div key={track.id} className="flex items-end gap-2">
-          <span className="w-6 shrink-0 pb-3 text-center font-mono text-sm text-brand">
-            {track.index}
-          </span>
-          <DebouncedTextField
-            label="Canal"
-            className="flex-1"
-            value={track.name ?? ''}
-            disabled={!canEdit}
-            placeholder="Boom"
-            onCommit={(valor) =>
-              void patchSoundTrack(track.id, { name: valor || null }).then(syncNow)
-            }
-          />
-          <DebouncedTextField
-            label="Fonte"
-            className="flex-1"
-            value={track.source ?? ''}
-            disabled={!canEdit}
-            placeholder="MKH 416"
-            onCommit={(valor) =>
-              void patchSoundTrack(track.id, { source: valor || null }).then(syncNow)
-            }
-          />
-          {canEdit ? (
-            <IconButton
-              label={`Remover canal ${track.index}`}
-              variant="danger"
-              className="mb-0.5"
-              icon={<TrashIcon size={16} />}
-              onClick={() => void removeSoundTrack(track.id).then(syncNow)}
+        <div
+          key={track.id}
+          className="flex flex-col gap-2 rounded-lg border border-line bg-surface-raised p-2"
+        >
+          <div className="flex items-end gap-2">
+            <span className="w-6 shrink-0 pb-3 text-center font-mono text-sm text-brand">
+              {track.index}
+            </span>
+            <DebouncedTextField
+              label="Canal"
+              className="flex-1"
+              value={track.name ?? ''}
+              disabled={!canEdit}
+              placeholder="João"
+              onCommit={(valor) =>
+                void patchSoundTrack(track.id, { name: valor || null }).then(syncNow)
+              }
             />
+            <DebouncedTextField
+              label="Microfone"
+              className="flex-1"
+              value={track.source ?? ''}
+              disabled={!canEdit}
+              placeholder="MKH 416"
+              onCommit={(valor) =>
+                void patchSoundTrack(track.id, { source: valor || null }).then(syncNow)
+              }
+            />
+            {canEdit ? (
+              <IconButton
+                label={`Remover canal ${track.index}`}
+                variant="danger"
+                className="mb-0.5"
+                icon={<TrashIcon size={16} />}
+                onClick={() => void removeSoundTrack(track.id).then(syncNow)}
+              />
+            ) : null}
+          </div>
+          {/* Tipo de captação num toque (ADR-041). Valor fora da lista — "Plant no
+              carro" — continua guardado e aparece escrito aqui embaixo. */}
+          <OptionChips
+            label={`Captação do canal ${track.index}`}
+            size="sm"
+            className="flex-wrap pl-8"
+            options={CAPTACAO}
+            value={track.pickup ?? null}
+            disabled={!canEdit}
+            onChange={(valor) =>
+              void patchSoundTrack(track.id, { pickup: valor }).then(syncNow)
+            }
+          />
+          {track.pickup &&
+          !CAPTACOES.includes(track.pickup as (typeof CAPTACOES)[number]) ? (
+            <p className="pl-8 text-xs text-zinc-400">Captação: {track.pickup}</p>
           ) : null}
         </div>
       ))}

@@ -611,6 +611,40 @@ pode quebrar a tela inicial.
 
 ---
 
+## ✅ Três departamentos principais — `2026-11-12`
+
+"Novo boletim" passa a perguntar **qual** boletim, e Som e Continuidade ganham o que faltava
+para valerem sozinhos numa diária: criar plano e take, rolos e problemas de captação, raccord,
+problema de continuidade e fotografias. Os outros setores saem das escolhas, sem perder dado.
+
+Decisões: [ADR-040](decisions.md#adr-040--três-departamentos-na-porta-de-entrada-os-outros-setores-escondidos)
+(escolha + setores escondidos), [ADR-041](decisions.md#adr-041--som-completo-rolos-problemas-de-captação-e-canais-com-captação)
+(Som), [ADR-042](decisions.md#adr-042--continuidade-completa-raccord-problema-e-fotos-que-sobem-depois)
+(Continuidade e fotos, revisão do ADR-022).
+
+- [x] **Escolha de departamento** em "Novo boletim" — camada sobre a lista, abre sem rede.
+      Câmera faz exatamente o que fazia; Continuidade e Som abrem a diária recente no módulo
+      certo, ou `/hoje?dep=…`
+- [x] **Identidade por departamento** — amarelo, azul, verde, sempre com o nome escrito
+- [x] **Outros setores escondidos** (`MOSTRAR_OUTROS_SETORES`), sem migração e sem reescrever
+      quem já os tem
+- [x] **Som**: gravador e observações gerais, rolos/cartões com arquivos derivados, problemas
+      de captação, microfone e captação por canal, novo plano; sound report e CSV estendidos
+- [x] **Continuidade**: novo plano e próximo take, descrição do enquadramento, problema de
+      continuidade, notas de raccord e fotos em cena/plano/take; relatório com raccord, fotos,
+      selecionados, diálogo e pendências
+- [x] **Migration `0010`** só aditiva; Dexie v5 só com tabelas novas; protocolo continua `3`
+- [x] **Verificado por** `npm run test:departamentos` (86 checks) e
+      `test/vitest/departamentos.test.ts` (16 testes sobre IndexedDB real): foto inteira ou
+      nenhuma, bytes só depois do registro, download só das diárias fixadas, nota que não
+      converge, roll restaurado e não recriado, fixação com servidor antigo
+
+**Fica para depois:** sincronizar o "Novo boletim" de Continuidade/Som **sem conta** (hoje eles
+vivem na plataforma — o boletim local continua sendo só de câmera); mover os bytes de foto para
+armazenamento de objetos quando uma produção passar de alguns GB; anotar sobre a foto.
+
+---
+
 ## Regras que valem em todas as fases
 
 1. **O Boletim de Câmera não regride** — nem em campo, nem em toques, nem em PDF.

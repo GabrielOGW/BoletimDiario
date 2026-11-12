@@ -12,7 +12,7 @@
 
 import { deriveId } from '@/domain/platform/derive-id';
 import { getDb, type LocalSoundDayConfig, type LocalSoundTakeData } from '../db';
-import type { LocalSoundTakeTrack } from '../db';
+import type { LocalSoundRoll, LocalSoundTakeTrack } from '../db';
 
 import { createEntity, listSetups, listTakes, patchEntity, softDelete } from './diaria';
 
@@ -166,6 +166,7 @@ export async function createSoundTrack(input: {
   index: number;
   name?: string | null;
   source?: string | null;
+  pickup?: string | null;
 }): Promise<string> {
   const id = soundTrackId(input.takeId, input.index);
 
@@ -173,6 +174,7 @@ export async function createSoundTrack(input: {
     ...input,
     name: input.name ?? null,
     source: input.source ?? null,
+    pickup: input.pickup ?? null,
     id,
     version: 0,
     _dirty: 1,
@@ -205,7 +207,8 @@ export async function removeSoundTrack(id: string): Promise<void> {
  * que ele realmente teve: mudar o canal 3 hoje não reescreve o take de uma hora atrás,
  * que é o que um relatório de custódia precisa.
  *
- * As `notes` **não** são herdadas: "lav estalando" é daquele take.
+ * As `notes` **não** são herdadas: "lav estalando" é daquele take. Nome, microfone e tipo
+ * de captação são (ADR-041) — é o layout do canal, não o que aconteceu nele.
  */
 export async function ensureSoundTracks(input: {
   productionId: string;
@@ -225,6 +228,7 @@ export async function ensureSoundTracks(input: {
       index: track.index,
       name: track.name ?? null,
       source: track.source ?? null,
+      pickup: track.pickup ?? null,
     });
   }
 }
@@ -266,4 +270,62 @@ async function tracksDoTakeAnterior(input: {
 /** O próximo índice livre de canal — 1..N, sem buraco no meio do relatório. */
 export function proximoIndiceDeTrack(tracks: LocalSoundTakeTrack[]): number {
   return tracks.reduce((maior, track) => Math.max(maior, track.index), 0) + 1;
+}
+
+// ---- Rolos / cartões (ADR-041) ----
+
+/** Id derivado de `(diária, rótulo)`: o roll 004 de hoje é um só, quem quer que o crie. */
+export const soundRollId = (shootingDayId: string, label: string) =>
+  deriveId('soundRoll', shootingDayId, label.trim().toUpperCase());
+
+export async function listSoundRolls(shootingDayId: string): Promise<LocalSoundRoll[]> {
+  const linhas = await getDb()
+    .soundRolls.where('shootingDayId')
+    .equals(shootingDayId)
+    .toArray();
+  return linhas.filter((linha) => !linha.deletedAt);
+}
+
+/**
+ * Garante o cadastro do roll — idempotente pelo id derivado.
+ *
+ * Um roll apagado e cadastrado de novo é **restaurado**, não recriado: o `CREATE` com o
+ * mesmo id não faria nada no servidor (`on conflict do nothing`), e o roll continuaria
+ * apagado para a equipe inteira enquanto aparece vivo neste aparelho.
+ */
+export async function ensureSoundRoll(input: {
+  productionId: string;
+  shootingDayId: string;
+  label: string;
+}): Promise<string> {
+  const label = input.label.trim();
+  const id = soundRollId(input.shootingDayId, label);
+
+  const existente = await getDb().soundRolls.get(id);
+  if (existente?.deletedAt) {
+    await patchEntity('soundRoll', id, { deletedAt: null });
+    return id;
+  }
+  if (existente) return id;
+
+  return createEntity('soundRoll', id, {
+    id,
+    productionId: input.productionId,
+    shootingDayId: input.shootingDayId,
+    label,
+    version: 0,
+    _dirty: 1,
+  } as unknown as LocalSoundRoll & Record<string, unknown>);
+}
+
+export async function patchSoundRoll(
+  id: string,
+  changes: Record<string, unknown>,
+): Promise<void> {
+  await patchEntity('soundRoll', id, changes);
+}
+
+/** Tirar o cadastro do roll não mexe nos takes: os arquivos continuam no roll deles. */
+export async function removeSoundRoll(id: string): Promise<void> {
+  await softDelete('soundRoll', id);
 }

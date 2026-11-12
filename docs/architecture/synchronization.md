@@ -80,12 +80,13 @@ GET  /api/sync/pull     ?productionId=…&since=<seq>&limit=500
 
 ### Versões
 
-| Nº  | Quando | O que mudou                                                |
-| --- | ------ | ---------------------------------------------------------- |
-| 1   | Fase 4 | Cena, setup e take                                         |
-| 2   | Fase 5 | `cameraUnit` e `cameraTakeData`                            |
-| 3   | Fase 6 | `soundDayConfig`, `soundTakeData` e `soundTakeTrack`       |
-| 3   | Fase 7 | Continuidade e relatório de progresso — **sem incremento** |
+| Nº  | Quando      | O que mudou                                                                                                               |
+| --- | ----------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Fase 4      | Cena, setup e take                                                                                                        |
+| 2   | Fase 5      | `cameraUnit` e `cameraTakeData`                                                                                           |
+| 3   | Fase 6      | `soundDayConfig`, `soundTakeData` e `soundTakeTrack`                                                                      |
+| 3   | Fase 7      | Continuidade e relatório de progresso — **sem incremento**                                                                |
+| 3   | ADR-041/042 | `soundRoll`, `continuityNote`, `continuityPhoto` — **sem incremento**; bytes de foto em `/api/sync/fotos`, fora do cursor |
 
 **Campo novo não incrementa; entidade nova incrementava.** Um campo que o cliente antigo
 não conhece é simplesmente ignorado por `rowFromWire`, que itera a lista **do cliente** —

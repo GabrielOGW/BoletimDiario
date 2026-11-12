@@ -19,7 +19,14 @@ import { patchEntity } from '@/lib/offline/repos/diaria';
 import { syncNow } from '@/lib/sync/engine';
 import { cn } from '@/utils/cn';
 
+import { Button } from '@/components/ui/Button';
+import { PlusIcon } from '@/components/ui/icons';
+import { createTake, nextTakeNumber } from '@/lib/offline/repos/diaria';
+import { ensureContinuityTakeData } from '@/lib/offline/repos/continuidade';
+import { NovoPlano } from '@/features/diaria/NovoPlano';
+
 import { EstadoDaCena } from './EstadoDoSet';
+import { RaccordEFotos } from './RaccordEFotos';
 import { TakeContinuidade } from './TakeContinuidade';
 
 /** Rótulos em pt-BR dos dois enums de cena. O banco guarda o valor; a tela mostra isto. */
@@ -50,6 +57,7 @@ interface CenaContinuidadeProps {
   camera: LocalCameraTakeData[];
   som: LocalSoundTakeData[];
   productionId: string;
+  shootingDayId: string;
   canEdit: boolean;
 }
 
@@ -72,6 +80,7 @@ export function CenaContinuidade({
   camera,
   som,
   productionId,
+  shootingDayId,
   canEdit,
 }: CenaContinuidadeProps) {
   const [aberto, setAberto] = useState(true);
@@ -138,6 +147,17 @@ export function CenaContinuidade({
             canEdit={canEdit}
           />
 
+          {referencia ? (
+            <RaccordEFotos
+              productionId={productionId}
+              // O primeiro bloco responde pela cena, como no estado do set: a nota vale
+              // para a cena inteira e aparece igual em 24A e 24B.
+              escopo={{ sceneId: referencia.id }}
+              canEdit={canEdit}
+              rotulo="Raccord e fotos da cena"
+            />
+          ) : null}
+
           {ordenados.map((bloco) => (
             <BlocoContinuidade
               key={bloco.id}
@@ -148,6 +168,7 @@ export function CenaContinuidade({
               camera={camera}
               som={som}
               productionId={productionId}
+              shootingDayId={shootingDayId}
               canEdit={canEdit}
             />
           ))}
@@ -280,6 +301,7 @@ function BlocoContinuidade({
   camera,
   som,
   productionId,
+  shootingDayId,
   canEdit,
 }: {
   bloco: LocalScene;
@@ -289,6 +311,7 @@ function BlocoContinuidade({
   camera: LocalCameraTakeData[];
   som: LocalSoundTakeData[];
   productionId: string;
+  shootingDayId: string;
   canEdit: boolean;
 }) {
   const ordenados = [...setups].sort(
@@ -308,7 +331,8 @@ function BlocoContinuidade({
       <div className="flex flex-col gap-3 p-3">
         {ordenados.length === 0 ? (
           <p className="text-sm text-zinc-400">
-            Sem planos neste bloco. Eles aparecem aqui assim que a Câmera os criar.
+            Sem planos neste bloco. Eles aparecem aqui quando a Câmera os cria — ou crie o
+            plano agora, e a Câmera vai encontrar o mesmo.
           </p>
         ) : null}
 
@@ -327,9 +351,40 @@ function BlocoContinuidade({
             canEdit={canEdit}
           />
         ))}
+
+        {canEdit ? (
+          <NovoPlano
+            productionId={productionId}
+            sceneId={bloco.id}
+            shootingDayId={shootingDayId}
+            setups={ordenados.filter((setup) => setup.code !== 'WILD')}
+            onCriado={(setupId) => criaProximoTake({ productionId, setupId })}
+          />
+        ) : null}
       </div>
     </section>
   );
+}
+
+/**
+ * O próximo take do plano, criado pela Continuidade (ADR-040).
+ *
+ * A numeração é por setup (`nextTakeNumber`) e o id é derivado: se a Câmera criar o
+ * take 4 do mesmo plano sem rede, os dois convergem para o mesmo take. Nada é herdado
+ * para os dados da continuidade — o que ela registra é o que aconteceu **neste** take.
+ */
+async function criaProximoTake(input: {
+  productionId: string;
+  setupId: string;
+}): Promise<void> {
+  const numero = await nextTakeNumber(input.setupId);
+  const takeId = await createTake({
+    productionId: input.productionId,
+    setupId: input.setupId,
+    number: numero,
+  });
+  await ensureContinuityTakeData({ productionId: input.productionId, takeId });
+  syncNow();
 }
 
 /**
@@ -436,6 +491,26 @@ function PlanoContinuidade({
             />
           </div>
 
+          <DebouncedTextField
+            label="Descrição do enquadramento"
+            multiline
+            value={setup.description ?? ''}
+            disabled={!canEdit}
+            placeholder="Plano médio de João no sofá; janela ao fundo à esquerda"
+            onCommit={(valor) =>
+              void patchEntity('setup', setup.id, { description: valor || null }).then(
+                syncNow,
+              )
+            }
+          />
+
+          <RaccordEFotos
+            productionId={productionId}
+            escopo={{ setupId: setup.id }}
+            canEdit={canEdit}
+            rotulo="Raccord e fotos do plano"
+          />
+
           {takes.length === 0 ? (
             <p className="text-sm text-zinc-400">Nenhum take neste plano ainda.</p>
           ) : null}
@@ -453,6 +528,16 @@ function PlanoContinuidade({
               canEdit={canEdit}
             />
           ))}
+
+          {canEdit ? (
+            <Button
+              variant="secondary"
+              leftIcon={<PlusIcon size={16} />}
+              onClick={() => void criaProximoTake({ productionId, setupId: setup.id })}
+            >
+              Próximo take
+            </Button>
+          ) : null}
         </div>
       ) : null}
     </section>

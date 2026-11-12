@@ -14,22 +14,22 @@ conflitos · G offline · H skills · I roadmap · J riscos.
 
 # A. Decisões finais
 
-| #    | Decisão                                                                                 | Substitui                     |
-| ---- | --------------------------------------------------------------------------------------- | ----------------------------- |
-| D-01 | **Fronteira offline explícita** — local é fonte de verdade só da _superfície de diária_ | offline-first absoluto        |
-| D-02 | **Opção B** (local + Sync Layer), restrita a essa superfície                            | —                             |
-| D-03 | **Conflito por _compare-and-set_ de campo** (`{de, para}`), sem histórico de chaves     | ADR-007 (consequência)        |
-| D-04 | **Ids determinísticos por chave natural** em Scene/Setup/Take                           | ADR-012 (complementa)         |
-| D-05 | **Convergência para o servidor + pendência explícita** no conflito                      | risks.md §R4 ("meu continua") |
-| D-06 | **Polling adaptativo. Sem SSE na v1**                                                   | ADR-009                       |
-| D-07 | **Sem fotografias** em nenhuma camada                                                   | offline-first.md §3           |
-| D-08 | **Migração vira importação opcional**                                                   | migrations/local-to-cloud.md  |
-| D-09 | **Design system único**, o do Boletim de Câmera, obrigatório para todo módulo novo      | —                             |
-| D-10 | **Conta obrigatória na plataforma**; app atual preservado sem conta em `/legado`        | overview.md §8.2 (modo LOCAL) |
-| D-11 | `date` para diária, `timestamptz` para auditoria                                        | confirma R9                   |
-| D-12 | **Três versões encadeadas**: app → schema local → protocolo de sync                     | —                             |
-| D-13 | **Auditoria mínima**: `createdBy/At`, `updatedBy/At`, `sync_log`                        | confirma §9                   |
-| D-14 | **Skills (Opção B), cinco**, com agente principal como autoridade arquitetural          | —                             |
+| #    | Decisão                                                                                           | Substitui                     |
+| ---- | ------------------------------------------------------------------------------------------------- | ----------------------------- |
+| D-01 | **Fronteira offline explícita** — local é fonte de verdade só da _superfície de diária_           | offline-first absoluto        |
+| D-02 | **Opção B** (local + Sync Layer), restrita a essa superfície                                      | —                             |
+| D-03 | **Conflito por _compare-and-set_ de campo** (`{de, para}`), sem histórico de chaves               | ADR-007 (consequência)        |
+| D-04 | **Ids determinísticos por chave natural** em Scene/Setup/Take                                     | ADR-012 (complementa)         |
+| D-05 | **Convergência para o servidor + pendência explícita** no conflito                                | risks.md §R4 ("meu continua") |
+| D-06 | **Polling adaptativo. Sem SSE na v1**                                                             | ADR-009                       |
+| D-07 | **Sem fotografias** em nenhuma camada — _revisto em `2026-11-12`: fotos de continuidade, ADR-042_ | offline-first.md §3 e §8      |
+| D-08 | **Migração vira importação opcional**                                                             | migrations/local-to-cloud.md  |
+| D-09 | **Design system único**, o do Boletim de Câmera, obrigatório para todo módulo novo                | —                             |
+| D-10 | **Conta obrigatória na plataforma**; app atual preservado sem conta em `/legado`                  | overview.md §8.2 (modo LOCAL) |
+| D-11 | `date` para diária, `timestamptz` para auditoria                                                  | confirma R9                   |
+| D-12 | **Três versões encadeadas**: app → schema local → protocolo de sync                               | —                             |
+| D-13 | **Auditoria mínima**: `createdBy/At`, `updatedBy/At`, `sync_log`                                  | confirma §9                   |
+| D-14 | **Skills (Opção B), cinco**, com agente principal como autoridade arquitetural                    | —                             |
 
 ## D-01 · A fronteira offline
 
