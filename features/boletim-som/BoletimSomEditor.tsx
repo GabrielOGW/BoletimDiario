@@ -250,215 +250,231 @@ export function BoletimSomEditor({
       : tituloDoBoletim(boletim);
 
   return (
-    <div className={cn('flex min-h-dvh flex-col bg-ink', folha && 'no-print')}>
-      <AppHeader
-        title={titulo}
-        subtitle={[
-          'Som',
-          formatDateBR(boletim.producao.data),
-          boletim.producao.diaria && `Diária ${boletim.producao.diaria}`,
-        ]
-          .filter(Boolean)
-          .join(' · ')}
-        backHref="/"
-        right={
-          <>
-            <OfflineBadge />
-            <SaveStateBadge state={saveState} />
-          </>
-        }
-      />
-      <FaixaDoDepartamento modulo="som" />
+    <>
+      {/* O editor some na impressão; a folha, logo abaixo, é **irmã** dele e não filha.
+          Dentro do `no-print`, ela sumia junto e o PDF saía em branco. */}
+      <div className={cn('flex min-h-dvh flex-col bg-ink', folha && 'no-print')}>
+        <AppHeader
+          title={titulo}
+          subtitle={[
+            'Som',
+            formatDateBR(boletim.producao.data),
+            boletim.producao.diaria && `Diária ${boletim.producao.diaria}`,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+          backHref="/"
+          right={
+            <>
+              <OfflineBadge />
+              <SaveStateBadge state={saveState} />
+            </>
+          }
+        />
+        <FaixaDoDepartamento modulo="som" />
 
-      <main className="flex-1 py-4">
-        <PageContainer className="flex flex-col gap-4">
-          <ProducaoLocalSection
-            value={boletim.producao}
-            onChange={(patch) => altera({ producao: { ...boletim.producao, ...patch } })}
-          />
-
-          <SectionCard
-            title="Equipe e técnica"
-            icon={<MicIcon size={18} />}
-            collapsible
-            defaultOpen={false}
-            summary={
-              [
-                boletim.equipe.mixer,
-                boletim.tecnica.gravador,
-                boletim.tecnica.sampleRate,
-                boletim.tecnica.bitDepth,
-              ]
-                .filter(Boolean)
-                .join(' · ') || 'Não preenchida'
-            }
-          >
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <TextField
-                label="Técnico de som / Sound mixer"
-                value={boletim.equipe.mixer}
-                onChange={(v) => altera({ equipe: { ...boletim.equipe, mixer: v } })}
-              />
-              <TextField
-                label="Microfonista / Boom"
-                value={boletim.equipe.boom}
-                onChange={(v) => altera({ equipe: { ...boletim.equipe, boom: v } })}
-              />
-              <TextField
-                label="Gravador"
-                className="sm:col-span-2"
-                value={boletim.tecnica.gravador}
-                placeholder="Sound Devices 833"
-                onChange={(v) => altera({ tecnica: { ...boletim.tecnica, gravador: v } })}
-              />
-              <TextField
-                label="Sample rate"
-                value={boletim.tecnica.sampleRate}
-                options={SAMPLE_RATES}
-                onChange={(v) =>
-                  altera({ tecnica: { ...boletim.tecnica, sampleRate: v } })
-                }
-              />
-              <TextField
-                label="Bit depth"
-                value={boletim.tecnica.bitDepth}
-                options={BIT_DEPTHS}
-                onChange={(v) => altera({ tecnica: { ...boletim.tecnica, bitDepth: v } })}
-              />
-              <TextField
-                label="Frame rate"
-                value={boletim.tecnica.frameRate}
-                options={FRAME_RATES}
-                onChange={(v) =>
-                  altera({ tecnica: { ...boletim.tecnica, frameRate: v } })
-                }
-              />
-              <TextField
-                label="Timecode"
-                value={boletim.tecnica.timecode}
-                options={TIMECODES}
-                onChange={(v) => altera({ tecnica: { ...boletim.tecnica, timecode: v } })}
-              />
-              <TextField
-                label="Formato"
-                className="sm:col-span-2"
-                value={boletim.tecnica.formato}
-                options={FORMATOS}
-                onChange={(v) => altera({ tecnica: { ...boletim.tecnica, formato: v } })}
-              />
-            </div>
-          </SectionCard>
-
-          <RolosSection
-            rolos={boletim.rolos}
-            doDia={leitura.rolos}
-            onChange={(rolos) => altera({ rolos })}
-          />
-
-          <SectionCard
-            title="Cenas"
-            icon={<ClapperboardIcon size={18} />}
-            action={
-              <Button
-                size="sm"
-                variant="primary"
-                leftIcon={<PlusIcon size={15} />}
-                onClick={novaCena}
-              >
-                Cena
-              </Button>
-            }
-          >
-            {boletim.cenas.length === 0 ? (
-              <p className="text-sm text-zinc-400">
-                Nenhuma cena ainda. Toque em{' '}
-                <strong className="text-zinc-200">+ Cena</strong> e comece a marcar: o
-                take 1 já nasce pronto.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {boletim.cenas.map((cena) => (
-                  <CenaCard
-                    key={cena.id}
-                    cena={cena}
-                    onNumero={(numero) => alteraCena(cena.id, (c) => ({ ...c, numero }))}
-                    onRemove={() =>
-                      update((prev) => ({
-                        ...prev,
-                        cenas: prev.cenas.filter((c) => c.id !== cena.id),
-                      }))
-                    }
-                    onNovoPlano={() => novoPlano(cena.id)}
-                    onPlano={(planoId, muda) => alteraPlano(cena.id, planoId, muda)}
-                    onRemovePlano={(planoId) =>
-                      alteraCena(cena.id, (c) => ({
-                        ...c,
-                        planos: c.planos.filter((p) => p.id !== planoId),
-                      }))
-                    }
-                    onNovoTake={(planoId) => novoTake(cena.id, planoId)}
-                    onTake={(planoId, takeId, muda) =>
-                      alteraTake(cena.id, planoId, takeId, muda)
-                    }
-                  />
-                ))}
-              </div>
-            )}
-          </SectionCard>
-
-          <SectionCard title="Observações gerais" icon={<FileTextIcon size={18} />}>
-            <TextAreaField
-              label="Observações gerais do som"
-              value={boletim.observacoesGerais}
-              rows={4}
-              placeholder="Gerador próximo à locação; obra na rua das 14h às 16h"
-              onChange={(v) => altera({ observacoesGerais: v })}
+        <main className="flex-1 py-4">
+          <PageContainer className="flex flex-col gap-4">
+            <ProducaoLocalSection
+              value={boletim.producao}
+              onChange={(patch) =>
+                altera({ producao: { ...boletim.producao, ...patch } })
+              }
             />
-          </SectionCard>
 
-          <SectionCard title="Som do dia" icon={<FileTextIcon size={18} />}>
-            <dl className="grid grid-cols-3 gap-3 text-sm sm:grid-cols-6">
-              <Numero rotulo="Takes" valor={resumo.takes} />
-              <Numero rotulo="Circled" valor={resumo.circled} />
-              <Numero rotulo="MOS" valor={resumo.mos} />
-              <Numero rotulo="NG" valor={resumo.ng} />
-              <Numero rotulo="Problemas" valor={resumo.comProblema} />
-              <Numero rotulo="Rolos" valor={leitura.rolos.length} />
-            </dl>
-          </SectionCard>
+            <SectionCard
+              title="Equipe e técnica"
+              icon={<MicIcon size={18} />}
+              collapsible
+              defaultOpen={false}
+              summary={
+                [
+                  boletim.equipe.mixer,
+                  boletim.tecnica.gravador,
+                  boletim.tecnica.sampleRate,
+                  boletim.tecnica.bitDepth,
+                ]
+                  .filter(Boolean)
+                  .join(' · ') || 'Não preenchida'
+              }
+            >
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <TextField
+                  label="Técnico de som / Sound mixer"
+                  value={boletim.equipe.mixer}
+                  onChange={(v) => altera({ equipe: { ...boletim.equipe, mixer: v } })}
+                />
+                <TextField
+                  label="Microfonista / Boom"
+                  value={boletim.equipe.boom}
+                  onChange={(v) => altera({ equipe: { ...boletim.equipe, boom: v } })}
+                />
+                <TextField
+                  label="Gravador"
+                  className="sm:col-span-2"
+                  value={boletim.tecnica.gravador}
+                  placeholder="Sound Devices 833"
+                  onChange={(v) =>
+                    altera({ tecnica: { ...boletim.tecnica, gravador: v } })
+                  }
+                />
+                <TextField
+                  label="Sample rate"
+                  value={boletim.tecnica.sampleRate}
+                  options={SAMPLE_RATES}
+                  onChange={(v) =>
+                    altera({ tecnica: { ...boletim.tecnica, sampleRate: v } })
+                  }
+                />
+                <TextField
+                  label="Bit depth"
+                  value={boletim.tecnica.bitDepth}
+                  options={BIT_DEPTHS}
+                  onChange={(v) =>
+                    altera({ tecnica: { ...boletim.tecnica, bitDepth: v } })
+                  }
+                />
+                <TextField
+                  label="Frame rate"
+                  value={boletim.tecnica.frameRate}
+                  options={FRAME_RATES}
+                  onChange={(v) =>
+                    altera({ tecnica: { ...boletim.tecnica, frameRate: v } })
+                  }
+                />
+                <TextField
+                  label="Timecode"
+                  value={boletim.tecnica.timecode}
+                  options={TIMECODES}
+                  onChange={(v) =>
+                    altera({ tecnica: { ...boletim.tecnica, timecode: v } })
+                  }
+                />
+                <TextField
+                  label="Formato"
+                  className="sm:col-span-2"
+                  value={boletim.tecnica.formato}
+                  options={FORMATOS}
+                  onChange={(v) =>
+                    altera({ tecnica: { ...boletim.tecnica, formato: v } })
+                  }
+                />
+              </div>
+            </SectionCard>
 
+            <RolosSection
+              rolos={boletim.rolos}
+              doDia={leitura.rolos}
+              onChange={(rolos) => altera({ rolos })}
+            />
+
+            <SectionCard
+              title="Cenas"
+              icon={<ClapperboardIcon size={18} />}
+              action={
+                <Button
+                  size="sm"
+                  variant="primary"
+                  leftIcon={<PlusIcon size={15} />}
+                  onClick={novaCena}
+                >
+                  Cena
+                </Button>
+              }
+            >
+              {boletim.cenas.length === 0 ? (
+                <p className="text-sm text-zinc-400">
+                  Nenhuma cena ainda. Toque em{' '}
+                  <strong className="text-zinc-200">+ Cena</strong> e comece a marcar: o
+                  take 1 já nasce pronto.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {boletim.cenas.map((cena) => (
+                    <CenaCard
+                      key={cena.id}
+                      cena={cena}
+                      onNumero={(numero) =>
+                        alteraCena(cena.id, (c) => ({ ...c, numero }))
+                      }
+                      onRemove={() =>
+                        update((prev) => ({
+                          ...prev,
+                          cenas: prev.cenas.filter((c) => c.id !== cena.id),
+                        }))
+                      }
+                      onNovoPlano={() => novoPlano(cena.id)}
+                      onPlano={(planoId, muda) => alteraPlano(cena.id, planoId, muda)}
+                      onRemovePlano={(planoId) =>
+                        alteraCena(cena.id, (c) => ({
+                          ...c,
+                          planos: c.planos.filter((p) => p.id !== planoId),
+                        }))
+                      }
+                      onNovoTake={(planoId) => novoTake(cena.id, planoId)}
+                      onTake={(planoId, takeId, muda) =>
+                        alteraTake(cena.id, planoId, takeId, muda)
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+
+            <SectionCard title="Observações gerais" icon={<FileTextIcon size={18} />}>
+              <TextAreaField
+                label="Observações gerais do som"
+                value={boletim.observacoesGerais}
+                rows={4}
+                placeholder="Gerador próximo à locação; obra na rua das 14h às 16h"
+                onChange={(v) => altera({ observacoesGerais: v })}
+              />
+            </SectionCard>
+
+            <SectionCard title="Som do dia" icon={<FileTextIcon size={18} />}>
+              <dl className="grid grid-cols-3 gap-3 text-sm sm:grid-cols-6">
+                <Numero rotulo="Takes" valor={resumo.takes} />
+                <Numero rotulo="Circled" valor={resumo.circled} />
+                <Numero rotulo="MOS" valor={resumo.mos} />
+                <Numero rotulo="NG" valor={resumo.ng} />
+                <Numero rotulo="Problemas" valor={resumo.comProblema} />
+                <Numero rotulo="Rolos" valor={leitura.rolos.length} />
+              </dl>
+            </SectionCard>
+
+            <Button
+              variant="secondary"
+              fullWidth
+              leftIcon={<DownloadIcon size={18} />}
+              disabled={leitura.linhas.length === 0}
+              onClick={() =>
+                baixaCSV(montaCSV(leitura.linhas, contexto), nomeDoArquivo(contexto))
+              }
+            >
+              Baixar CSV para a pós
+            </Button>
+          </PageContainer>
+        </main>
+
+        <StickyActionBar>
           <Button
-            variant="secondary"
-            fullWidth
-            leftIcon={<DownloadIcon size={18} />}
-            disabled={leitura.linhas.length === 0}
-            onClick={() =>
-              baixaCSV(montaCSV(leitura.linhas, contexto), nomeDoArquivo(contexto))
-            }
+            variant="ghost"
+            leftIcon={<TrashIcon size={18} />}
+            onClick={() => setApagando(true)}
           >
-            Baixar CSV para a pós
+            Excluir
           </Button>
-        </PageContainer>
-      </main>
-
-      <StickyActionBar>
-        <Button
-          variant="ghost"
-          leftIcon={<TrashIcon size={18} />}
-          onClick={() => setApagando(true)}
-        >
-          Excluir
-        </Button>
-        <Button
-          variant="primary"
-          size="lg"
-          fullWidth
-          leftIcon={<EyeIcon size={20} />}
-          onClick={() => setFolha(true)}
-        >
-          Visualizar / PDF
-        </Button>
-      </StickyActionBar>
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            leftIcon={<EyeIcon size={20} />}
+            onClick={() => setFolha(true)}
+          >
+            Visualizar / PDF
+          </Button>
+        </StickyActionBar>
+      </div>
 
       {folha ? (
         <div className="print-overlay fixed inset-0 z-40 overflow-y-auto bg-ink/95 px-3 py-4 backdrop-blur-sm">
@@ -500,7 +516,7 @@ export function BoletimSomEditor({
         }}
         onCancel={() => setApagando(false)}
       />
-    </div>
+    </>
   );
 }
 

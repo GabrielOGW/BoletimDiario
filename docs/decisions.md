@@ -1325,5 +1325,12 @@ criar nada antes. Produção, diária e equipe ficam para o futuro.
 > a mesma diária do demo de Câmera (que não muda). Semeados uma vez por aparelho, com bandeira
 > própria e só em store vazio: quem já usava o app os ganha uma vez, e um demo apagado não volta.
 
+> **Revisto em `2026-11-14`** — defeito em produção: o PDF de Som e Continuidade saía em
+> branco (relatado num Android; reproduzido também em iPhone e desktop). A folha em
+> sobreposição estava **dentro** do container `no-print` do editor, e o CSS de impressão a
+> escondia junto. Correção: a folha passa a ser irmã do editor, como nos módulos da
+> plataforma. `npm run test:pdf` imprime os três boletins em quatro aparelhos e reprova o
+> código antigo (PDF de uma página vazia).
+
 **Fica para depois.** Backup em JSON dos boletins de Som e Continuidade (o de Câmera continua
 igual); levar um boletim local para uma diária da plataforma.
