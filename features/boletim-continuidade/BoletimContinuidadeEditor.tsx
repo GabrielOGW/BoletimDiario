@@ -160,124 +160,130 @@ export function BoletimContinuidadeEditor({
   const contagens = leitura.contagens;
 
   return (
-    <div className={cn('flex min-h-dvh flex-col bg-ink', folha && 'no-print')}>
-      <AppHeader
-        title={titulo}
-        subtitle={[
-          'Continuidade',
-          formatDateBR(boletim.producao.data),
-          boletim.producao.diaria && `Diária ${boletim.producao.diaria}`,
-        ]
-          .filter(Boolean)
-          .join(' · ')}
-        backHref="/"
-        right={
-          <>
-            <OfflineBadge />
-            <SaveStateBadge state={saveState} />
-          </>
-        }
-      />
-      <FaixaDoDepartamento modulo="continuidade" />
+    <>
+      {/* O editor some na impressão; a folha, logo abaixo, é **irmã** dele e não filha.
+          Dentro do `no-print`, ela sumia junto e o PDF saía em branco. */}
+      <div className={cn('flex min-h-dvh flex-col bg-ink', folha && 'no-print')}>
+        <AppHeader
+          title={titulo}
+          subtitle={[
+            'Continuidade',
+            formatDateBR(boletim.producao.data),
+            boletim.producao.diaria && `Diária ${boletim.producao.diaria}`,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+          backHref="/"
+          right={
+            <>
+              <OfflineBadge />
+              <SaveStateBadge state={saveState} />
+            </>
+          }
+        />
+        <FaixaDoDepartamento modulo="continuidade" />
 
-      <main className="flex-1 py-4">
-        <PageContainer className="flex flex-col gap-4">
-          <ProducaoLocalSection
-            value={boletim.producao}
-            onChange={(patch) => altera({ producao: { ...boletim.producao, ...patch } })}
+        <main className="flex-1 py-4">
+          <PageContainer className="flex flex-col gap-4">
+            <ProducaoLocalSection
+              value={boletim.producao}
+              onChange={(patch) =>
+                altera({ producao: { ...boletim.producao, ...patch } })
+              }
+            >
+              <TextField
+                label="Continuísta"
+                className="sm:col-span-2"
+                value={boletim.continuista}
+                onChange={(continuista) => altera({ continuista })}
+              />
+            </ProducaoLocalSection>
+
+            <SectionCard
+              title="Cenas"
+              icon={<ClapperboardIcon size={18} />}
+              action={
+                <Button
+                  size="sm"
+                  variant="primary"
+                  leftIcon={<PlusIcon size={15} />}
+                  onClick={novaCena}
+                >
+                  Cena
+                </Button>
+              }
+            >
+              {boletim.cenas.length === 0 ? (
+                <p className="text-sm text-zinc-400">
+                  Nenhuma cena ainda. Toque em{' '}
+                  <strong className="text-zinc-200">+ Cena</strong> e comece a registrar:
+                  o plano 1 e o take 1 já nascem prontos.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {boletim.cenas.map((cena) => (
+                    <CenaCard
+                      key={cena.id}
+                      boletimId={boletim.id}
+                      cena={cena}
+                      onChange={(muda) => alteraCena(cena.id, muda)}
+                      onRemove={() =>
+                        update((prev) => ({
+                          ...prev,
+                          cenas: prev.cenas.filter((c) => c.id !== cena.id),
+                        }))
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+
+            <SectionCard
+              title="Observações gerais e pendências"
+              icon={<FileTextIcon size={18} />}
+            >
+              <TextAreaField
+                label="Observações gerais"
+                value={boletim.observacoesGerais}
+                rows={4}
+                placeholder="Cena 31 ficou para amanhã; figurino da Maria precisa de reposição"
+                onChange={(observacoesGerais) => altera({ observacoesGerais })}
+              />
+            </SectionCard>
+
+            <SectionCard title="Continuidade do dia" icon={<FileTextIcon size={18} />}>
+              <dl className="grid grid-cols-3 gap-3 text-sm sm:grid-cols-6">
+                <Numero rotulo="Cenas" valor={contagens.cenas} />
+                <Numero rotulo="Planos" valor={contagens.planos} />
+                <Numero rotulo="Takes" valor={contagens.takes} />
+                <Numero rotulo="Prints" valor={contagens.prints} />
+                <Numero rotulo="Problemas" valor={contagens.comProblema} />
+                <Numero rotulo="Minutagem" valor={contagens.duracao || '—'} />
+              </dl>
+            </SectionCard>
+          </PageContainer>
+        </main>
+
+        <StickyActionBar>
+          <Button
+            variant="ghost"
+            leftIcon={<TrashIcon size={18} />}
+            onClick={() => setApagando(true)}
           >
-            <TextField
-              label="Continuísta"
-              className="sm:col-span-2"
-              value={boletim.continuista}
-              onChange={(continuista) => altera({ continuista })}
-            />
-          </ProducaoLocalSection>
-
-          <SectionCard
-            title="Cenas"
-            icon={<ClapperboardIcon size={18} />}
-            action={
-              <Button
-                size="sm"
-                variant="primary"
-                leftIcon={<PlusIcon size={15} />}
-                onClick={novaCena}
-              >
-                Cena
-              </Button>
-            }
+            Excluir
+          </Button>
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            leftIcon={<EyeIcon size={20} />}
+            onClick={() => setFolha(true)}
           >
-            {boletim.cenas.length === 0 ? (
-              <p className="text-sm text-zinc-400">
-                Nenhuma cena ainda. Toque em{' '}
-                <strong className="text-zinc-200">+ Cena</strong> e comece a registrar: o
-                plano 1 e o take 1 já nascem prontos.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {boletim.cenas.map((cena) => (
-                  <CenaCard
-                    key={cena.id}
-                    boletimId={boletim.id}
-                    cena={cena}
-                    onChange={(muda) => alteraCena(cena.id, muda)}
-                    onRemove={() =>
-                      update((prev) => ({
-                        ...prev,
-                        cenas: prev.cenas.filter((c) => c.id !== cena.id),
-                      }))
-                    }
-                  />
-                ))}
-              </div>
-            )}
-          </SectionCard>
-
-          <SectionCard
-            title="Observações gerais e pendências"
-            icon={<FileTextIcon size={18} />}
-          >
-            <TextAreaField
-              label="Observações gerais"
-              value={boletim.observacoesGerais}
-              rows={4}
-              placeholder="Cena 31 ficou para amanhã; figurino da Maria precisa de reposição"
-              onChange={(observacoesGerais) => altera({ observacoesGerais })}
-            />
-          </SectionCard>
-
-          <SectionCard title="Continuidade do dia" icon={<FileTextIcon size={18} />}>
-            <dl className="grid grid-cols-3 gap-3 text-sm sm:grid-cols-6">
-              <Numero rotulo="Cenas" valor={contagens.cenas} />
-              <Numero rotulo="Planos" valor={contagens.planos} />
-              <Numero rotulo="Takes" valor={contagens.takes} />
-              <Numero rotulo="Prints" valor={contagens.prints} />
-              <Numero rotulo="Problemas" valor={contagens.comProblema} />
-              <Numero rotulo="Minutagem" valor={contagens.duracao || '—'} />
-            </dl>
-          </SectionCard>
-        </PageContainer>
-      </main>
-
-      <StickyActionBar>
-        <Button
-          variant="ghost"
-          leftIcon={<TrashIcon size={18} />}
-          onClick={() => setApagando(true)}
-        >
-          Excluir
-        </Button>
-        <Button
-          variant="primary"
-          size="lg"
-          fullWidth
-          leftIcon={<EyeIcon size={20} />}
-          onClick={() => setFolha(true)}
-        >
-          Visualizar / PDF
-        </Button>
-      </StickyActionBar>
+            Visualizar / PDF
+          </Button>
+        </StickyActionBar>
+      </div>
 
       {folha ? (
         <div className="print-overlay fixed inset-0 z-40 overflow-y-auto bg-ink/95 px-3 py-4 backdrop-blur-sm">
@@ -322,7 +328,7 @@ export function BoletimContinuidadeEditor({
         }}
         onCancel={() => setApagando(false)}
       />
-    </div>
+    </>
   );
 }
 

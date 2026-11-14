@@ -30,6 +30,7 @@ npm run test:consolidado  # departments joined by take_id, gaps, search, day JSO
 npm run test:atalhos   # short path: department route, today/tomorrow pinning, expiry (29)
 npm run test:departamentos # the three departments: selector (all local), hidden sectors, sound problems/rolls/channels, raccord, photo sizing, contract, additive migration (88)
 npm run test:locais    # local Som/Continuidade boletins: normalization, take inheritance, reports via the shared structures, storage keys, duplication with fresh ids, demos (81)
+npm run test:pdf       # prints the 3 demo boletins on Pixel 7 / Galaxy S9+ / iPhone 13 / desktop and checks the sheet is really in the print output (48) — needs a running prod build (PDF_BASE, default :3000; PDF_CHROMIUM for an installed Chromium)
 npm run test:acessibilidade # contrast math, <main>, live region, 44px targets (14)
 npm run test:db        # schema/triggers/enums against the real Neon (36) — needs DATABASE_URL
 npm run test:sala      # room rules, equipment, search vs the real Neon (51) — needs DATABASE_URL
@@ -239,6 +240,10 @@ need the network, and the sheet is printed when the location has no signal).
   and the same actions: ver folha (`folhaLocalDoModulo` — `?folha=1` opens the editor on the
   sheet), duplicar (all ids regenerated; continuity photo **bytes are copied** to new ids
   before the copy is saved, so deleting one boletim never deletes the other's photos) and excluir.
+- **Print rule (the blank-PDF bug, `2026-11-14`)**: the A4 overlay (`.print-overlay`) must be
+  a **sibling** of the `no-print` editor, never inside it — `@media print` hides `.no-print`
+  with everything in it, and the PDF came out as one blank page on every device. Only
+  printing catches this; `npm run test:pdf` does.
 - **Demos**: `lib/local/seed.ts` seeds one Som and one Continuidade demo (the same day as the
   camera demo in `lib/seed.ts`, which is untouched) once per device, behind its own flag
   `bdc:seeded-locais:v1`, only into an empty store — a deleted demo never comes back.
